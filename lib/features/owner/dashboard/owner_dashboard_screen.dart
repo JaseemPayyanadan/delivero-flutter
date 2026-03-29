@@ -72,7 +72,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                     ),
                   ),
                   const Text(
-                    'Command Center',
+                    'Dashboard',
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 26,
