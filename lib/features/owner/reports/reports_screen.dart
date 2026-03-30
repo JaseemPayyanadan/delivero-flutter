@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/ui/ui_kit.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -106,12 +107,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
             actions: [
               IconButton(
                 onPressed: _selectDateRange,
-                icon: Container(
+                icon: UiCard(
+                  radius: 14,
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  color: AppColors.backgroundSecondary,
+                  boxShadow: const [],
                   child: const Icon(
                     Icons.date_range_rounded,
                     color: AppColors.primary,
@@ -155,20 +155,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     return InkWell(
       onTap: _selectDateRange,
       borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
+      child: UiCard(
+        radius: 24,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         child: Row(
           children: [
             const Icon(
@@ -177,15 +166,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
               size: 18,
             ),
             const SizedBox(width: 12),
-            Text(
-              '${df.format(_selectedDateRange.start)} - ${df.format(_selectedDateRange.end)}',
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
+            Expanded(
+              child: Text(
+                '${df.format(_selectedDateRange.start)} - ${df.format(_selectedDateRange.end)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 12),
             const Icon(
               Icons.unfold_more_rounded,
               color: AppColors.textLight,
@@ -198,13 +191,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
   }
 
   Widget _buildTabSelector() {
-    return Container(
-      height: 52,
+    return UiCard(
+      radius: 20,
       padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
-        borderRadius: BorderRadius.circular(16),
-      ),
+      color: AppColors.backgroundSecondary,
+      boxShadow: const [],
       child: TabBar(
         controller: _tabController,
         indicator: BoxDecoration(

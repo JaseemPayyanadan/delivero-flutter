@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/ui/ui_kit.dart';
 import '../../../data/models/food_item.dart';
 
 class FoodItemsScreen extends ConsumerStatefulWidget {
@@ -112,25 +113,14 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-              child: TextField(
+              child: UiPillTextField(
                 controller: _searchController,
+                hintText: 'Search catalog by name…',
                 onChanged: (val) => setState(() => _searchQuery = val),
-                decoration: InputDecoration(
-                  hintText: 'Search catalog by name...',
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    color: AppColors.textLight,
-                  ),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 20),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                ),
+                onClear: () {
+                  _searchController.clear();
+                  setState(() => _searchQuery = '');
+                },
               ),
             ),
           ),
@@ -143,21 +133,19 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
               sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final item = filteredItems[index];
-                    return _buildFoodItemRow(context, ref, item);
-                  },
-                  childCount: filteredItems.length,
-                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final item = filteredItems[index];
+                  return _buildFoodItemRow(context, ref, item);
+                }, childCount: filteredItems.length),
               ),
             ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'owner_food_items_fab',
         onPressed: () => _showAddEditDialog(context, ref),
-        backgroundColor: AppColors.secondary,
-        elevation: 8,
+        backgroundColor: AppColors.primary,
+        elevation: 2,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text(
           'NEW PRODUCT',
@@ -168,15 +156,12 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
             fontSize: 12,
           ),
         ),
+        shape: const StadiumBorder(),
       ),
     );
   }
 
-  Widget _buildFoodItemRow(
-    BuildContext context,
-    WidgetRef ref,
-    FoodItem item,
-  ) {
+  Widget _buildFoodItemRow(BuildContext context, WidgetRef ref, FoodItem item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -365,7 +350,10 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                   Navigator.pop(context);
                   _showAddEditDialog(this.context, ref, item);
                 },
-                leading: const Icon(Icons.edit_rounded, color: AppColors.primary),
+                leading: const Icon(
+                  Icons.edit_rounded,
+                  color: AppColors.primary,
+                ),
                 title: const Text(
                   'Edit Product',
                   style: TextStyle(fontWeight: FontWeight.w900),
@@ -376,7 +364,9 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                   Navigator.pop(context);
                   final confirmed = await _confirmDelete(this.context, item);
                   if (confirmed == true) {
-                    ref.read(foodItemsProvider.notifier).deleteFoodItem(item.id);
+                    ref
+                        .read(foodItemsProvider.notifier)
+                        .deleteFoodItem(item.id);
                   }
                 },
                 leading: const Icon(
