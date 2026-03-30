@@ -113,6 +113,10 @@
       if (e && e.filename) {
         lines.push(e.filename + ':' + (e.lineno || 0) + ':' + (e.colno || 0));
       }
+      if (e && e.error && e.error.stack) {
+        lines.push('');
+        lines.push(String(e.error.stack));
+      }
       setLoadingText(lines.join('\n'));
     });
 
@@ -124,7 +128,40 @@
 
     setTimeout(function () {
       var el = document.getElementById('loading');
-      if (el) setLoadingText('Still loading… (open console for errors)');
+      if (!el) return;
+
+      function describeResult(name, ok, status, contentType) {
+        var bits = [];
+        bits.push(ok ? 'OK' : 'FAIL');
+        if (status) bits.push(String(status));
+        if (contentType) bits.push(contentType);
+        return name + ': ' + bits.join(' ');
+      }
+
+      function head(url, name) {
+        return fetch(url, { method: 'HEAD', cache: 'no-store' })
+          .then(function (res) {
+            return describeResult(
+              name,
+              res.ok,
+              res.status,
+              res.headers.get('content-type') || '',
+            );
+          })
+          .catch(function (err) {
+            return describeResult(name, false, '', err && err.message ? err.message : 'fetch failed');
+          });
+      }
+
+      Promise.all([
+        head('flutter_bootstrap.js', 'flutter_bootstrap.js'),
+        head('main.dart.js', 'main.dart.js'),
+        head('version.json', 'version.json'),
+        head('canvaskit/canvaskit.wasm', 'canvaskit.wasm'),
+        head('assets/FontManifest.json', 'FontManifest.json'),
+      ]).then(function (lines) {
+        setLoadingText('Still loading…\n\n' + lines.join('\n'));
+      });
     }, 8000);
   </script>
   <!--
@@ -135,6 +172,10 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <script src="flutter_bootstrap.js" defer></script>
+  <script
+    src="flutter_bootstrap.js"
+    defer
+    onerror="setLoadingText('Web error: failed to load flutter_bootstrap.js')"
+  ></script>
 </body>
 </html>
