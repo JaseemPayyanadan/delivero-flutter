@@ -16,18 +16,22 @@ class FirebaseService {
     // Manual initialization for development based on .env.local
     // In production, use flutterfire configure to generate firebase_options.dart
     // Note: On Android, if google-services.json is present, it will initialize automatically.
+    const webOptions = FirebaseOptions(
+      apiKey: 'AIzaSyBtd6op8KUKyAhyHor_3kM4sOvYwkBIe4M',
+      authDomain: 'delivero-48322.firebaseapp.com',
+      projectId: 'delivero-48322',
+      storageBucket: 'delivero-48322.firebasestorage.app',
+      messagingSenderId: '246967732090',
+      appId: '1:246967732090:web:7ad49c8e94ee32584e38c3',
+      measurementId: 'G-TG2E932BCK',
+    );
+
     await Firebase.initializeApp(
-      options: defaultTargetPlatform == TargetPlatform.android
-          ? null // Use google-services.json on Android
-          : const FirebaseOptions(
-              apiKey: 'AIzaSyBtd6op8KUKyAhyHor_3kM4sOvYwkBIe4M',
-              authDomain: 'delivero-48322.firebaseapp.com',
-              projectId: 'delivero-48322',
-              storageBucket: 'delivero-48322.firebasestorage.app',
-              messagingSenderId: '246967732090',
-              appId: '1:246967732090:web:7ad49c8e94ee32584e38c3',
-              measurementId: 'G-TG2E932BCK',
-            ),
+      options: kIsWeb
+          ? webOptions
+          : defaultTargetPlatform == TargetPlatform.android
+              ? null
+              : webOptions,
     );
 
     if (kDebugMode) {
