@@ -56,16 +56,56 @@
       font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.2px;
+      padding: 24px;
+      text-align: center;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
   </style>
 </head>
 <body>
   <div id="loading">Loading…</div>
   <script>
-    window.addEventListener('flutter-first-frame', function () {
-      var el = document.getElementById('loading');
-      if (el) el.remove();
-    });
+    (function () {
+      function setLoadingText(text) {
+        var el = document.getElementById('loading');
+        if (el) el.textContent = text;
+      }
+
+      function removeLoading() {
+        var el = document.getElementById('loading');
+        if (el) el.remove();
+      }
+
+      window.addEventListener('flutter-first-frame', removeLoading);
+      document.addEventListener('flutter-first-frame', removeLoading);
+
+      window.addEventListener('error', function (e) {
+        var lines = [];
+        lines.push('Web error: ' + (e && e.message ? e.message : 'Unknown error'));
+        if (e && e.filename) {
+          lines.push(e.filename + ':' + (e.lineno || 0) + ':' + (e.colno || 0));
+        }
+        if (e && e.error && e.error.stack) {
+          lines.push('');
+          lines.push(e.error.stack);
+        }
+        setLoadingText(lines.join('\n'));
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var reason = e && e.reason ? e.reason : 'Unknown error';
+        var text =
+          reason && reason.stack
+            ? String(reason.stack)
+            : (reason && reason.toString ? reason.toString() : String(reason));
+        setLoadingText('Web error: ' + text);
+      });
+
+      setTimeout(function () {
+        var el = document.getElementById('loading');
+        if (el) setLoadingText('Still loading… (check browser console for errors)');
+      }, 8000);
+    })();
   </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
