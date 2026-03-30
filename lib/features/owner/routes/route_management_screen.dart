@@ -797,7 +797,8 @@ class _DriverListTab extends ConsumerWidget {
                 );
                 ref.read(driversProvider.notifier).updateDriver(updatedDriver);
               },
-              activeColor: AppColors.success,
+              activeThumbColor: AppColors.success,
+              activeTrackColor: AppColors.success.withValues(alpha: 0.4),
             ),
           ),
         );

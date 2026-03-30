@@ -108,9 +108,6 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildLiveStatusBanner(reports),
-                    const SizedBox(height: 32),
-
                     // KPI Grid - Matching RN Summary Grid
                     GridView.count(
                       crossAxisCount: 2,
@@ -118,7 +115,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                       physics: const NeverScrollableScrollPhysics(),
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: 1.4,
+                      childAspectRatio: 1.7,
                       children: [
                         _SummaryCard(
                           label: 'Total Customers',
@@ -361,52 +358,6 @@ class OwnerDashboardScreen extends ConsumerWidget {
       ),
     );
   }
-
-  Widget _buildLiveStatusBanner(ReportsData reports) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.secondary.withValues(alpha: 0.2),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: AppColors.success,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'System Operational • All routes active',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: Colors.white,
-            size: 20,
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _SummaryCard extends StatelessWidget {
@@ -427,7 +378,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
@@ -443,14 +394,14 @@ class _SummaryCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: iconColor, size: 24),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,7 +412,7 @@ class _SummaryCard extends StatelessWidget {
                   child: Text(
                     value,
                     style: const TextStyle(
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: FontWeight.w900,
                       color: AppColors.textPrimary,
                     ),
@@ -472,7 +423,7 @@ class _SummaryCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textLight,
                   ),

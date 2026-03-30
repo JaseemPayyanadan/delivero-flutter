@@ -325,7 +325,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         value: value,
         onChanged: onChanged,
-        activeColor: AppColors.success,
+        activeThumbColor: AppColors.success,
+        activeTrackColor: AppColors.success.withValues(alpha: 0.4),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         secondary: Container(
           padding: const EdgeInsets.all(10),
