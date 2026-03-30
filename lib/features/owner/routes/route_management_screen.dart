@@ -129,10 +129,9 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'owner_routes_fab',
         onPressed: () => _showAddDialog(),
-        backgroundColor: AppColors.primary,
-        elevation: 2,
+        backgroundColor: AppColors.secondary,
+        elevation: 8,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: Text(
           _tabController.index == 0 ? 'NEW ROUTE' : 'REGISTER AGENT',
@@ -143,7 +142,6 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
             fontSize: 12,
           ),
         ),
-        shape: const StadiumBorder(),
       ),
     );
   }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -11,7 +10,6 @@ import 'package:printing/printing.dart';
 import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/ui/ui_kit.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 
@@ -418,6 +416,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             ),
           ),
           SliverToBoxAdapter(child: _buildQuickStats(reports, filteredOrders)),
+          SliverToBoxAdapter(child: _buildCollectionSummary(filteredOrders)),
           SliverToBoxAdapter(child: _buildFilters(routes, availableRouteIds)),
           if (filteredOrders.isEmpty)
             SliverToBoxAdapter(
@@ -439,11 +438,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'owner_orders_fab',
         onPressed: () => context.push('/owner/orders/create'),
-        backgroundColor: AppColors.primary,
-        elevation: 2,
-        icon: const Icon(CupertinoIcons.add, color: Colors.white),
+        backgroundColor: AppColors.secondary,
+        elevation: 8,
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text(
           'New Order',
           style: TextStyle(
@@ -452,7 +450,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             letterSpacing: 0.5,
           ),
         ),
-        shape: const StadiumBorder(),
       ),
     );
   }
@@ -553,6 +550,137 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
   }
 
+  Widget _buildCollectionSummary(List<Order> orders) {
+    double cashTotal = 0;
+    double upiTotal = 0;
+    double pendingTotal = 0;
+
+    for (final order in orders) {
+      if (order.paymentStatus == PaymentStatus.paid) {
+        if (order.paymentMethod == PaymentMethod.upi) {
+          upiTotal += order.totalAmount;
+        } else {
+          cashTotal += order.totalAmount;
+        }
+      } else if (order.paymentStatus == PaymentStatus.partial) {
+        final paid = order.amountPaid ?? 0.0;
+        if (order.paymentMethod == PaymentMethod.upi) {
+          upiTotal += paid;
+        } else {
+          cashTotal += paid;
+        }
+        pendingTotal += (order.totalAmount - paid);
+      } else {
+        pendingTotal += order.totalAmount;
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'DAILY COLLECTION SUMMARY',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textLight,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildCollectionItem(
+                'CASH',
+                cashTotal,
+                AppColors.success,
+                Icons.payments_rounded,
+              ),
+              Container(
+                width: 1,
+                height: 32,
+                color: AppColors.divider,
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              _buildCollectionItem(
+                'UPI',
+                upiTotal,
+                AppColors.info,
+                Icons.account_balance_wallet_rounded,
+              ),
+              Container(
+                width: 1,
+                height: 32,
+                color: AppColors.divider,
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              _buildCollectionItem(
+                'PENDING',
+                pendingTotal,
+                AppColors.error,
+                Icons.hourglass_empty_rounded,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCollectionItem(
+    String label,
+    double amount,
+    Color color,
+    IconData icon,
+  ) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 10, color: color),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textLight,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '₹${NumberFormat.compact().format(amount)}',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFilters(
     List<DeliveryRoute> routes,
     List<String> availableRouteIds,
@@ -562,15 +690,35 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          UiPillTextField(
+          TextField(
             controller: _searchController,
-            hintText: 'Search shipments & orders',
             onChanged: (val) => setState(() => _searchQuery = val),
-            onClear: () {
-              _searchController.clear();
-              setState(() => _searchQuery = '');
-            },
-            prefixIcon: CupertinoIcons.search,
+            decoration: InputDecoration(
+              hintText: 'Search by ID or Customer...',
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.textLight,
+              ),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
+            ),
           ),
           const SizedBox(height: 24),
           const Text(
@@ -646,93 +794,68 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentColor(paymentStatus);
     final itemCount = order.items.fold(0, (sum, item) => sum + item.quantity);
-    final progressIndex = _getProgressIndex(order.status);
-    final statusLabel = _getStatusLabel(order.status);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 14,
-            offset: Offset(0, 8),
+            blurRadius: 24,
+            offset: Offset(0, 12),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(28),
         child: InkWell(
           onTap: () => context.push('/owner/orders/${order.id}'),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: AppColors.backgroundSecondary,
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: const Icon(
-                                  Icons.receipt_long_rounded,
-                                  size: 18,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Flexible(
-                                child: Text(
-                                  '#${order.id.substring(0, 8).toUpperCase()}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                              ),
-                            ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '#${order.id.substring(0, 8).toUpperCase()}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 140),
-                          child: _StatusBadge(
-                            label: statusLabel,
-                            color: statusColor,
-                          ),
+                        _StatusBadge(
+                          label: order.status.name.toUpperCase(),
+                          color: statusColor,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    _OrderProgressStepper(
-                      activeIndex: progressIndex,
-                      isCancelled: order.status == OrderStatus.cancelled,
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
                     Text(
                       order.customerName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        fontSize: 18,
+                        fontSize: 20,
                         color: AppColors.textPrimary,
                         letterSpacing: -0.5,
                       ),
@@ -751,7 +874,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const Spacer(),
@@ -761,36 +884,17 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.backgroundSecondary,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
+                            color: AppColors.primaryLighter,
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             '$itemCount ${itemCount == 1 ? 'UNIT' : 'UNITS'}',
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
-                              color: AppColors.textPrimary,
+                              color: AppColors.primary,
                               letterSpacing: 0.5,
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _OrderMetaBlock(
-                            label: 'Recipient',
-                            value: order.customerName,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _OrderMetaBlock(
-                            label: 'Address',
-                            value: order.customerAddress,
                           ),
                         ),
                       ],
@@ -800,8 +904,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
+                  horizontal: 24,
+                  vertical: 18,
                 ),
                 decoration: BoxDecoration(
                   color: AppColors.backgroundPrimary,
@@ -910,36 +1014,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
   }
 
-  int _getProgressIndex(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.delivered:
-        return 2;
-      case OrderStatus.preparing:
-      case OrderStatus.ready:
-        return 1;
-      case OrderStatus.confirmed:
-        return 1;
-      case OrderStatus.pending:
-      case OrderStatus.cancelled:
-        return 0;
-    }
-  }
-
-  String _getStatusLabel(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.delivered:
-        return 'DELIVERED';
-      case OrderStatus.cancelled:
-        return 'CANCELLED';
-      case OrderStatus.preparing:
-      case OrderStatus.ready:
-      case OrderStatus.confirmed:
-        return 'IN DELIVERY';
-      case OrderStatus.pending:
-        return 'PICKED UP';
-    }
-  }
-
   Color _getPaymentColor(PaymentStatus status) {
     switch (status) {
       case PaymentStatus.paid:
@@ -1018,188 +1092,12 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: color,
           fontSize: 10,
           fontWeight: FontWeight.w900,
           letterSpacing: 0.8,
         ),
-      ),
-    );
-  }
-}
-
-class _OrderMetaBlock extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _OrderMetaBlock({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textLight,
-            letterSpacing: 0.9,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-            letterSpacing: -0.1,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _OrderProgressStepper extends StatelessWidget {
-  final int activeIndex;
-  final bool isCancelled;
-
-  const _OrderProgressStepper({
-    required this.activeIndex,
-    required this.isCancelled,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final activeColor = isCancelled ? AppColors.textDisabled : AppColors.primary;
-    final inactiveColor = AppColors.border;
-    final textColor =
-        isCancelled ? AppColors.textLight : AppColors.textSecondary;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final progress = (activeIndex.clamp(0, 2)) / 2;
-        return SizedBox(
-          height: 44,
-          child: Stack(
-            children: [
-              Positioned(
-                left: 14,
-                right: 14,
-                top: 8,
-                child: Container(
-                  height: 2,
-                  decoration: BoxDecoration(
-                    color: inactiveColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 14,
-                top: 8,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: Container(
-                    height: 2,
-                    width: (constraints.maxWidth - 28) * progress,
-                    color: activeColor,
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  _StepDot(
-                    label: 'Picked up',
-                    isActive: activeIndex >= 0 && !isCancelled,
-                    activeColor: activeColor,
-                    textColor: textColor,
-                  ),
-                  _StepDot(
-                    label: 'In Delivery',
-                    isActive: activeIndex >= 1 && !isCancelled,
-                    activeColor: activeColor,
-                    textColor: textColor,
-                  ),
-                  _StepDot(
-                    label: 'Delivered',
-                    isActive: activeIndex >= 2 && !isCancelled,
-                    activeColor: activeColor,
-                    textColor: textColor,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _StepDot extends StatelessWidget {
-  final String label;
-  final bool isActive;
-  final Color activeColor;
-  final Color textColor;
-
-  const _StepDot({
-    required this.label,
-    required this.isActive,
-    required this.activeColor,
-    required this.textColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final dotColor = isActive ? activeColor : AppColors.border;
-    return Expanded(
-      child: Column(
-        children: [
-          Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              shape: BoxShape.circle,
-              border: Border.all(color: dotColor, width: 2),
-            ),
-            child: Center(
-              child: Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: dotColor,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: textColor,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

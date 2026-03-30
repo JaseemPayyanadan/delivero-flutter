@@ -14,17 +14,6 @@ class OwnerDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider).user;
-    final firstName =
-        (user?.name
-                    .trim()
-                    .split(' ')
-                    .firstWhere(
-                      (p) => p.isNotEmpty,
-                      orElse: () => 'Operator',
-                    ) ??
-                'Operator')
-            .trim();
     final reports = ref.watch(reportsProvider);
     final orders = ref.watch(ordersProvider);
     final customers = ref.watch(customersProvider);
@@ -48,7 +37,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: 160.0,
+            expandedHeight: 180.0,
             floating: false,
             pinned: true,
             backgroundColor: AppColors.backgroundPrimary,
@@ -62,26 +51,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 ),
                 onPressed: () {},
               ),
-              const SizedBox(width: 4),
-              Container(
-                width: 36,
-                height: 36,
-                margin: const EdgeInsets.only(right: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  firstName.isNotEmpty ? firstName[0].toUpperCase() : 'O',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
+              const SizedBox(width: 8),
             ],
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsets.symmetric(
@@ -101,9 +71,9 @@ class OwnerDashboardScreen extends ConsumerWidget {
                       letterSpacing: 1.5,
                     ),
                   ),
-                  Text(
-                    'Hi, $firstName',
-                    style: const TextStyle(
+                  const Text(
+                    'Dashboard',
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 26,
                       fontWeight: FontWeight.w900,
@@ -135,165 +105,120 @@ class OwnerDashboardScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 1),
-                  duration: const Duration(milliseconds: 520),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, t, child) {
-                    return Opacity(
-                      opacity: t,
-                      child: Transform.translate(
-                        offset: Offset(0, (1 - t) * 10),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 16),
-                      _HomeActionCard(
-                        onSearchTap: () => context.push('/owner/orders'),
-                        actions: [
-                          _HomeQuickAction(
-                            label: 'Order',
-                            icon: Icons.add_rounded,
-                            onTap: () => context.push('/owner/orders/create'),
-                          ),
-                          _HomeQuickAction(
-                            label: 'Customer',
-                            icon: Icons.person_add_alt_rounded,
-                            onTap: () => context.push('/owner/customers/add'),
-                          ),
-                          _HomeQuickAction(
-                            label: 'Product',
-                            icon: Icons.inventory_2_rounded,
-                            onTap: () => context.push('/owner/food-items'),
-                          ),
-                          _HomeQuickAction(
-                            label: 'Routes',
-                            icon: Icons.alt_route_rounded,
-                            onTap: () => context.push('/owner/routes'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 1.7,
-                        children: [
-                          _SummaryCard(
-                            label: 'Total Customers',
-                            value: customers.length.toString(),
-                            icon: Icons.people_alt_rounded,
-                            iconColor: const Color(0xFFF59E0B),
-                            bgColor: const Color(0xFFFFF4E5),
-                            onTap: () => context.push('/owner/customers'),
-                          ),
-                          _SummaryCard(
-                            label: 'Total Drivers',
-                            value: drivers.length.toString(),
-                            icon: Icons.local_shipping_rounded,
-                            iconColor: const Color(0xFF0284C7),
-                            bgColor: const Color(0xFFE0F2FE),
-                            onTap: () => context.push('/owner/routes'),
-                          ),
-                          _SummaryCard(
-                            label: 'Total Products',
-                            value: foodItems.length.toString(),
-                            icon: Icons.inventory_2_rounded,
-                            iconColor: const Color(0xFFFF6B35),
-                            bgColor: const Color(0xFFFFECE6),
-                            onTap: () => context.push('/owner/food-items'),
-                          ),
-                          _SummaryCard(
-                            label: 'Total Routes',
-                            value: routes.length.toString(),
-                            icon: Icons.alt_route_rounded,
-                            iconColor: const Color(0xFF7C3AED),
-                            bgColor: const Color(0xFFEDE9FE),
-                            onTap: () => context.push('/owner/routes'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // KPI Grid - Matching RN Summary Grid
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 1.7,
+                      children: [
+                        _SummaryCard(
+                          label: 'Total Customers',
+                          value: customers.length.toString(),
+                          icon: Icons.people_alt_rounded,
+                          iconColor: const Color(0xFFF59E0B),
+                          bgColor: const Color(0xFFFFF4E5),
+                        ),
+                        _SummaryCard(
+                          label: 'Total Drivers',
+                          value: drivers.length.toString(),
+                          icon: Icons.local_shipping_rounded,
+                          iconColor: const Color(0xFF0284C7),
+                          bgColor: const Color(0xFFE0F2FE),
+                        ),
+                        _SummaryCard(
+                          label: 'Total Products',
+                          value: foodItems.length.toString(),
+                          icon: Icons.inventory_2_rounded,
+                          iconColor: const Color(0xFFFF6B35),
+                          bgColor: const Color(0xFFFFECE6),
+                        ),
+                        _SummaryCard(
+                          label: 'Total Routes',
+                          value: routes.length.toString(),
+                          icon: Icons.alt_route_rounded,
+                          iconColor: const Color(0xFF7C3AED),
+                          bgColor: const Color(0xFFEDE9FE),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
 
-                      // Daily Statistics Row
-                      _DashboardSection(
-                        title: 'Daily Performance',
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              _DailyStatCard(
-                                label: 'Total Orders',
-                                value: reports.totalOrders.toString(),
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              _DailyStatCard(
-                                label: 'Total Revenue',
-                                value:
-                                    '₹${NumberFormat.compact().format(reports.totalRevenue + reports.totalPendingRevenue)}',
-                                color: AppColors.success,
-                              ),
-                              const SizedBox(width: 12),
-                              _DailyStatCard(
-                                label: 'Completed',
-                                value: reports.completedOrders.toString(),
-                                color: AppColors.info,
-                              ),
-                              const SizedBox(width: 12),
-                              _DailyStatCard(
-                                label: 'Pending',
-                                value: reports.pendingOrders.toString(),
-                                color: AppColors.warning,
-                              ),
-                            ],
-                          ),
+                    // Daily Statistics Row
+                    _DashboardSection(
+                      title: 'Daily Performance',
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _DailyStatCard(
+                              label: 'Total Orders',
+                              value: reports.totalOrders.toString(),
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 12),
+                            _DailyStatCard(
+                              label: 'Total Revenue',
+                              value:
+                                  '₹${NumberFormat.compact().format(reports.totalRevenue + reports.totalPendingRevenue)}',
+                              color: AppColors.success,
+                            ),
+                            const SizedBox(width: 12),
+                            _DailyStatCard(
+                              label: 'Completed',
+                              value: reports.completedOrders.toString(),
+                              color: AppColors.info,
+                            ),
+                            const SizedBox(width: 12),
+                            _DailyStatCard(
+                              label: 'Pending',
+                              value: reports.pendingOrders.toString(),
+                              color: AppColors.warning,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 32),
+                    ),
+                    const SizedBox(height: 32),
 
-                      // Analytics Section - Product Sale
-                      _DashboardSection(
-                        title: 'Product Sale Insights',
-                        subtitle: 'Distribution across inventory catalog',
-                        child: _ProductSaleChart(
-                          productSales: reports.productSales,
-                        ),
+                    // Analytics Section - Product Sale
+                    _DashboardSection(
+                      title: 'Product Sale Insights',
+                      subtitle: 'Distribution across inventory catalog',
+                      child: _ProductSaleChart(
+                        productSales: reports.productSales,
                       ),
-                      const SizedBox(height: 32),
+                    ),
+                    const SizedBox(height: 32),
 
-                      // Analytics Section - Revenue Velocity
-                      _DashboardSection(
-                        title: 'Revenue Velocity',
-                        subtitle: 'Daily financial transaction tracking',
-                        child: _SalesTrendChart(dailySales: reports.dailySales),
-                      ),
-                      const SizedBox(height: 32),
+                    // Analytics Section - Revenue Velocity
+                    _DashboardSection(
+                      title: 'Revenue Velocity',
+                      subtitle: 'Daily financial transaction tracking',
+                      child: _SalesTrendChart(dailySales: reports.dailySales),
+                    ),
+                    const SizedBox(height: 32),
 
-                      // Quick Access Tools
-                      _DashboardSection(
-                        title: 'Enterprise Modules',
-                        child: _FeatureGrid(),
-                      ),
-                      const SizedBox(height: 32),
+                    // Quick Access Tools
+                    _DashboardSection(
+                      title: 'Enterprise Modules',
+                      child: _FeatureGrid(),
+                    ),
+                    const SizedBox(height: 32),
 
-                      // Activity Stream
-                      _DashboardSection(
-                        title: 'Real-time Ledger',
-                        subtitle: 'Latest transactions across all accounts',
-                        framed: false,
-                        child: _RecentOrdersList(orders: orders),
-                      ),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
+                    // Activity Stream
+                    _DashboardSection(
+                      title: 'Real-time Ledger',
+                      subtitle: 'Latest transactions across all accounts',
+                      child: _RecentOrdersList(orders: orders),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
               ),
             ),
@@ -441,7 +366,6 @@ class _SummaryCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final Color bgColor;
-  final VoidCallback? onTap;
 
   const _SummaryCard({
     required this.label,
@@ -449,75 +373,65 @@ class _SummaryCard extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.bgColor,
-    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadow,
-                blurRadius: 14,
-                offset: Offset(0, 8),
-              ),
-            ],
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 15,
+            offset: Offset(0, 8),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: bgColor.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        value,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textLight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -848,13 +762,11 @@ class _DashboardSection extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Widget child;
-  final bool framed;
 
   const _DashboardSection({
     required this.title,
     this.subtitle,
     required this.child,
-    this.framed = true,
   });
 
   @override
@@ -891,154 +803,8 @@ class _DashboardSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        if (!framed)
-          child
-        else
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: AppColors.border),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadow,
-                  blurRadius: 20,
-                  offset: Offset(0, 12),
-                ),
-              ],
-            ),
-            child: child,
-          ),
+        child,
       ],
-    );
-  }
-}
-
-class _HomeQuickAction {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _HomeQuickAction({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-}
-
-class _HomeActionCard extends StatelessWidget {
-  final VoidCallback onSearchTap;
-  final List<_HomeQuickAction> actions;
-
-  const _HomeActionCard({required this.onSearchTap, required this.actions});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 14,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: onSearchTap,
-            borderRadius: BorderRadius.circular(18),
-            child: Ink(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundSecondary,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: const [
-                  Icon(
-                    Icons.search_rounded,
-                    color: AppColors.textLight,
-                    size: 20,
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Search orders, customers, routes…',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: actions
-                .map((a) => Expanded(child: _HomeQuickActionItem(action: a)))
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HomeQuickActionItem extends StatelessWidget {
-  final _HomeQuickAction action;
-
-  const _HomeQuickActionItem({required this.action});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: action.onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Icon(action.icon, color: AppColors.primary, size: 22),
-            ),
-            const SizedBox(height: 8),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                action.label,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

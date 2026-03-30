@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/ui/ui_kit.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/order.dart';
@@ -41,6 +40,11 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     _searchController.dispose();
     _arrowController.dispose();
     super.dispose();
+  }
+
+  String _formatIndex(int index) {
+    final value = index + 1;
+    return value < 10 ? '0$value' : value.toString();
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
@@ -237,6 +241,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                   final totalOrders = customerOrders.length;
 
                   return _buildCustomerCard(
+                    _formatIndex(index),
                     customer,
                     routeName,
                     outstanding,
@@ -250,10 +255,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'owner_customers_fab',
         onPressed: () => context.push('/owner/customers/add'),
         backgroundColor: AppColors.primary,
-        elevation: 2,
+        elevation: 8,
         icon: const Icon(Icons.add_business_rounded, color: Colors.white),
         label: const Text(
           '+ New Customer',
@@ -264,7 +268,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
             fontSize: 12,
           ),
         ),
-        shape: const StadiumBorder(),
       ),
     );
   }
@@ -281,14 +284,25 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          UiPillTextField(
+          TextField(
             controller: _searchController,
-            hintText: 'Search partners, routes, IDs…',
             onChanged: (value) => setState(() => _searchQuery = value),
-            onClear: () {
-              _searchController.clear();
-              setState(() => _searchQuery = '');
-            },
+            decoration: InputDecoration(
+              hintText: 'Search partners, routes, IDs...',
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.textLight,
+              ),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 20),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                    )
+                  : null,
+            ),
           ),
           const SizedBox(height: 16),
           _buildSummaryStrip(partners, outstanding, orders),
@@ -445,6 +459,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
   }
 
   Widget _buildCustomerCard(
+    String indexLabel,
     Customer customer,
     String routeName,
     double outstanding,
@@ -477,6 +492,40 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withValues(alpha: 0.7),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          indexLabel,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

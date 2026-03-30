@@ -9,7 +9,7 @@ class AppColors {
   static const accent = Color(0xFFF59E0B); // Amber for alerts
 
   // Backgrounds
-  static const backgroundPrimary = Color(0xFFFFFFFF);
+  static const backgroundPrimary = Color(0xFFF8FAFC); // Very light slate
   static const backgroundSecondary = Color(0xFFF1F5F9);
   static const backgroundTertiary = Color(0xFFE2E8F0);
 
@@ -29,8 +29,8 @@ class AppColors {
 
   // Typography
   static const textPrimary = Color(0xFF0F172A); // Slate 900
-  static const textSecondary = Color(0xFF334155); // Slate 700
-  static const textLight = Color(0xFF64748B); // Slate 500
+  static const textSecondary = Color(0xFF475569); // Slate 600
+  static const textLight = Color(0xFF94A3B8); // Slate 400
   static const textDisabled = Color(0xFFCBD5E1); // Slate 300
 
   static const shadow = Color(0x0F000000);
