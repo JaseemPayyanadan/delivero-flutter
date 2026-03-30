@@ -125,38 +125,42 @@ class OrderDetailsScreen extends ConsumerWidget {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'TRANSACTION VALUE',
-                    style: TextStyle(
-                      color: AppColors.textLight,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      '₹${NumberFormat.decimalPattern().format(order.totalAmount)}',
-                      style: const TextStyle(
-                        fontSize: 28,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TRANSACTION VALUE',
+                      style: TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 9,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -1,
+                        letterSpacing: 1.2,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '₹${NumberFormat.decimalPattern().format(order.totalAmount)}',
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              _StatusBadge(
-                label: order.status.name.toUpperCase(),
-                color: statusColor,
+              const SizedBox(width: 12),
+              Flexible(
+                child: _StatusBadge(
+                  label: order.status.name.toUpperCase(),
+                  color: statusColor,
+                ),
               ),
             ],
           ),
@@ -286,12 +290,16 @@ class OrderDetailsScreen extends ConsumerWidget {
                           color: AppColors.textLight,
                         ),
                         const SizedBox(width: 6),
-                        Text(
-                          order.customerPhone,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            order.customerPhone,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -608,15 +616,18 @@ class OrderDetailsScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'SETTLEMENT OVERVIEW',
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textLight,
-                  letterSpacing: 1.2,
+              const Expanded(
+                child: Text(
+                  'SETTLEMENT OVERVIEW',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textLight,
+                    letterSpacing: 1.2,
+                  ),
                 ),
               ),
               Container(
@@ -1234,6 +1245,8 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: color,
           fontSize: 9,

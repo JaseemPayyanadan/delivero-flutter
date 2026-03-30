@@ -1055,6 +1055,8 @@ class _FeatureGrid extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   feature['title'] as String,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: 15,
@@ -1064,6 +1066,8 @@ class _FeatureGrid extends StatelessWidget {
                 ),
                 Text(
                   (feature['subtitle'] as String).toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
