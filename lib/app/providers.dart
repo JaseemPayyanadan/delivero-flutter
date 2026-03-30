@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/auth_controller.dart';
@@ -59,17 +61,46 @@ final driversProvider = NotifierProvider<DriversNotifier, List<Driver>>(
 // Notifiers for domain states
 
 class OrdersNotifier extends Notifier<List<Order>> {
+  StreamSubscription? _subscription;
+  String? _activeFactoryId;
+  bool _isListening = false;
+
   @override
   List<Order> build() {
-    final factoryIdAsync = ref.watch(factoryIdProvider);
-    factoryIdAsync.whenData((id) {
-      if (id != null) _init(id);
+    ref.onDispose(() {
+      _subscription?.cancel();
+      _subscription = null;
+      _activeFactoryId = null;
+      _isListening = false;
     });
+
+    if (!_isListening) {
+      _isListening = true;
+      ref.listen<AsyncValue<String?>>(
+        factoryIdProvider,
+        (_, next) => _setFactoryId(next.asData?.value),
+        fireImmediately: true,
+      );
+    }
+
     return [];
   }
 
-  Future<void> _init(String factoryId) async {
-    FirebaseService.firestore
+  void _setFactoryId(String? factoryId) {
+    if (factoryId == null) {
+      _subscription?.cancel();
+      _subscription = null;
+      _activeFactoryId = null;
+      state = [];
+      return;
+    }
+
+    if (_activeFactoryId == factoryId && _subscription != null) return;
+
+    _subscription?.cancel();
+    _activeFactoryId = factoryId;
+
+    _subscription = FirebaseService.firestore
         .collection('orders')
         .where('factoryId', isEqualTo: factoryId)
         .snapshots()
@@ -98,17 +129,46 @@ class OrdersNotifier extends Notifier<List<Order>> {
 }
 
 class CustomersNotifier extends Notifier<List<Customer>> {
+  StreamSubscription? _subscription;
+  String? _activeFactoryId;
+  bool _isListening = false;
+
   @override
   List<Customer> build() {
-    final factoryIdAsync = ref.watch(factoryIdProvider);
-    factoryIdAsync.whenData((id) {
-      if (id != null) _init(id);
+    ref.onDispose(() {
+      _subscription?.cancel();
+      _subscription = null;
+      _activeFactoryId = null;
+      _isListening = false;
     });
+
+    if (!_isListening) {
+      _isListening = true;
+      ref.listen<AsyncValue<String?>>(
+        factoryIdProvider,
+        (_, next) => _setFactoryId(next.asData?.value),
+        fireImmediately: true,
+      );
+    }
+
     return [];
   }
 
-  Future<void> _init(String factoryId) async {
-    FirebaseService.firestore
+  void _setFactoryId(String? factoryId) {
+    if (factoryId == null) {
+      _subscription?.cancel();
+      _subscription = null;
+      _activeFactoryId = null;
+      state = [];
+      return;
+    }
+
+    if (_activeFactoryId == factoryId && _subscription != null) return;
+
+    _subscription?.cancel();
+    _activeFactoryId = factoryId;
+
+    _subscription = FirebaseService.firestore
         .collection('customers')
         .where('factoryId', isEqualTo: factoryId)
         .snapshots()
@@ -137,17 +197,46 @@ class CustomersNotifier extends Notifier<List<Customer>> {
 }
 
 class FoodItemsNotifier extends Notifier<List<FoodItem>> {
+  StreamSubscription? _subscription;
+  String? _activeFactoryId;
+  bool _isListening = false;
+
   @override
   List<FoodItem> build() {
-    final factoryIdAsync = ref.watch(factoryIdProvider);
-    factoryIdAsync.whenData((id) {
-      if (id != null) _init(id);
+    ref.onDispose(() {
+      _subscription?.cancel();
+      _subscription = null;
+      _activeFactoryId = null;
+      _isListening = false;
     });
+
+    if (!_isListening) {
+      _isListening = true;
+      ref.listen<AsyncValue<String?>>(
+        factoryIdProvider,
+        (_, next) => _setFactoryId(next.asData?.value),
+        fireImmediately: true,
+      );
+    }
+
     return [];
   }
 
-  Future<void> _init(String factoryId) async {
-    FirebaseService.firestore
+  void _setFactoryId(String? factoryId) {
+    if (factoryId == null) {
+      _subscription?.cancel();
+      _subscription = null;
+      _activeFactoryId = null;
+      state = [];
+      return;
+    }
+
+    if (_activeFactoryId == factoryId && _subscription != null) return;
+
+    _subscription?.cancel();
+    _activeFactoryId = factoryId;
+
+    _subscription = FirebaseService.firestore
         .collection('foodItems')
         .where('factoryId', isEqualTo: factoryId)
         .snapshots()
@@ -176,17 +265,46 @@ class FoodItemsNotifier extends Notifier<List<FoodItem>> {
 }
 
 class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
+  StreamSubscription? _subscription;
+  String? _activeFactoryId;
+  bool _isListening = false;
+
   @override
   List<DeliveryRoute> build() {
-    final factoryIdAsync = ref.watch(factoryIdProvider);
-    factoryIdAsync.whenData((id) {
-      if (id != null) _init(id);
+    ref.onDispose(() {
+      _subscription?.cancel();
+      _subscription = null;
+      _activeFactoryId = null;
+      _isListening = false;
     });
+
+    if (!_isListening) {
+      _isListening = true;
+      ref.listen<AsyncValue<String?>>(
+        factoryIdProvider,
+        (_, next) => _setFactoryId(next.asData?.value),
+        fireImmediately: true,
+      );
+    }
+
     return [];
   }
 
-  Future<void> _init(String factoryId) async {
-    FirebaseService.firestore
+  void _setFactoryId(String? factoryId) {
+    if (factoryId == null) {
+      _subscription?.cancel();
+      _subscription = null;
+      _activeFactoryId = null;
+      state = [];
+      return;
+    }
+
+    if (_activeFactoryId == factoryId && _subscription != null) return;
+
+    _subscription?.cancel();
+    _activeFactoryId = factoryId;
+
+    _subscription = FirebaseService.firestore
         .collection('routes')
         .where('factoryId', isEqualTo: factoryId)
         .snapshots()
@@ -218,17 +336,46 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
 }
 
 class DriversNotifier extends Notifier<List<Driver>> {
+  StreamSubscription? _subscription;
+  String? _activeFactoryId;
+  bool _isListening = false;
+
   @override
   List<Driver> build() {
-    final factoryIdAsync = ref.watch(factoryIdProvider);
-    factoryIdAsync.whenData((id) {
-      if (id != null) _init(id);
+    ref.onDispose(() {
+      _subscription?.cancel();
+      _subscription = null;
+      _activeFactoryId = null;
+      _isListening = false;
     });
+
+    if (!_isListening) {
+      _isListening = true;
+      ref.listen<AsyncValue<String?>>(
+        factoryIdProvider,
+        (_, next) => _setFactoryId(next.asData?.value),
+        fireImmediately: true,
+      );
+    }
+
     return [];
   }
 
-  Future<void> _init(String factoryId) async {
-    FirebaseService.firestore
+  void _setFactoryId(String? factoryId) {
+    if (factoryId == null) {
+      _subscription?.cancel();
+      _subscription = null;
+      _activeFactoryId = null;
+      state = [];
+      return;
+    }
+
+    if (_activeFactoryId == factoryId && _subscription != null) return;
+
+    _subscription?.cancel();
+    _activeFactoryId = factoryId;
+
+    _subscription = FirebaseService.firestore
         .collection('drivers')
         .where('factoryId', isEqualTo: factoryId)
         .snapshots()
@@ -252,4 +399,6 @@ class DriversNotifier extends Notifier<List<Driver>> {
       .collection('drivers')
       .doc(driver.id)
       .set(driver.toJson());
+  void deleteDriver(String id) =>
+      FirebaseService.firestore.collection('drivers').doc(id).delete();
 }
