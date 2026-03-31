@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "246967732090",
+    "project_id": "delivero-48322",
+    "storage_bucket": "delivero-48322.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:246967732090:android:995f320a05e07b174e38c3",
+        "android_client_info": {
+          "package_name": "delivero.com"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "246967732090-rh9svshiuepqq7dbj039s2oicp0grhho.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUIbtO2sa1sDO81H28ccdDc5AJ_HxKFHA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "246967732090-rh9svshiuepqq7dbj039s2oicp0grhho.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "246967732090-o3t4e52v9i80ru0l9iuk5n94mlacd444.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "webnhue.com"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
