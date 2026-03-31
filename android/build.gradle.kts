@@ -1,14 +1,8 @@
-import org.gradle.api.tasks.compile.JavaCompile
-
 allprojects {
     repositories {
         google()
         mavenCentral()
     }
-}
-
-plugins {
-    id("com.google.gms.google-services") version "4.4.2" apply false
 }
 
 val newBuildDir: Directory =
@@ -23,12 +17,6 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
-}
-
-subprojects {
-    tasks.withType<JavaCompile>().configureEach {
-        options.compilerArgs.add("-Xlint:-options")
-    }
 }
 
 tasks.register<Delete>("clean") {

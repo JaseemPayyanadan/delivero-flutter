@@ -1,4 +1,4 @@
-package delivero.com
+package delivero.com.delivero_flutter
 
 import io.flutter.embedding.android.FlutterActivity
 
