@@ -63,23 +63,46 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: Column(
-        children: [
-          _buildFilters(
-            allOrders.where((o) => o.assignedDriver == user?.id).toList(),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 120.0,
+            floating: false,
+            pinned: true,
+            backgroundColor: AppColors.backgroundPrimary,
+            elevation: 0,
+            flexibleSpace: const FlexibleSpaceBar(
+              titlePadding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              title: Text(
+                'Assigned Orders',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
           ),
-          Expanded(
-            child: myOrders.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: myOrders.length,
-                    itemBuilder: (context, index) {
-                      final order = myOrders[index];
-                      return _buildOrderCard(context, ref, order);
-                    },
-                  ),
+          SliverToBoxAdapter(
+            child: _buildFilters(
+              allOrders.where((o) => o.assignedDriver == user?.id).toList(),
+            ),
           ),
+          if (myOrders.isEmpty)
+            SliverFillRemaining(hasScrollBody: false, child: _buildEmptyState())
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) =>
+                      _buildOrderCard(context, ref, myOrders[index]),
+                  childCount: myOrders.length,
+                ),
+              ),
+            ),
         ],
       ),
     );

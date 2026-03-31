@@ -25,18 +25,6 @@ class _DeliveryShellState extends ConsumerState<DeliveryShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'DELIVERO',
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () => ref.read(authProvider.notifier).logout(),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
       body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,

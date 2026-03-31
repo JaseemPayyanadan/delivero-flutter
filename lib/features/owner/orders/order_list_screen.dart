@@ -416,7 +416,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             ),
           ),
           SliverToBoxAdapter(child: _buildQuickStats(reports, filteredOrders)),
-          SliverToBoxAdapter(child: _buildCollectionSummary(filteredOrders)),
           SliverToBoxAdapter(child: _buildFilters(routes, availableRouteIds)),
           if (filteredOrders.isEmpty)
             SliverToBoxAdapter(

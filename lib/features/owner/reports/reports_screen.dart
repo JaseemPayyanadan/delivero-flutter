@@ -63,9 +63,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
             expandedHeight: 160.0,
             floating: false,
@@ -121,31 +120,73 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
               ),
               const SizedBox(width: 16),
             ],
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                children: [
-                  _buildDateRangeIndicator(),
-                  const SizedBox(height: 24),
-                  _buildTabSelector(),
-                  const SizedBox(height: 24),
-                ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(58),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Container(
+                  height: 52,
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                    indicatorPadding: EdgeInsets.zero,
+                    tabs: const [
+                      Tab(text: 'OVERVIEW'),
+                      Tab(text: 'PRODUCTS'),
+                      Tab(text: 'CUSTOMERS'),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-          SliverFillRemaining(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _SummaryTab(reports: reports),
-                _ProductsTab(productSales: reports.productSales),
-                _CustomersTab(customerRevenue: reports.customerRevenue),
-              ],
-            ),
-          ),
         ],
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _buildDateRangeIndicator(),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _SummaryTab(reports: reports),
+                  _ProductsTab(productSales: reports.productSales),
+                  _CustomersTab(customerRevenue: reports.customerRevenue),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
