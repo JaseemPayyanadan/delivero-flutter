@@ -1,0 +1,11 @@
+{
+  "installCommand": "npm install --no-audit --no-fund",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "build/web",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "delivero_flutter_web",
+  "private": true,
+  "scripts": {
+    "vercel-build": "bash ./vercel-build.sh"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
