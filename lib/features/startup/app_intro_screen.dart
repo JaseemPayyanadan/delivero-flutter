@@ -5,6 +5,97 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
 
+class AppLauncherScreen extends StatefulWidget {
+  const AppLauncherScreen({super.key});
+
+  @override
+  State<AppLauncherScreen> createState() => _AppLauncherScreenState();
+}
+
+class _AppLauncherScreenState extends State<AppLauncherScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulse;
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+    _pulse = Tween<double>(begin: 0.96, end: 1.04).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
+    );
+    _pulseController.repeat(reverse: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _visible = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.backgroundPrimary,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final height = constraints.maxHeight;
+            return Stack(
+              children: [
+                CustomPaint(
+                  size: Size(width, height),
+                  painter: _IntroBackgroundPainter(),
+                ),
+                Center(
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 450),
+                    curve: Curves.easeOut,
+                    opacity: _visible ? 1 : 0,
+                    child: ScaleTransition(
+                      scale: _pulse,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(
+                            'assets/images/logo.png',
+                            width: 240,
+                            height: 64,
+                            fit: BoxFit.contain,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Enterprise Delivery Suite',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 class AppIntroScreen extends ConsumerStatefulWidget {
   const AppIntroScreen({super.key});
 

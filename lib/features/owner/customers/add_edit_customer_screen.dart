@@ -119,9 +119,11 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       id: _isEditMode ? widget.customerId! : const Uuid().v4(),
       factoryId: factoryId,
       name: _nameController.text,
-      ownerName: _ownerNameController.text,
+      ownerName: _ownerNameController.text.trim().isEmpty
+          ? null
+          : _ownerNameController.text.trim(),
       email: existingCustomerEmail,
-      phone: _phoneController.text,
+      phone: _phoneController.text.trim(),
       address: _addressController.text,
       area: selectedRoute?.area ?? 'Central',
       isActive: true,
@@ -199,6 +201,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                       _ownerNameController,
                       Icons.person_pin_rounded,
                       hint: 'e.g. John Smith',
+                      requiredField: false,
                     ),
                     const SizedBox(height: 16),
                     _buildTextField(
@@ -207,6 +210,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                       Icons.phone_iphone_rounded,
                       keyboardType: TextInputType.phone,
                       hint: '+91 00000 00000',
+                      requiredField: false,
                     ),
                     const SizedBox(height: 16),
                     _buildTextField(
@@ -281,13 +285,15 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     TextInputType? keyboardType,
     int maxLines = 1,
     String? hint,
+    bool requiredField = true,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      validator: (value) =>
-          (value == null || value.isEmpty) ? 'Required' : null,
+      validator: requiredField
+          ? (value) => (value == null || value.isEmpty) ? 'Required' : null
+          : null,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

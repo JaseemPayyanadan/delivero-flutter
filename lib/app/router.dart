@@ -31,14 +31,17 @@ class RouterNotifier extends ChangeNotifier {
     final authState = _ref.read(authProvider);
     final startupState = _ref.read(appStartupProvider);
 
-    if (!startupState.isInitialized) return null;
-
     final loc = state.uri.toString();
+    final isAtSplash = loc == '/splash';
     final isAtIntro = loc == '/intro';
     final isAtLogin = loc == '/login';
     final isAtOnboarding = loc == '/onboarding';
     final isAtOwner = loc.startsWith('/owner');
     final isAtDelivery = loc.startsWith('/delivery');
+
+    if (!startupState.isInitialized) {
+      return isAtSplash ? null : '/splash';
+    }
 
     // 1. App Intro check
     if (!startupState.hasSeenAppIntro) {
@@ -73,10 +76,14 @@ final routerProvider = Provider<GoRouter>((ref) {
   final notifier = ref.watch(routerNotifierProvider);
 
   return GoRouter(
-    initialLocation: '/intro',
+    initialLocation: '/splash',
     refreshListenable: notifier,
     redirect: notifier.redirect,
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const AppLauncherScreen(),
+      ),
       GoRoute(
         path: '/intro',
         builder: (context, state) => const AppIntroScreen(),
