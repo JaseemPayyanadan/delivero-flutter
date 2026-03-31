@@ -64,118 +64,17 @@
   </style>
 </head>
 <body>
-  <div id="loading">Loading…</div>
+    <div id="loading">Loading…</div>
+
   <script>
-    (function () {
-      if (!('serviceWorker' in navigator)) return;
-
-      navigator.serviceWorker
-        .getRegistrations()
-        .then(function (regs) {
-          return Promise.all(
-            regs.map(function (reg) {
-              return reg.unregister();
-            }),
-          );
-        })
-        .catch(function () {});
-
-      if ('caches' in window) {
-        caches
-          .keys()
-          .then(function (keys) {
-            return Promise.all(
-              keys.map(function (k) {
-                return caches.delete(k);
-              }),
-            );
-          })
-          .catch(function () {});
-      }
-    })();
-
-    function setLoadingText(text) {
-      var el = document.getElementById('loading');
-      if (el) el.textContent = text;
-    }
-
     function removeLoading() {
       var el = document.getElementById('loading');
       if (el) el.remove();
     }
 
     window.addEventListener('flutter-first-frame', removeLoading);
-    document.addEventListener('flutter-first-frame', removeLoading);
-
-    window.addEventListener('error', function (e) {
-      var lines = [];
-      lines.push('Web error: ' + (e && e.message ? e.message : 'Unknown error'));
-      if (e && e.filename) {
-        lines.push(e.filename + ':' + (e.lineno || 0) + ':' + (e.colno || 0));
-      }
-      if (e && e.error && e.error.stack) {
-        lines.push('');
-        lines.push(String(e.error.stack));
-      }
-      setLoadingText(lines.join('\n'));
-    });
-
-    window.addEventListener('unhandledrejection', function (e) {
-      var reason = e && e.reason ? e.reason : 'Unknown error';
-      var text = reason && reason.toString ? reason.toString() : String(reason);
-      setLoadingText('Web error: ' + text);
-    });
-
-    setTimeout(function () {
-      var el = document.getElementById('loading');
-      if (!el) return;
-
-      function describeResult(name, ok, status, contentType) {
-        var bits = [];
-        bits.push(ok ? 'OK' : 'FAIL');
-        if (status) bits.push(String(status));
-        if (contentType) bits.push(contentType);
-        return name + ': ' + bits.join(' ');
-      }
-
-      function head(url, name) {
-        return fetch(url, { method: 'HEAD', cache: 'no-store' })
-          .then(function (res) {
-            return describeResult(
-              name,
-              res.ok,
-              res.status,
-              res.headers.get('content-type') || '',
-            );
-          })
-          .catch(function (err) {
-            return describeResult(name, false, '', err && err.message ? err.message : 'fetch failed');
-          });
-      }
-
-      Promise.all([
-        head('flutter_bootstrap.js', 'flutter_bootstrap.js'),
-        head('main.dart.js', 'main.dart.js'),
-        head('version.json', 'version.json'),
-        head('canvaskit/canvaskit.wasm', 'canvaskit.wasm'),
-        head('assets/FontManifest.json', 'FontManifest.json'),
-      ]).then(function (lines) {
-        setLoadingText('Still loading…\n\n' + lines.join('\n'));
-      });
-    }, 8000);
   </script>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script
-    src="flutter_bootstrap.js"
-    defer
-    onerror="setLoadingText('Web error: failed to load flutter_bootstrap.js')"
-  ></script>
+  <script src="main.dart.js" defer></script>
 </body>
 </html>
