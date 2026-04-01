@@ -396,12 +396,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               child: _buildQuickStats(reports, filteredOrders),
             ),
             SliverToBoxAdapter(child: _buildFilters(routes, availableRouteIds)),
-          if (!ordersLoaded && orders.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (filteredOrders.isEmpty)
+            if (!ordersLoaded && orders.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (filteredOrders.isEmpty)
               SliverToBoxAdapter(
                 child: SizedBox(
                   height: MediaQuery.of(context).size.height * 0.4,
@@ -641,26 +641,21 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   Widget _buildOrderCard(Order order) {
-    final routes = ref.watch(routesProvider);
-    final drivers = ref.watch(driversProvider);
-
     final statusColor = _getStatusColor(order.status);
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentColor(paymentStatus);
     final itemCount = order.items.fold(0, (sum, item) => sum + item.quantity);
-    final route = routes.firstWhereOrNull(
-      (r) => r.id == order.assignedRoute || r.name == order.assignedRoute,
-    );
-    final driver = drivers.firstWhereOrNull(
-      (d) => d.id == order.assignedDriver,
-    );
-    final routeLabel = route?.name ?? (order.assignedRoute ?? 'Unassigned');
-    final driverLabel = driver?.name ?? 'Unassigned';
     final paymentMethodLabel = (order.paymentMethod?.name ?? 'unpaid')
         .toUpperCase();
     final shortId = order.id.substring(0, 8).toUpperCase();
-    final dateLabel = DateFormat('MMM d').format(order.orderDate);
     final hasNotes = (order.notes ?? '').trim().isNotEmpty;
+    final previewItems = [...order.items]
+      ..sort((a, b) => b.quantity.compareTo(a.quantity));
+    final shownItems = previewItems.take(3).toList();
+    final remainingItems = (previewItems.length - shownItems.length).clamp(
+      0,
+      999,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -810,25 +805,28 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           physics: const BouncingScrollPhysics(),
                           child: Row(
                             children: [
-                              _InfoChip(
-                                icon: Icons.calendar_today_rounded,
-                                label: dateLabel,
-                              ),
-                              const SizedBox(width: 10),
-                              _InfoChip(
-                                icon: Icons.alt_route_rounded,
-                                label: routeLabel,
-                              ),
-                              const SizedBox(width: 10),
-                              _InfoChip(
-                                icon: Icons.person_pin_circle_rounded,
-                                label: driverLabel,
-                              ),
-                              const SizedBox(width: 10),
-                              _InfoChip(
-                                icon: Icons.receipt_long_rounded,
-                                label: '#$shortId',
-                              ),
+                              if (shownItems.isEmpty)
+                                _InfoChip(
+                                  icon: Icons.fastfood_rounded,
+                                  label: 'No items',
+                                )
+                              else ...[
+                                for (final item in shownItems) ...[
+                                  _InfoChip(
+                                    icon: Icons.fastfood_rounded,
+                                    label:
+                                        '${item.quantity}× ${item.foodItemName}',
+                                  ),
+                                  const SizedBox(width: 10),
+                                ],
+                                if (remainingItems > 0)
+                                  _InfoChip(
+                                    icon: Icons.more_horiz_rounded,
+                                    label: '+$remainingItems more',
+                                  )
+                                else
+                                  const SizedBox.shrink(),
+                              ],
                             ],
                           ),
                         ),
