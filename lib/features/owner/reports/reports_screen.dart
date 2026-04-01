@@ -66,7 +66,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 160.0,
+            expandedHeight: 210.0,
             floating: false,
             pinned: true,
             backgroundColor: AppColors.backgroundPrimary,
@@ -75,7 +75,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsets.symmetric(
                 horizontal: 24,
-                vertical: 16,
+                vertical: 86,
               ),
               title: Column(
                 mainAxisSize: MainAxisSize.min,

@@ -26,24 +26,58 @@ class _DeliveryShellState extends ConsumerState<DeliveryShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _selectedIndex, children: _screens),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) =>
-            setState(() => _selectedIndex = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(CupertinoIcons.speedometer),
-            label: 'Dashboard',
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: NavigationBarTheme(
+          data: NavigationBarThemeData(
+            height: 58,
+            indicatorColor: Colors.transparent,
+            overlayColor: WidgetStateProperty.all(Colors.transparent),
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            labelTextStyle: WidgetStateProperty.resolveWith((states) {
+              final selected = states.contains(WidgetState.selected);
+              return TextStyle(
+                color: selected ? Colors.black : Colors.black54,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                fontSize: 11,
+              );
+            }),
+            iconTheme: WidgetStateProperty.resolveWith((states) {
+              final selected = states.contains(WidgetState.selected);
+              return IconThemeData(
+                color: selected ? Colors.black : Colors.black54,
+                size: 22,
+              );
+            }),
           ),
-          NavigationDestination(
-            icon: Icon(CupertinoIcons.list_bullet),
-            label: 'Orders',
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              hoverColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              splashColor: Colors.transparent,
+              splashFactory: NoSplash.splashFactory,
+            ),
+            child: NavigationBar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (index) =>
+                  setState(() => _selectedIndex = index),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(CupertinoIcons.speedometer),
+                  label: 'Dashboard',
+                ),
+                NavigationDestination(
+                  icon: Icon(CupertinoIcons.list_bullet),
+                  label: 'Orders',
+                ),
+                NavigationDestination(
+                  icon: Icon(CupertinoIcons.settings),
+                  label: 'Settings',
+                ),
+              ],
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(CupertinoIcons.settings),
-            label: 'Settings',
-          ),
-        ],
+        ),
       ),
     );
   }

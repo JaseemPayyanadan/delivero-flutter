@@ -100,8 +100,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     if (criticalStepsLeft == 0 && !_autoMarked) {
       _autoMarked = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await ref.read(appStartupProvider.notifier).markOnboardingSeen();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(appStartupProvider.notifier).markOnboardingSeen();
         if (!mounted) return;
         context.go('/owner');
       });
