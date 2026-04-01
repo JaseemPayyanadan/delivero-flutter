@@ -65,6 +65,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
   Widget build(BuildContext context) {
     final customers = ref.watch(customersProvider);
     final customersLoaded = ref.watch(customersLoadedProvider);
+    final routesLoaded = ref.watch(routesLoadedProvider);
     final routes = ref.watch(routesProvider);
     final orders = ref.watch(ordersProvider);
     final reports = ref.watch(reportsProvider);
@@ -125,121 +126,128 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          DeliveroSliverHeader(
-            title: 'Customers',
-            subtitle: '${customers.length} business partners',
-            expandedHeight: 140,
-            floating: true,
-            pinned: true,
-            actions: [
-              Container(
-                margin: const EdgeInsets.only(right: 16),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.backgroundSecondary,
-                  child: const Text(
-                    'CM',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 12,
-                      color: AppColors.textPrimary,
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(customersProvider.notifier).refresh(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            DeliveroSliverHeader(
+              title: 'Customers',
+              subtitle: '${customers.length} business partners',
+              expandedHeight: 140,
+              floating: true,
+              pinned: true,
+              actions: [
+                Container(
+                  margin: const EdgeInsets.only(right: 16),
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.backgroundSecondary,
+                    child: const Text(
+                      'CM',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          SliverToBoxAdapter(
-            child: _buildSearchAndFilter(
-              routes,
-              availableRouteIds,
-              partners: filteredCustomers.length,
-              outstanding: totalOutstanding,
-              orders: totalOrdersCount,
+              ],
             ),
-          ),
-          if (!customersLoaded && customers.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (filteredCustomers.isEmpty)
             SliverToBoxAdapter(
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.6,
-                child: _buildEmptyState(
-                  title: customers.isEmpty
-                      ? 'No Customers Managed'
-                      : 'No Matching Results',
-                  subtitle: customers.isEmpty
-                      ? 'Add your first customer to start tracking orders and logistics.'
-                      : 'Try adjusting your search criteria or route filters.',
-                  icon: customers.isEmpty
-                      ? Icons.business_center_outlined
-                      : Icons.search_off_outlined,
-                  actionLabel: customers.isEmpty
-                      ? 'Add Customer'
-                      : 'Clear Search',
-                  onAction: customers.isEmpty
-                      ? () => context.push('/owner/customers/add')
-                      : () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
+              child: _buildSearchAndFilter(
+                routes,
+                availableRouteIds,
+                partners: filteredCustomers.length,
+                outstanding: totalOutstanding,
+                orders: totalOrdersCount,
+                routesLoaded: routesLoaded,
+              ),
+            ),
+            if (!customersLoaded && customers.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (filteredCustomers.isEmpty)
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  child: _buildEmptyState(
+                    title: customers.isEmpty
+                        ? 'No Customers Managed'
+                        : 'No Matching Results',
+                    subtitle: customers.isEmpty
+                        ? 'Add your first customer to start tracking orders and logistics.'
+                        : 'Try adjusting your search criteria or route filters.',
+                    icon: customers.isEmpty
+                        ? Icons.business_center_outlined
+                        : Icons.search_off_outlined,
+                    actionLabel:
+                        customers.isEmpty ? 'Add Customer' : 'Clear Search',
+                    onAction: customers.isEmpty
+                        ? () => context.push('/owner/customers/add')
+                        : () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final customer = filteredCustomers[index];
+                    final route = routes.firstWhereOrNull(
+                      (r) =>
+                          r.id == customer.assignedRoute ||
+                          r.name == customer.assignedRoute,
+                    );
+                    final routeName = !routesLoaded && routes.isEmpty
+                        ? 'Loading route…'
+                        : (route?.name ??
+                            (customer.assignedRoute ?? 'No Route'));
+
+                    final customerOrders =
+                        ordersByCustomer[customer.id] ?? const [];
+
+                    double outstanding = 0;
+                    DateTime? lastOrderDate;
+
+                    for (var o in customerOrders) {
+                      if (o.paymentStatus != PaymentStatus.paid) {
+                        outstanding += (o.totalAmount - (o.amountPaid ?? 0));
+                      }
+                      if (lastOrderDate == null ||
+                          o.orderDate.isAfter(lastOrderDate)) {
+                        lastOrderDate = o.orderDate;
+                      }
+                    }
+
+                    final customerReport =
+                        reports.customerRevenue[customer.name];
+                    final ltv = customerReport?.revenue ?? 0;
+                    final totalOrders = customerOrders.length;
+
+                    return _buildCustomerCard(
+                      _formatIndex(index),
+                      customer,
+                      routeName,
+                      outstanding,
+                      lastOrderDate,
+                      ltv,
+                      totalOrders,
+                    );
+                  }, childCount: filteredCustomers.length),
                 ),
               ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final customer = filteredCustomers[index];
-                  final route = routes.firstWhereOrNull(
-                    (r) =>
-                        r.id == customer.assignedRoute ||
-                        r.name == customer.assignedRoute,
-                  );
-                  final routeName =
-                      route?.name ?? (customer.assignedRoute ?? 'No Route');
-
-                  final customerOrders =
-                      ordersByCustomer[customer.id] ?? const [];
-
-                  double outstanding = 0;
-                  DateTime? lastOrderDate;
-
-                  for (var o in customerOrders) {
-                    if (o.paymentStatus != PaymentStatus.paid) {
-                      outstanding += (o.totalAmount - (o.amountPaid ?? 0));
-                    }
-                    if (lastOrderDate == null ||
-                        o.orderDate.isAfter(lastOrderDate)) {
-                      lastOrderDate = o.orderDate;
-                    }
-                  }
-
-                  // Get LTV from reports if available
-                  final customerReport = reports.customerRevenue[customer.name];
-                  final ltv = customerReport?.revenue ?? 0;
-                  final totalOrders = customerOrders.length;
-
-                  return _buildCustomerCard(
-                    _formatIndex(index),
-                    customer,
-                    routeName,
-                    outstanding,
-                    lastOrderDate,
-                    ltv,
-                    totalOrders,
-                  );
-                }, childCount: filteredCustomers.length),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: Container(
         decoration: BoxDecoration(
@@ -280,6 +288,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     required int partners,
     required double outstanding,
     required int orders,
+    required bool routesLoaded,
   }) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -325,21 +334,24 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
             child: Row(
               children: [
                 _buildRouteTab(null, 'All Partners'),
-                ...availableRouteIds
-                    .sortedBy(
-                      (id) =>
-                          routes.firstWhereOrNull((r) => r.id == id)?.name ??
-                          '',
-                    )
-                    .map((routeId) {
-                      final route = routes.firstWhereOrNull(
-                        (r) => r.id == routeId,
-                      );
-                      return _buildRouteTab(
-                        routeId,
-                        route?.name ?? 'Unknown Route',
-                      );
-                    }),
+                if (!routesLoaded && routes.isEmpty)
+                  _buildRouteTab('loading', 'Loading…')
+                else
+                  ...availableRouteIds
+                      .sortedBy(
+                        (id) =>
+                            routes.firstWhereOrNull((r) => r.id == id)?.name ??
+                            '',
+                      )
+                      .map((routeId) {
+                        final route = routes.firstWhereOrNull(
+                          (r) => r.id == routeId,
+                        );
+                        return _buildRouteTab(
+                          routeId,
+                          route?.name ?? 'Unknown Route',
+                        );
+                      }),
               ],
             ),
           ),
@@ -351,29 +363,28 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
   Widget _buildRouteTab(String? routeId, String label) {
     final isSelected = _selectedRouteId == routeId;
     return Padding(
-      padding: const EdgeInsets.only(right: 14),
-      child: InkWell(
-        onTap: () => setState(() => _selectedRouteId = routeId),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isSelected ? AppColors.primary : Colors.transparent,
-                width: 2.5,
-              ),
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-            ),
+      padding: const EdgeInsets.only(right: 10),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (val) {
+          if (routeId == 'loading') return;
+          setState(() => _selectedRouteId = val ? routeId : null);
+        },
+        selectedColor: AppColors.primary,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : AppColors.textPrimary,
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+        ),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: isSelected ? AppColors.primary : AppColors.border,
           ),
         ),
+        showCheckmark: false,
       ),
     );
   }

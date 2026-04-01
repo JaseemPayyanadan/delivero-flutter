@@ -232,6 +232,15 @@ class CustomersNotifier extends Notifier<List<Customer>> {
       .set(customer.toJson());
   void deleteCustomer(String id) =>
       FirebaseService.firestore.collection('customers').doc(id).delete();
+
+  Future<void> refresh() async {
+    final id = _activeFactoryId;
+    if (id == null) return;
+    _subscription?.cancel();
+    _subscription = null;
+    _setFactoryId(id);
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+  }
 }
 
 class FoodItemsNotifier extends Notifier<List<FoodItem>> {
