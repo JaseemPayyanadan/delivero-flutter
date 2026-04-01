@@ -22,6 +22,11 @@ class OwnerDashboardScreen extends ConsumerWidget {
     final foodItems = ref.watch(foodItemsProvider);
     final routes = ref.watch(routesProvider);
     final user = ref.watch(authProvider).user;
+    final ordersLoaded = ref.watch(ordersLoadedProvider);
+    final customersLoaded = ref.watch(customersLoadedProvider);
+    final driversLoaded = ref.watch(driversLoadedProvider);
+    final foodItemsLoaded = ref.watch(foodItemsLoadedProvider);
+    final routesLoaded = ref.watch(routesLoadedProvider);
 
     final now = DateTime.now();
     final dateStr = DateFormat('EEEE, d MMMM').format(now);
@@ -42,6 +47,12 @@ class OwnerDashboardScreen extends ConsumerWidget {
         foodItems.isEmpty &&
         routes.isEmpty &&
         orders.isEmpty;
+    final bool isLoading =
+        !(ordersLoaded &&
+            customersLoaded &&
+            driversLoaded &&
+            foodItemsLoaded &&
+            routesLoaded);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -181,7 +192,12 @@ class OwnerDashboardScreen extends ConsumerWidget {
               ],
             ),
           ),
-          if (isEmpty)
+          if (isEmpty && isLoading)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: _buildEmptyState(context),
@@ -292,7 +308,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                       subtitle: 'Latest transactions across all accounts',
                       child: _RecentOrdersList(orders: orders),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 120),
                   ],
                 ),
               ),
