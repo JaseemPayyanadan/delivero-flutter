@@ -671,6 +671,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final address = order.customerAddress.trim().isEmpty
         ? 'Address not available'
         : order.customerAddress.trim();
+    final orderDateLabel = DateFormat('MMM d • h:mm a').format(order.orderDate);
     final driver = drivers.firstWhereOrNull(
       (d) => d.id == order.assignedDriver,
     );
@@ -679,15 +680,17 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         (order.assignedDriver?.trim().isNotEmpty == true
             ? order.assignedDriver!.trim()
             : 'Unassigned');
-    final orderTypeLabel = order.orderType == OrderType.oneTime
-        ? 'ONE-TIME ORDER'
-        : 'DAILY ORDER';
-    final orderTypeColor = order.orderType == OrderType.oneTime
-        ? AppColors.accent
-        : AppColors.primary;
-    final orderTypeIcon = order.orderType == OrderType.oneTime
+    final isOneTime = order.orderType == OrderType.oneTime;
+    final orderTypeBannerText = isOneTime
+        ? 'One-time order for ${order.customerName}'
+        : 'Daily order for ${order.customerName}';
+    final orderTypeIcon = isOneTime
         ? Icons.bolt_rounded
         : Icons.calendar_today_rounded;
+    final orderTypeAccent = isOneTime ? AppColors.warning : AppColors.success;
+    final orderTypeBg = isOneTime
+        ? AppColors.warningLighter.withValues(alpha: 0.6)
+        : AppColors.successLighter.withValues(alpha: 0.6);
 
     final previewItems = [...order.items]
       ..sort((a, b) => b.quantity.compareTo(a.quantity));
@@ -725,151 +728,103 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.backgroundSecondary,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppColors.border),
-                                  ),
-                                  child: Text(
-                                    '#$shortId',
-                                    style: const TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.6,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  order.customerName,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 18,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.4,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.near_me_outlined,
-                                      size: 16,
-                                      color: AppColors.textLight,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        address,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textSecondary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    const Icon(
-                                      Icons.person_pin_circle_outlined,
-                                      size: 16,
-                                      color: AppColors.textLight,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Flexible(
-                                      child: Text(
-                                        driverLabel,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textSecondary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.backgroundSecondary,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Text(
+                              '#$shortId',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.6,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                '₹${NumberFormat.decimalPattern().format(order.totalAmount)}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.textPrimary,
-                                  letterSpacing: -0.4,
-                                ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              orderDateLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.textLight,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
                               ),
-                              const SizedBox(height: 6),
-                              Container(
-                                height: 36,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: orderTypeColor.withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: orderTypeColor.withValues(
-                                      alpha: 0.18,
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 26,
-                                      height: 26,
-                                      decoration: BoxDecoration(
-                                        color: orderTypeColor.withValues(
-                                          alpha: 0.18,
-                                        ),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Icon(
-                                        orderTypeIcon,
-                                        size: 16,
-                                        color: orderTypeColor,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      orderTypeLabel,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: orderTypeColor,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -0.1,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '₹${NumberFormat.decimalPattern().format(order.totalAmount)}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        order.customerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.near_me_outlined,
+                            size: 16,
+                            color: AppColors.textLight,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              address,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w700,
                               ),
-                            ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Icon(
+                            Icons.person_pin_circle_outlined,
+                            size: 16,
+                            color: AppColors.textLight,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              driverLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -880,7 +835,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.backgroundPrimary,
+                          color: AppColors.backgroundSecondary,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: AppColors.border),
                         ),
@@ -976,6 +931,40 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           ],
                         ),
                       ],
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: orderTypeBg,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              orderTypeIcon,
+                              size: 18,
+                              color: orderTypeAccent,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                orderTypeBannerText,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: orderTypeAccent,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
