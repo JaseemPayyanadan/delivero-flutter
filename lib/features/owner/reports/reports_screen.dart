@@ -206,9 +206,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 190.0,
+            expandedHeight: 240.0,
             floating: false,
             pinned: true,
+            toolbarHeight: 0,
+            automaticallyImplyLeading: false,
             backgroundColor: AppColors.backgroundPrimary,
             elevation: 0,
             surfaceTintColor: Colors.transparent,
@@ -257,7 +259,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                               ),
                             ),
                             const SizedBox(width: 12),
-                            _RangePill(text: rangeLabel),
+                            _RangePill(
+                              text: rangeLabel,
+                              onTap: _selectDateRange,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -317,12 +322,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                 ),
               ],
             ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: _buildDateRangeChip(context),
-              ),
-            ],
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(_kTabBarHeight),
               child: Padding(
@@ -338,6 +337,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                     borderRadius: BorderRadius.circular(16),
                     child: TabBar(
                       controller: _tabController,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
                       indicatorSize: TabBarIndicatorSize.label,
                       indicator: BoxDecoration(
                         color: AppColors.surface,
@@ -361,7 +361,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
-                      labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 14),
                       indicatorPadding: EdgeInsets.zero,
                       tabs: const [
                         Tab(text: 'OVERVIEW'),
@@ -381,56 +381,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
             _SummaryTab(reports: reports),
             _ProductsTab(productSales: reports.productSales),
             _CustomersTab(customerRevenue: reports.customerRevenue),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateRangeChip(BuildContext context) {
-    final df = DateFormat('MMM d');
-    final rangeText =
-        '${df.format(_selectedDateRange.start)} — ${df.format(_selectedDateRange.end)}';
-    final showText = MediaQuery.sizeOf(context).width >= 380;
-    return InkWell(
-      onTap: _selectDateRange,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: showText ? 12 : 10,
-          vertical: 10,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.date_range_rounded,
-              color: AppColors.textSecondary,
-              size: 18,
-            ),
-            if (showText) ...[
-              const SizedBox(width: 8),
-              Text(
-                rangeText,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
-            const SizedBox(width: 6),
-            const Icon(
-              Icons.unfold_more_rounded,
-              color: AppColors.textLight,
-              size: 16,
-            ),
           ],
         ),
       ),
@@ -1108,26 +1058,57 @@ enum _KpiTone { primary, success, warning, neutral }
 
 class _RangePill extends StatelessWidget {
   final String text;
-  const _RangePill({required this.text});
+  final VoidCallback? onTap;
+  const _RangePill({required this.text, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    final child = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.1,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.date_range_rounded,
+            size: 16,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.1,
+            ),
+          ),
+          const SizedBox(width: 6),
+          const Icon(
+            Icons.unfold_more_rounded,
+            size: 14,
+            color: AppColors.textLight,
+          ),
+        ],
       ),
+    );
+    if (onTap == null) return child;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: child,
     );
   }
 }

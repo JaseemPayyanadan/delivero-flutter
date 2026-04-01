@@ -34,6 +34,7 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           decoration: BoxDecoration(
             color: AppColors.surface,
             border: const Border(top: BorderSide(color: AppColors.border)),
