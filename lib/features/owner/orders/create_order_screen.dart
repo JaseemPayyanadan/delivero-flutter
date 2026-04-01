@@ -33,6 +33,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final customers = ref.watch(customersProvider);
     final foodItems = ref.watch(foodItemsProvider);
     final routes = ref.watch(routesProvider);
+    final customersLoaded = ref.watch(customersLoadedProvider);
+    final foodItemsLoaded = ref.watch(foodItemsLoadedProvider);
+    final routesLoaded = ref.watch(routesLoadedProvider);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -143,7 +146,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     state: _currentStep > 0
                         ? StepState.complete
                         : StepState.editing,
-                    content: _buildCustomerStep(customers, routes),
+                    content: _buildCustomerStep(
+                      customers,
+                      routes,
+                      customersLoaded: customersLoaded,
+                      routesLoaded: routesLoaded,
+                    ),
                   ),
                   Step(
                     title: const Text(
@@ -158,7 +166,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     state: _currentStep > 1
                         ? StepState.complete
                         : StepState.editing,
-                    content: _buildItemsStep(foodItems),
+                    content: _buildItemsStep(
+                      foodItems,
+                      foodItemsLoaded: foodItemsLoaded,
+                    ),
                   ),
                   Step(
                     title: const Text(
@@ -203,8 +214,18 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   Widget _buildCustomerStep(
     List<Customer> customers,
-    List<DeliveryRoute> routes,
-  ) {
+    List<DeliveryRoute> routes, {
+    required bool customersLoaded,
+    required bool routesLoaded,
+  }) {
+    if (!customersLoaded && customers.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final showRouteLoading = !routesLoaded && routes.isEmpty;
+
     final filteredCustomers = customers.where((c) {
       final matchesSearch =
           c.name.toLowerCase().contains(_customerSearchQuery.toLowerCase()) ||
@@ -324,7 +345,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         ),
                       ),
                       subtitle: Text(
-                        '${route?.name ?? 'No Route'} • ${customer.phone}',
+                        '${showRouteLoading ? 'Loading route…' : (route?.name ?? 'No Route')} • ${customer.phone}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 11),
@@ -345,8 +366,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
-  Widget _buildItemsStep(List<FoodItem> foodItems) {
-    final foodItemsLoaded = ref.watch(foodItemsLoadedProvider);
+  Widget _buildItemsStep(
+    List<FoodItem> foodItems, {
+    required bool foodItemsLoaded,
+  }) {
     if (!foodItemsLoaded && foodItems.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -672,7 +695,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     _selectedItems.forEach((id, qty) {
       if (qty > 0) {
-        final item = foodItems.firstWhere((f) => f.id == id);
+        final item = foodItems.firstWhereOrNull((f) => f.id == id);
+        if (item == null) return;
         final total = item.price * qty;
         subtotal += total;
         orderItems.add({'item': item, 'qty': qty, 'total': total});
@@ -711,53 +735,70 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Divider(height: 1, color: AppColors.divider),
               ),
-              ...orderItems.map((oi) {
-                final FoodItem item = oi['item'];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryLighter,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${oi['qty']}x',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.primary,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          item.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '₹${NumberFormat.decimalPattern().format(oi['total'])}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
+              if (orderItems.isEmpty)
+                const Text(
+                  'No items selected',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
                   ),
-                );
-              }),
+                )
+              else
+                SizedBox(
+                  height: (orderItems.length * 42.0).clamp(84.0, 210.0),
+                  child: ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: orderItems.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final oi = orderItems[index];
+                      final FoodItem item = oi['item'];
+                      return Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryLighter,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${oi['qty']}x',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.primary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              item.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '₹${NumberFormat.decimalPattern().format(oi['total'])}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Divider(height: 1, color: AppColors.divider),
@@ -862,7 +903,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     _selectedItems.forEach((id, qty) {
       if (qty > 0) {
-        final foodItem = foodItems.firstWhere((f) => f.id == id);
+        final foodItem = foodItems.firstWhereOrNull((f) => f.id == id);
+        if (foodItem == null) return;
         final total = foodItem.price * qty;
         subtotal += total;
         items.add(
