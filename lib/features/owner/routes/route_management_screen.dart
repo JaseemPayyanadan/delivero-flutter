@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/driver.dart';
 
@@ -41,41 +42,13 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
       backgroundColor: AppColors.backgroundPrimary,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            expandedHeight: 140.0,
+          DeliveroSliverHeader(
+            title: 'Logistics Control',
+            subtitle:
+                '${routes.length} active routes • ${drivers.where((d) => d.isActive).length} on-field agents',
+            expandedHeight: 140,
             floating: true,
             pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              title: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Logistics Control',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    '${routes.length} active routes • ${drivers.where((d) => d.isActive).length} on-field agents',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
           SliverToBoxAdapter(
             child: Padding(

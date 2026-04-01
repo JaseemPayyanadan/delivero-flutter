@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/driver.dart';
@@ -24,7 +25,7 @@ class OrderDetailsScreen extends ConsumerWidget {
 
     if (order == null) {
       return Scaffold(
-        appBar: AppBar(backgroundColor: AppColors.backgroundPrimary),
+        appBar: const DeliveroAppBar(title: 'Order'),
         body: const Center(child: Text('Order not found')),
       );
     }
@@ -38,19 +39,9 @@ class OrderDetailsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        backgroundColor: AppColors.backgroundPrimary,
-        elevation: 0,
+      appBar: DeliveroAppBar(
+        title: 'TXN: ${order.id.toUpperCase()}',
         centerTitle: true,
-        title: Text(
-          'TXN: ${order.id.toUpperCase()}',
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1,
-          ),
-        ),
         actions: [
           IconButton(
             onPressed: () => _handleDelete(context, ref, order),

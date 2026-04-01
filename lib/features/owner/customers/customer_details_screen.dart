@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/food_item.dart';
 import '../../../data/models/order.dart';
@@ -27,7 +28,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
     if (customer == null) {
       return Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
-        appBar: AppBar(backgroundColor: Colors.transparent),
+        appBar: const DeliveroAppBar(title: 'Customer'),
         body: const Center(child: Text('Enterprise Partner Not Found')),
       );
     }
@@ -56,16 +57,15 @@ class CustomerDetailsScreen extends ConsumerWidget {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 200.0,
+          DeliveroSliverHeader(
+            title: customer.name,
+            subtitle: route?.name ?? 'Unassigned route',
+            expandedHeight: 140,
             floating: false,
             pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
             actions: [
               IconButton(
-                onPressed: () =>
-                    context.push('/owner/customers/edit/$customerId'),
+                onPressed: () => context.push('/owner/customers/edit/$customerId'),
                 icon: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -81,90 +81,94 @@ class CustomerDetailsScreen extends ConsumerWidget {
               ),
               const SizedBox(width: 16),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary.withValues(alpha: 0.05),
-                      AppColors.backgroundPrimary,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 40),
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: AppColors.shadow,
-                              blurRadius: 20,
-                              offset: Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            customer.name.substring(0, 1).toUpperCase(),
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 32,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        customer.name,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          (route?.name ?? 'UNASSIGNED ROUTE').toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textLight,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: AppColors.border),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AppColors.shadow,
+                          blurRadius: 18,
+                          offset: Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLighter.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Center(
+                            child: Text(
+                              customer.name.substring(0, 1).toUpperCase(),
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                customer.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 18,
+                                  letterSpacing: -0.4,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.backgroundSecondary,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Text(
+                                  (route?.name ?? 'UNASSIGNED ROUTE')
+                                      .toUpperCase(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.textLight,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   _buildFinancialSummary(totalRevenue, pendingRevenue),
                   const SizedBox(height: 32),
                   _buildSectionTitle('ENTERPRISE CONTACTS'),

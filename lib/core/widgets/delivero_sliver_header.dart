@@ -2,6 +2,47 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
+class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final bool centerTitle;
+  final List<Widget>? actions;
+  final Widget? leading;
+
+  const DeliveroAppBar({
+    super.key,
+    required this.title,
+    this.centerTitle = false,
+    this.actions,
+    this.leading,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: AppColors.backgroundPrimary,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      centerTitle: centerTitle,
+      leading: leading,
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.2,
+        ),
+      ),
+      actions: actions,
+    );
+  }
+}
+
 class DeliveroSliverHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -19,7 +60,10 @@ class DeliveroSliverHeader extends StatelessWidget {
     this.pinned = true,
     this.floating = false,
     this.actions,
-    this.titlePadding = const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    this.titlePadding = const EdgeInsets.symmetric(
+      horizontal: 24,
+      vertical: 16,
+    ),
   });
 
   @override
@@ -68,4 +112,3 @@ class DeliveroSliverHeader extends StatelessWidget {
     );
   }
 }
-

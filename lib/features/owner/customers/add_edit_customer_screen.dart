@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/food_item.dart';
 
@@ -157,27 +158,11 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 120.0,
+          DeliveroSliverHeader(
+            title: _isEditMode ? 'Modify Partner' : 'Register Partner',
+            expandedHeight: 120,
             floating: true,
             pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              title: Text(
-                _isEditMode ? 'Modify Partner' : 'Register Partner',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
           ),
           SliverToBoxAdapter(
             child: Padding(
