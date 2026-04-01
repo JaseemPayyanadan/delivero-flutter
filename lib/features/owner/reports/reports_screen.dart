@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/order.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -21,6 +23,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     end: DateTime.now(),
   );
   static const double _kTabBarHeight = 58;
+  static const double _kHeaderHorizontalPadding = 24;
 
   @override
   void initState() {
@@ -58,9 +61,145 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     }
   }
 
+  ReportsData _computeReports(List<Order> orders) {
+    if (orders.isEmpty) return ReportsData.empty();
+
+    double totalRevenue = 0;
+    double totalPendingRevenue = 0;
+    int completedOrders = 0;
+    int pendingOrders = 0;
+    int cancelledOrders = 0;
+    final Map<String, double> paymentMethodBreakdown = {};
+    final Map<String, int> orderStatusBreakdown = {};
+    final Map<DateTime, DailySalesData> dailyMap = {};
+    final Map<String, ProductSalesData> productSalesMap = {};
+    final Map<String, CustomerRevenueData> customerRevenueMap = {};
+
+    for (final order in orders) {
+      if (order.paymentStatus == PaymentStatus.paid) {
+        totalRevenue += order.totalAmount;
+      } else if (order.paymentStatus == PaymentStatus.partial) {
+        totalRevenue += (order.amountPaid ?? 0);
+        totalPendingRevenue += (order.totalAmount - (order.amountPaid ?? 0));
+      } else {
+        totalPendingRevenue += order.totalAmount;
+      }
+
+      if (order.status == OrderStatus.delivered) {
+        completedOrders++;
+      } else if (order.status == OrderStatus.pending) {
+        pendingOrders++;
+      } else if (order.status == OrderStatus.cancelled) {
+        cancelledOrders++;
+      }
+
+      final pm = order.paymentMethod?.name ?? 'unknown';
+      paymentMethodBreakdown[pm] =
+          (paymentMethodBreakdown[pm] ?? 0) + order.totalAmount;
+
+      final status = order.status.name;
+      orderStatusBreakdown[status] = (orderStatusBreakdown[status] ?? 0) + 1;
+
+      for (final item in order.items) {
+        final existing = productSalesMap[item.foodItemName];
+        if (existing != null) {
+          productSalesMap[item.foodItemName] = ProductSalesData(
+            name: item.foodItemName,
+            quantity: existing.quantity + item.quantity,
+            revenue: existing.revenue + item.totalPrice,
+          );
+        } else {
+          productSalesMap[item.foodItemName] = ProductSalesData(
+            name: item.foodItemName,
+            quantity: item.quantity,
+            revenue: item.totalPrice,
+          );
+        }
+      }
+
+      final custExisting = customerRevenueMap[order.customerName];
+      if (custExisting != null) {
+        customerRevenueMap[order.customerName] = CustomerRevenueData(
+          name: order.customerName,
+          revenue: custExisting.revenue + order.totalAmount,
+          orderCount: custExisting.orderCount + 1,
+        );
+      } else {
+        customerRevenueMap[order.customerName] = CustomerRevenueData(
+          name: order.customerName,
+          revenue: order.totalAmount,
+          orderCount: 1,
+        );
+      }
+
+      final date = DateTime(
+        order.orderDate.year,
+        order.orderDate.month,
+        order.orderDate.day,
+      );
+      if (dailyMap.containsKey(date)) {
+        final existing = dailyMap[date]!;
+        dailyMap[date] = DailySalesData(
+          date: date,
+          amount: existing.amount + order.totalAmount,
+          count: existing.count + 1,
+        );
+      } else {
+        dailyMap[date] = DailySalesData(
+          date: date,
+          amount: order.totalAmount,
+          count: 1,
+        );
+      }
+    }
+
+    final dailySales = dailyMap.values.toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    final avgOrderValue = totalRevenue / (orders.isEmpty ? 1 : orders.length);
+
+    return ReportsData(
+      totalRevenue: totalRevenue,
+      totalPendingRevenue: totalPendingRevenue,
+      totalOrders: orders.length,
+      completedOrders: completedOrders,
+      pendingOrders: pendingOrders,
+      cancelledOrders: cancelledOrders,
+      paymentMethodBreakdown: paymentMethodBreakdown,
+      orderStatusBreakdown: orderStatusBreakdown,
+      dailySales: dailySales,
+      averageOrderValue: avgOrderValue,
+      productSales: productSalesMap,
+      customerRevenue: customerRevenueMap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final reports = ref.watch(reportsProvider);
+    final allOrders = ref.watch(ordersProvider);
+    final start = DateTime(
+      _selectedDateRange.start.year,
+      _selectedDateRange.start.month,
+      _selectedDateRange.start.day,
+    );
+    final endExclusive = DateTime(
+      _selectedDateRange.end.year,
+      _selectedDateRange.end.month,
+      _selectedDateRange.end.day,
+    ).add(const Duration(days: 1));
+    final inRange = allOrders
+        .where(
+          (o) =>
+              !o.orderDate.isBefore(start) &&
+              o.orderDate.isBefore(endExclusive),
+        )
+        .toList();
+    final reports = _computeReports(inRange);
+    final df = DateFormat('MMM d');
+    final rangeLabel =
+        '${df.format(_selectedDateRange.start)} — ${df.format(_selectedDateRange.end)}';
+    final fulfillmentRate = reports.totalOrders == 0
+        ? 0.0
+        : reports.completedOrders / reports.totalOrders;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -75,12 +214,25 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
             surfaceTintColor: Colors.transparent,
             flexibleSpace: Stack(
               children: [
-                const Positioned.fill(
-                  child: ColoredBox(color: AppColors.backgroundPrimary),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppColors.primaryLighter.withValues(alpha: 0.35),
+                          AppColors.backgroundPrimary,
+                          AppColors.backgroundPrimary,
+                        ],
+                        stops: const [0.0, 0.65, 1.0],
+                      ),
+                    ),
+                  ),
                 ),
                 Positioned(
-                  left: 24,
-                  right: 24,
+                  left: _kHeaderHorizontalPadding,
+                  right: _kHeaderHorizontalPadding,
                   bottom: _kTabBarHeight + 18,
                   child: SafeArea(
                     top: false,
@@ -89,25 +241,74 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Insights',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.6,
-                          ),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Insights',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _RangePill(text: rangeLabel),
+                          ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Text(
-                          'Business performance across revenue, orders, and customers',
+                          'Revenue, fulfillment, and customer performance',
                           style: TextStyle(
                             color: AppColors.textSecondary.withValues(
-                              alpha: 0.8,
+                              alpha: 0.78,
                             ),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            height: 1.25,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          height: 70,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            children: [
+                              _KpiTile(
+                                title: 'Revenue',
+                                value:
+                                    '₹${NumberFormat.compact().format(reports.totalRevenue)}',
+                                icon: Icons.currency_rupee_rounded,
+                                tone: _KpiTone.primary,
+                              ),
+                              const SizedBox(width: 10),
+                              _KpiTile(
+                                title: 'Pending',
+                                value:
+                                    '₹${NumberFormat.compact().format(reports.totalPendingRevenue)}',
+                                icon: Icons.schedule_rounded,
+                                tone: _KpiTone.warning,
+                              ),
+                              const SizedBox(width: 10),
+                              _KpiTile(
+                                title: 'Orders',
+                                value: reports.totalOrders.toString(),
+                                icon: Icons.receipt_long_rounded,
+                                tone: _KpiTone.neutral,
+                              ),
+                              const SizedBox(width: 10),
+                              _KpiTile(
+                                title: 'Fulfillment',
+                                value: '${(fulfillmentRate * 100).round()}%',
+                                icon: Icons.check_circle_rounded,
+                                tone: _KpiTone.success,
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -244,9 +445,21 @@ class _SummaryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).viewPadding.bottom + 96;
+    if (reports.totalOrders == 0) {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
+        child: _buildEmptyState(),
+      );
+    }
+
     return ListView(
       padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
       children: [
+        _ReportCard(
+          title: 'Sales Trend',
+          child: _SalesTrendChart(dailySales: reports.dailySales),
+        ),
+        const SizedBox(height: 18),
         _ReportCard(
           title: 'Financial Liquidity',
           child: Column(
@@ -277,34 +490,12 @@ class _SummaryTab extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
         _ReportCard(
           title: 'Fulfillment Efficiency',
           child: Column(
             children: [
-              SizedBox(
-                height: 200,
-                child: PieChart(
-                  PieChartData(
-                    sectionsSpace: 6,
-                    centerSpaceRadius: 50,
-                    sections: reports.orderStatusBreakdown.entries.map((e) {
-                      final color = _getStatusColor(e.key);
-                      return PieChartSectionData(
-                        value: e.value.toDouble(),
-                        title: '${e.value}',
-                        color: color,
-                        radius: 24,
-                        titleStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
+              _StatusDonutChart(statusCounts: reports.orderStatusBreakdown),
               const SizedBox(height: 32),
               Wrap(
                 spacing: 20,
@@ -318,7 +509,7 @@ class _SummaryTab extends StatelessWidget {
                         width: 12,
                         height: 12,
                         decoration: BoxDecoration(
-                          color: _getStatusColor(status),
+                          color: _statusColor(status),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -339,17 +530,14 @@ class _SummaryTab extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 18),
+        _ReportCard(
+          title: 'Payment Mix',
+          child: _PaymentMix(breakdown: reports.paymentMethodBreakdown),
+        ),
         const SizedBox(height: 40),
       ],
     );
-  }
-
-  Color _getStatusColor(String status) {
-    final s = status.toLowerCase();
-    if (s.contains('delivered')) return AppColors.success;
-    if (s.contains('pending')) return AppColors.warning;
-    if (s.contains('cancelled')) return AppColors.error;
-    return AppColors.info;
   }
 }
 
@@ -405,6 +593,302 @@ class _CustomersTab extends StatelessWidget {
           value: '₹${NumberFormat.compact().format(c.revenue)}',
         );
       },
+    );
+  }
+}
+
+class _SalesTrendChart extends StatelessWidget {
+  final List<DailySalesData> dailySales;
+  const _SalesTrendChart({required this.dailySales});
+
+  @override
+  Widget build(BuildContext context) {
+    if (dailySales.isEmpty) {
+      return const Text(
+        'No sales data available for this period.',
+        style: TextStyle(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+
+    final maxValue = dailySales
+        .map((d) => d.amount)
+        .fold<double>(0, (a, b) => a > b ? a : b);
+    final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.2;
+    final spots = <FlSpot>[
+      for (var i = 0; i < dailySales.length; i++)
+        FlSpot(i.toDouble(), dailySales[i].amount),
+    ];
+
+    String fmtDay(int i) {
+      if (i < 0 || i >= dailySales.length) return '';
+      return DateFormat('MMM d').format(dailySales[i].date);
+    }
+
+    return SizedBox(
+      height: 220,
+      child: LineChart(
+        LineChartData(
+          minY: 0,
+          maxY: maxY,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: maxY / 4,
+            getDrawingHorizontalLine: (value) =>
+                FlLine(color: AppColors.divider, strokeWidth: 1),
+          ),
+          borderData: FlBorderData(show: false),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 44,
+                interval: maxY / 4,
+                getTitlesWidget: (value, meta) {
+                  final label = NumberFormat.compact().format(value);
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                interval: (dailySales.length - 1) <= 0
+                    ? 1
+                    : (dailySales.length - 1) / 2,
+                getTitlesWidget: (value, meta) {
+                  final i = value.round();
+                  final isEdge = i == 0 || i == dailySales.length - 1;
+                  final isMid =
+                      dailySales.length >= 3 &&
+                      i == ((dailySales.length - 1) / 2).round();
+                  if (!isEdge && !isMid) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      fmtDay(i),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: AppColors.primary,
+              barWidth: 3,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.22),
+                    AppColors.primary.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusDonutChart extends StatelessWidget {
+  final Map<String, int> statusCounts;
+  const _StatusDonutChart({required this.statusCounts});
+
+  @override
+  Widget build(BuildContext context) {
+    if (statusCounts.isEmpty) {
+      return const SizedBox(
+        height: 200,
+        child: Center(
+          child: Text(
+            'No order status data.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final entries = statusCounts.entries.where((e) => e.value > 0).toList();
+    final total = entries.fold<int>(0, (a, e) => a + e.value);
+    if (total == 0) {
+      return const SizedBox(
+        height: 200,
+        child: Center(
+          child: Text(
+            'No order status data.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 200,
+      child: PieChart(
+        PieChartData(
+          sectionsSpace: 6,
+          centerSpaceRadius: 56,
+          sections: entries.map((e) {
+            final color = _statusColor(e.key);
+            final pct = (e.value / total) * 100;
+            return PieChartSectionData(
+              value: e.value.toDouble(),
+              title: pct >= 12 ? '${pct.round()}%' : '',
+              color: color,
+              radius: 26,
+              titleStyle: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentMix extends StatelessWidget {
+  final Map<String, double> breakdown;
+  const _PaymentMix({required this.breakdown});
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = breakdown.entries.where((e) => e.value > 0).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final total = entries
+        .fold<double>(0, (a, e) => a + e.value)
+        .clamp(0.0, double.infinity);
+
+    if (entries.isEmpty || total == 0) {
+      return const Text(
+        'No payment data available for this period.',
+        style: TextStyle(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final e in entries) ...[
+          _PaymentMixRow(
+            label: e.key.toUpperCase(),
+            amount: e.value,
+            fraction: e.value / total,
+          ),
+          const SizedBox(height: 14),
+        ],
+      ],
+    );
+  }
+}
+
+class _PaymentMixRow extends StatelessWidget {
+  final String label;
+  final double amount;
+  final double fraction;
+
+  const _PaymentMixRow({
+    required this.label,
+    required this.amount,
+    required this.fraction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (fraction * 100).round();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '₹${NumberFormat.compact().format(amount)}',
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              '$pct%',
+              style: const TextStyle(
+                color: AppColors.textLight,
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: fraction.clamp(0.0, 1.0),
+            minHeight: 8,
+            backgroundColor: AppColors.backgroundSecondary,
+            color: AppColors.primary,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -573,6 +1057,14 @@ class _RankingTile extends StatelessWidget {
   }
 }
 
+Color _statusColor(String status) {
+  final s = status.toLowerCase();
+  if (s.contains('delivered')) return AppColors.success;
+  if (s.contains('pending')) return AppColors.warning;
+  if (s.contains('cancelled')) return AppColors.error;
+  return AppColors.info;
+}
+
 Widget _buildEmptyState() {
   return Center(
     child: Column(
@@ -610,4 +1102,132 @@ Widget _buildEmptyState() {
       ],
     ),
   );
+}
+
+enum _KpiTone { primary, success, warning, neutral }
+
+class _RangePill extends StatelessWidget {
+  final String text;
+  const _RangePill({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.1,
+        ),
+      ),
+    );
+  }
+}
+
+class _KpiTile extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final _KpiTone tone;
+
+  const _KpiTile({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.tone,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent;
+    final Color tint;
+    switch (tone) {
+      case _KpiTone.primary:
+        accent = AppColors.primary;
+        tint = AppColors.primaryLighter;
+        break;
+      case _KpiTone.success:
+        accent = AppColors.success;
+        tint = AppColors.successLighter;
+        break;
+      case _KpiTone.warning:
+        accent = AppColors.warning;
+        tint = AppColors.warningLighter;
+        break;
+      case _KpiTone.neutral:
+        accent = AppColors.textPrimary;
+        tint = AppColors.backgroundSecondary;
+        break;
+    }
+
+    return Container(
+      width: 164,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 14,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: accent, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
