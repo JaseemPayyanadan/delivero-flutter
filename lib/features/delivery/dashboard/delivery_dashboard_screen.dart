@@ -4,7 +4,10 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/models/order.dart';
+import '../order_status_list_screen.dart';
+import '../../profile/settings_screen.dart';
 
 class DeliveryDashboardScreen extends ConsumerWidget {
   const DeliveryDashboardScreen({super.key});
@@ -13,6 +16,8 @@ class DeliveryDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final allOrders = ref.watch(ordersProvider);
+    final ordersLoaded = ref.watch(ordersLoadedProvider);
+    final isLoading = !ordersLoaded && allOrders.isEmpty;
 
     // Filter orders for the current driver
     final driverId = user?.linkedEntityId ?? user?.id;
@@ -79,163 +84,243 @@ class DeliveryDashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 240.0,
-            floating: false,
-            pinned: true,
-            toolbarHeight: 0,
-            automaticallyImplyLeading: false,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
-            surfaceTintColor: Colors.transparent,
-            flexibleSpace: Stack(
-              children: [
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          AppColors.infoLighter.withValues(alpha: 0.35),
-                          AppColors.backgroundPrimary,
-                          AppColors.backgroundPrimary,
-                        ],
-                        stops: const [0.0, 0.65, 1.0],
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 268.0,
+              floating: false,
+              pinned: true,
+              toolbarHeight: 0,
+              automaticallyImplyLeading: false,
+              backgroundColor: AppColors.backgroundPrimary,
+              elevation: 0,
+              surfaceTintColor: Colors.transparent,
+              systemOverlayStyle: AppTheme.systemOverlayStyle.copyWith(
+                statusBarColor: AppColors.infoLighter.withValues(alpha: 0.35),
+              ),
+              flexibleSpace: Stack(
+                children: [
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            AppColors.infoLighter.withValues(alpha: 0.35),
+                            AppColors.backgroundPrimary,
+                            AppColors.backgroundPrimary,
+                          ],
+                          stops: const [0.0, 0.65, 1.0],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 24,
-                  right: 24,
-                  bottom: 18,
-                  child: SafeArea(
-                    top: false,
-                    bottom: false,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Hello, ${user?.name ?? 'Driver'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppColors.textSecondary.withValues(
-                              alpha: 0.9,
-                            ),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Delivery Dashboard',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.6,
+                  Positioned(
+                    left: 24,
+                    right: 24,
+                    bottom: 16,
+                    child: SafeArea(
+                      top: false,
+                      bottom: false,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Hello, ${user?.name ?? 'Driver'}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary.withValues(
+                                      alpha: 0.9,
+                                    ),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            _HeaderPill(text: dateLabel),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          height: 86,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            children: [
-                              _KpiCard(
-                                title: 'Today Tasks',
-                                value: todayOrders.length.toString(),
-                                icon: Icons.today_rounded,
-                                tone: _KpiTone.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              _KpiCard(
-                                title: 'Pending',
-                                value: todayPendingCount.toString(),
-                                icon: Icons.timer_rounded,
-                                tone: _KpiTone.warning,
-                              ),
-                              const SizedBox(width: 12),
-                              _KpiCard(
-                                title: 'Delivered',
-                                value: todayDeliveredCount.toString(),
-                                icon: Icons.check_circle_rounded,
-                                tone: _KpiTone.success,
-                              ),
-                              const SizedBox(width: 12),
-                              _KpiCard(
-                                title: 'Collected',
-                                value:
-                                    '₹${NumberFormat.compact().format(todayTotal)}',
-                                icon: Icons.payments_rounded,
-                                tone: _KpiTone.neutral,
+                              _HeaderIconButton(
+                                icon: Icons.notifications_none_rounded,
+                                onTap: () {},
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Dashboard',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -1,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              _HeaderPill(text: dateLabel.toUpperCase()),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            height: 86,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              children: [
+                                _KpiCard(
+                                  title: 'Today Tasks',
+                                  value: isLoading
+                                      ? '—'
+                                      : todayOrders.length.toString(),
+                                  icon: Icons.today_rounded,
+                                  tone: _KpiTone.primary,
+                                ),
+                                const SizedBox(width: 12),
+                                _KpiCard(
+                                  title: 'Pending',
+                                  value: isLoading
+                                      ? '—'
+                                      : todayPendingCount.toString(),
+                                  icon: Icons.timer_rounded,
+                                  tone: _KpiTone.warning,
+                                ),
+                                const SizedBox(width: 12),
+                                _KpiCard(
+                                  title: 'Delivered',
+                                  value: isLoading
+                                      ? '—'
+                                      : todayDeliveredCount.toString(),
+                                  icon: Icons.check_circle_rounded,
+                                  tone: _KpiTone.success,
+                                ),
+                                const SizedBox(width: 12),
+                                _KpiCard(
+                                  title: 'Collected',
+                                  value: isLoading
+                                      ? '—'
+                                      : '₹${NumberFormat.compact().format(todayTotal)}',
+                                  icon: Icons.payments_rounded,
+                                  tone: _KpiTone.neutral,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 18),
-                  _SectionTitle(
-                    title: 'Today',
-                    subtitle: 'Collections and outstanding amounts',
-                  ),
-                  const SizedBox(height: 14),
-                  _buildFinancialCard(todayCash, todayUpi, todayPending),
-                  const SizedBox(height: 20),
-                  _SectionTitle(
-                    title: 'Today’s Deliveries',
-                    subtitle: 'Focus on pending stops first',
-                  ),
-                  const SizedBox(height: 12),
-                  _TodayOrdersCard(orders: upcomingToday),
-                  const SizedBox(height: 20),
-                  _SectionTitle(
-                    title: 'All-Time Summary',
-                    subtitle: 'Your overall delivery performance',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPerformanceCard(
-                    total: myOrders.length,
-                    completed: completedCount,
-                    pending: pendingCount,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildOrderSummary(myOrders),
-                  const SizedBox(height: 40),
                 ],
               ),
             ),
-          ),
-        ],
+            if (isLoading)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (myOrders.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Text(
+                    'No assigned orders yet',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              )
+            else
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 18),
+                      _QuickActionsRow(
+                        actions: [
+                          _QuickAction(
+                            label: 'Assigned Orders',
+                            icon: Icons.list_alt_rounded,
+                            color: AppColors.primary,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const OrderStatusListScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          _QuickAction(
+                            label: 'Settings',
+                            icon: Icons.settings_rounded,
+                            color: AppColors.info,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          _QuickAction(
+                            label: 'Refresh',
+                            icon: Icons.refresh_rounded,
+                            color: AppColors.success,
+                            onTap: () =>
+                                ref.read(ordersProvider.notifier).refresh(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      _SectionTitle(
+                        title: 'Today’s Deliveries',
+                        subtitle: 'Focus on pending stops first',
+                      ),
+                      const SizedBox(height: 12),
+                      _TodayOrdersCard(orders: upcomingToday),
+                      const SizedBox(height: 20),
+                      _SectionTitle(
+                        title: 'Today',
+                        subtitle: 'Collections and outstanding amounts',
+                      ),
+                      const SizedBox(height: 14),
+                      _buildFinancialCard(todayCash, todayUpi, todayPending),
+                      const SizedBox(height: 20),
+                      _SectionTitle(
+                        title: 'All-Time Summary',
+                        subtitle: 'Your overall delivery performance',
+                      ),
+                      const SizedBox(height: 12),
+                      _buildPerformanceCard(
+                        total: myOrders.length,
+                        completed: completedCount,
+                        pending: pendingCount,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildOrderSummary(myOrders),
+                      const SizedBox(height: 120),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -527,6 +612,131 @@ class _HeaderPill extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.1,
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HeaderIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 10,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: AppColors.textPrimary, size: 22),
+      ),
+    );
+  }
+}
+
+class _QuickAction {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickAction({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+}
+
+class _QuickActionsRow extends StatelessWidget {
+  final List<_QuickAction> actions;
+  const _QuickActionsRow({required this.actions});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 14,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < actions.length; i++) ...[
+            Expanded(child: _QuickActionTile(action: actions[i])),
+            if (i != actions.length - 1)
+              Container(
+                width: 1,
+                height: 44,
+                color: AppColors.divider,
+                margin: const EdgeInsets.symmetric(horizontal: 10),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  final _QuickAction action;
+  const _QuickActionTile({required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: action.onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: action.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(action.icon, color: action.color, size: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              action.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
       ),
     );
