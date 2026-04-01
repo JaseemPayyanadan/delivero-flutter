@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../app/reports_provider.dart';
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/models/order.dart';
 
 class OwnerDashboardScreen extends ConsumerWidget {
@@ -20,9 +21,11 @@ class OwnerDashboardScreen extends ConsumerWidget {
     final drivers = ref.watch(driversProvider);
     final foodItems = ref.watch(foodItemsProvider);
     final routes = ref.watch(routesProvider);
+    final user = ref.watch(authProvider).user;
 
     final now = DateTime.now();
     final dateStr = DateFormat('EEEE, d MMMM').format(now);
+    final shortDateStr = DateFormat('EEE, d MMM').format(now);
     final totalRevenue = reports.totalRevenue + reports.totalPendingRevenue;
     final fulfillmentRate = reports.totalOrders == 0
         ? 0.0
@@ -46,63 +49,134 @@ class OwnerDashboardScreen extends ConsumerWidget {
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: 180.0,
+            expandedHeight: isEmpty ? 190.0 : 278.0,
             floating: false,
             pinned: true,
             backgroundColor: AppColors.backgroundPrimary,
             elevation: 0,
             surfaceTintColor: Colors.transparent,
-            actions: [
-              IconButton(
-                icon: const Icon(
-                  Icons.notifications_none_rounded,
-                  color: AppColors.textPrimary,
-                ),
-                onPressed: () {},
-              ),
-              const SizedBox(width: 8),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 20,
-              ),
-              title: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    dateStr.toUpperCase(),
-                    style: const TextStyle(
-                      color: AppColors.textLight,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
+            toolbarHeight: 0,
+            automaticallyImplyLeading: false,
+            systemOverlayStyle: AppTheme.systemOverlayStyle,
+            flexibleSpace: Stack(
+              children: [
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppColors.primaryLighter.withValues(alpha: 0.35),
+                          AppColors.backgroundPrimary,
+                          AppColors.backgroundPrimary,
+                        ],
+                        stops: const [0.0, 0.65, 1.0],
+                      ),
                     ),
                   ),
-                  const Text(
-                    'Dashboard',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -1,
+                ),
+                Positioned(
+                  left: 24,
+                  right: 24,
+                  bottom: 16,
+                  child: SafeArea(
+                    top: false,
+                    bottom: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Hello, ${user?.name ?? 'Owner'}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppColors.textSecondary.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            _HeaderIconButton(
+                              icon: Icons.notifications_none_rounded,
+                              onTap: () {},
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Dashboard',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -1,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _HeaderPill(text: shortDateStr.toUpperCase()),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          dateStr,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textLight,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (!isEmpty) ...[
+                          const SizedBox(height: 14),
+                          _KpiStrip(
+                            children: [
+                              _KpiCard(
+                                title: 'Revenue',
+                                value:
+                                    '₹${NumberFormat.compact().format(totalRevenue)}',
+                                icon: Icons.currency_rupee_rounded,
+                                tone: _KpiTone.primary,
+                              ),
+                              _KpiCard(
+                                title: 'Orders Today',
+                                value: todayOrdersCount.toString(),
+                                icon: Icons.today_rounded,
+                                tone: _KpiTone.neutral,
+                              ),
+                              _KpiCard(
+                                title: 'Customers',
+                                value: customers.length.toString(),
+                                icon: Icons.people_alt_rounded,
+                                tone: _KpiTone.warning,
+                              ),
+                              _KpiCard(
+                                title: 'Fulfillment',
+                                value: '${(fulfillmentRate * 100).round()}%',
+                                icon: Icons.check_circle_rounded,
+                                tone: _KpiTone.success,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ],
-              ),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary.withValues(alpha: 0.05),
-                      AppColors.backgroundPrimary,
-                    ],
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                  ),
                 ),
-              ),
+              ],
             ),
           ),
           if (isEmpty)
@@ -117,36 +191,6 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 16),
-                    _KpiStrip(
-                      children: [
-                        _KpiCard(
-                          title: 'Revenue',
-                          value:
-                              '₹${NumberFormat.compact().format(totalRevenue)}',
-                          icon: Icons.currency_rupee_rounded,
-                          tone: _KpiTone.primary,
-                        ),
-                        _KpiCard(
-                          title: 'Orders Today',
-                          value: todayOrdersCount.toString(),
-                          icon: Icons.today_rounded,
-                          tone: _KpiTone.neutral,
-                        ),
-                        _KpiCard(
-                          title: 'Customers',
-                          value: customers.length.toString(),
-                          icon: Icons.people_alt_rounded,
-                          tone: _KpiTone.warning,
-                        ),
-                        _KpiCard(
-                          title: 'Fulfillment',
-                          value: '${(fulfillmentRate * 100).round()}%',
-                          icon: Icons.check_circle_rounded,
-                          tone: _KpiTone.success,
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 18),
                     _QuickActionsRow(
                       actions: [
@@ -390,6 +434,71 @@ class OwnerDashboardScreen extends ConsumerWidget {
 }
 
 enum _KpiTone { primary, success, warning, neutral }
+
+class _HeaderPill extends StatelessWidget {
+  final String text;
+  const _HeaderPill({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HeaderIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 10,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: AppColors.textPrimary, size: 22),
+      ),
+    );
+  }
+}
 
 class _KpiStrip extends StatelessWidget {
   final List<Widget> children;
