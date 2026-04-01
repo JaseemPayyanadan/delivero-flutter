@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/food_item.dart';
 
 class FoodItemsScreen extends ConsumerStatefulWidget {
@@ -49,12 +50,12 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 140.0,
+          DeliveroSliverHeader(
+            title: 'Products',
+            subtitle: '${foodItems.length} active inventory items',
+            expandedHeight: 140,
             floating: true,
             pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
             actions: [
               PopupMenuButton<_ProductSort>(
                 icon: const Icon(
@@ -79,35 +80,6 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
               ),
               const SizedBox(width: 12),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              title: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Products',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                  Text(
-                    '${foodItems.length} active inventory items',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
           SliverToBoxAdapter(
             child: Padding(

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/food_item.dart';
 import '../../../data/models/order.dart';
@@ -37,27 +38,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 120.0,
+          const DeliveroSliverHeader(
+            title: 'Initiate Order',
+            expandedHeight: 120,
             floating: true,
             pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              title: const Text(
-                'Initiate Order',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
           ),
           SliverToBoxAdapter(
             child: Theme(

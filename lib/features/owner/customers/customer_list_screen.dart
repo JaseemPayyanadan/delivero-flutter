@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/order.dart';
@@ -126,12 +127,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 140.0,
+          DeliveroSliverHeader(
+            title: 'Customers',
+            subtitle: '${customers.length} business partners',
+            expandedHeight: 140,
             floating: true,
             pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
             actions: [
               Container(
                 margin: const EdgeInsets.only(right: 16),
@@ -149,35 +150,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                 ),
               ),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              title: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Customers',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                  Text(
-                    '${customers.length} business partners',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
           SliverToBoxAdapter(
             child: _buildSearchAndFilter(

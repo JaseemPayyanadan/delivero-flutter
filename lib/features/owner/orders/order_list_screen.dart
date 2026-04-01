@@ -10,6 +10,7 @@ import 'package:printing/printing.dart';
 import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 
@@ -368,12 +369,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 140.0,
+          DeliveroSliverHeader(
+            title: 'Orders',
+            subtitle: '${orders.length} transactions processed',
+            expandedHeight: 140,
             floating: true,
             pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
             actions: [
               if (filteredOrders.isNotEmpty)
                 IconButton(
@@ -385,35 +386,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 ),
               const SizedBox(width: 16),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              title: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Orders',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                  Text(
-                    '${orders.length} transactions processed',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
           SliverToBoxAdapter(child: _buildQuickStats(reports, filteredOrders)),
           SliverToBoxAdapter(child: _buildFilters(routes, availableRouteIds)),
