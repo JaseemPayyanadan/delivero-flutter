@@ -51,6 +51,7 @@ class DeliveroSliverHeader extends StatelessWidget {
   final double expandedHeight;
   final bool pinned;
   final bool floating;
+  final bool centerTitle;
   final List<Widget>? actions;
   final EdgeInsetsGeometry titlePadding;
 
@@ -61,6 +62,7 @@ class DeliveroSliverHeader extends StatelessWidget {
     this.expandedHeight = 140,
     this.pinned = true,
     this.floating = false,
+    this.centerTitle = false,
     this.actions,
     this.titlePadding = const EdgeInsets.symmetric(
       horizontal: 24,
@@ -74,6 +76,7 @@ class DeliveroSliverHeader extends StatelessWidget {
       expandedHeight: expandedHeight,
       floating: floating,
       pinned: pinned,
+      centerTitle: centerTitle,
       backgroundColor: AppColors.backgroundPrimary,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
@@ -81,6 +84,7 @@ class DeliveroSliverHeader extends StatelessWidget {
       actions: actions,
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: titlePadding,
+        centerTitle: centerTitle,
         title: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
