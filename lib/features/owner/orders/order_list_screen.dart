@@ -676,7 +676,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final driver = drivers.firstWhereOrNull(
       (d) => d.id == order.assignedDriver,
     );
-    final driverLabel = driver?.name ??
+    final driverLabel =
+        driver?.name ??
         (order.assignedDriver?.trim().isNotEmpty == true
             ? order.assignedDriver!.trim()
             : 'Unassigned');
@@ -780,18 +781,14 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                         ),
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
+                                    const SizedBox(width: 12),
                                     const Icon(
                                       Icons.person_pin_circle_outlined,
                                       size: 16,
                                       color: AppColors.textLight,
                                     ),
                                     const SizedBox(width: 8),
-                                    Expanded(
+                                    Flexible(
                                       child: Text(
                                         driverLabel,
                                         maxLines: 1,
