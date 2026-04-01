@@ -42,49 +42,56 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
             ),
           ],
         ),
-        child: NavigationBar(
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: (index) =>
-              setState(() => _selectedIndex = index),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded, color: AppColors.primary),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(
-                Icons.receipt_long_rounded,
-                color: AppColors.primary,
+        child: NavigationBarTheme(
+          data: NavigationBarThemeData(
+            indicatorColor: Colors.transparent,
+            labelTextStyle: MaterialStateProperty.resolveWith((states) {
+              final selected = states.contains(MaterialState.selected);
+              return TextStyle(
+                color: selected ? AppColors.primary : AppColors.textLight,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                fontSize: 12,
+              );
+            }),
+            iconTheme: MaterialStateProperty.resolveWith((states) {
+              final selected = states.contains(MaterialState.selected);
+              return IconThemeData(
+                color: selected ? AppColors.primary : AppColors.textLight,
+              );
+            }),
+          ),
+          child: NavigationBar(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (index) =>
+                setState(() => _selectedIndex = index),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home_rounded),
+                label: 'Home',
               ),
-              label: 'Order',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.business_center_outlined),
-              selectedIcon: Icon(
-                Icons.business_center_rounded,
-                color: AppColors.primary,
+              NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                selectedIcon: Icon(Icons.receipt_long_rounded),
+                label: 'Order',
               ),
-              label: 'Customer',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.analytics_outlined),
-              selectedIcon: Icon(
-                Icons.analytics_rounded,
-                color: AppColors.primary,
+              NavigationDestination(
+                icon: Icon(Icons.business_center_outlined),
+                selectedIcon: Icon(Icons.business_center_rounded),
+                label: 'Customer',
               ),
-              label: 'Insights',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.manage_accounts_outlined),
-              selectedIcon: Icon(
-                Icons.manage_accounts_rounded,
-                color: AppColors.primary,
+              NavigationDestination(
+                icon: Icon(Icons.analytics_outlined),
+                selectedIcon: Icon(Icons.analytics_rounded),
+                label: 'Insights',
               ),
-              label: 'Profile',
-            ),
-          ],
+              NavigationDestination(
+                icon: Icon(Icons.manage_accounts_outlined),
+                selectedIcon: Icon(Icons.manage_accounts_rounded),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );

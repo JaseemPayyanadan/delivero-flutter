@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -17,6 +18,8 @@ class _AppLauncherScreenState extends State<AppLauncherScreen>
   late final AnimationController _pulseController;
   late final Animation<double> _pulse;
   bool _visible = false;
+  bool _showHint = false;
+  Timer? _hintTimer;
 
   @override
   void initState() {
@@ -33,10 +36,15 @@ class _AppLauncherScreenState extends State<AppLauncherScreen>
       if (!mounted) return;
       setState(() => _visible = true);
     });
+    _hintTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _showHint = true);
+    });
   }
 
   @override
   void dispose() {
+    _hintTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -80,6 +88,31 @@ class _AppLauncherScreenState extends State<AppLauncherScreen>
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
                               letterSpacing: 0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          AnimatedOpacity(
+                            duration: const Duration(milliseconds: 250),
+                            opacity: _showHint ? 1 : 0,
+                            child: const Text(
+                              'Initializing…',
+                              style: TextStyle(
+                                color: AppColors.textLight,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.2,
+                              ),
                             ),
                           ),
                         ],
