@@ -238,75 +238,25 @@ class OwnerDashboardScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 28),
-
-                    // Daily Statistics Row
+                    const SizedBox(height: 24),
                     _DashboardSection(
-                      title: 'Daily Performance',
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _DailyStatCard(
-                              label: 'Total Orders',
-                              value: reports.totalOrders.toString(),
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 12),
-                            _DailyStatCard(
-                              label: 'Total Revenue',
-                              value:
-                                  '₹${NumberFormat.compact().format(totalRevenue)}',
-                              color: AppColors.success,
-                            ),
-                            const SizedBox(width: 12),
-                            _DailyStatCard(
-                              label: 'Completed',
-                              value: reports.completedOrders.toString(),
-                              color: AppColors.info,
-                            ),
-                            const SizedBox(width: 12),
-                            _DailyStatCard(
-                              label: 'Pending',
-                              value: reports.pendingOrders.toString(),
-                              color: AppColors.warning,
-                            ),
-                          ],
-                        ),
-                      ),
+                      title: 'Recent Orders',
+                      subtitle: 'Latest transactions across all accounts',
+                      child: _RecentOrdersList(orders: orders),
                     ),
-                    const SizedBox(height: 32),
-
-                    // Analytics Section - Product Sale
+                    const SizedBox(height: 28),
                     _DashboardSection(
-                      title: 'Product Sale Insights',
-                      subtitle: 'Distribution across inventory catalog',
+                      title: 'Revenue Velocity',
+                      subtitle: 'Daily revenue trend',
+                      child: _SalesTrendChart(dailySales: reports.dailySales),
+                    ),
+                    const SizedBox(height: 28),
+                    _DashboardSection(
+                      title: 'Product Mix',
+                      subtitle: 'Revenue distribution across catalog',
                       child: _ProductSaleChart(
                         productSales: reports.productSales,
                       ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Analytics Section - Revenue Velocity
-                    _DashboardSection(
-                      title: 'Revenue Velocity',
-                      subtitle: 'Daily financial transaction tracking',
-                      child: _SalesTrendChart(dailySales: reports.dailySales),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Quick Access Tools
-                    _DashboardSection(
-                      title: 'Enterprise Modules',
-                      child: _FeatureGrid(),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Activity Stream
-                    _DashboardSection(
-                      title: 'Real-time Ledger',
-                      subtitle: 'Latest transactions across all accounts',
-                      child: _RecentOrdersList(orders: orders),
                     ),
                     const SizedBox(height: 120),
                   ],
@@ -725,57 +675,6 @@ class _QuickActionTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _DailyStatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _DailyStatCard({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 140,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-              color: color,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1262,117 +1161,5 @@ class _RecentOrderTile extends StatelessWidget {
       default:
         return AppColors.info;
     }
-  }
-}
-
-class _FeatureGrid extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final features = [
-      {
-        'title': 'Products',
-        'subtitle': 'Catalog',
-        'icon': Icons.inventory_2_rounded,
-        'color': AppColors.primary,
-        'path': '/owner/food-items',
-      },
-      {
-        'title': 'Routes',
-        'subtitle': 'Logistics Routes',
-        'icon': Icons.alt_route_rounded,
-        'color': AppColors.info,
-        'path': '/owner/routes',
-      },
-      {
-        'title': 'Customers',
-        'subtitle': 'Customer Accounts',
-        'icon': Icons.business_rounded,
-        'color': AppColors.success,
-        'path': '/owner/customers',
-      },
-      {
-        'title': 'Insights',
-        'subtitle': 'Reports',
-        'icon': Icons.analytics_rounded,
-        'color': AppColors.accent,
-        'path': '/owner/reports',
-      },
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 1.4,
-      ),
-      itemCount: features.length,
-      itemBuilder: (context, index) {
-        final feature = features[index];
-        final color = feature['color'] as Color;
-        return InkWell(
-          onTap: () => context.push(feature['path'] as String),
-          borderRadius: BorderRadius.circular(28),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: AppColors.border),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadow,
-                  blurRadius: 12,
-                  offset: Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    feature['icon'] as IconData,
-                    color: color,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  feature['title'] as String,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                Text(
-                  (feature['subtitle'] as String).toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textLight,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 }
