@@ -1,0 +1,71 @@
+import 'package:flutter/material.dart';
+
+import '../theme/app_colors.dart';
+
+class DeliveroSliverHeader extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final double expandedHeight;
+  final bool pinned;
+  final bool floating;
+  final List<Widget>? actions;
+  final EdgeInsetsGeometry titlePadding;
+
+  const DeliveroSliverHeader({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.expandedHeight = 140,
+    this.pinned = true,
+    this.floating = false,
+    this.actions,
+    this.titlePadding = const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverAppBar(
+      expandedHeight: expandedHeight,
+      floating: floating,
+      pinned: pinned,
+      backgroundColor: AppColors.backgroundPrimary,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      actions: actions,
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: titlePadding,
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+

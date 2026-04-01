@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
@@ -56,6 +57,22 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     final pendingCount = myOrders
         .where((o) => o.status == OrderStatus.pending)
         .length;
+    final todayDeliveredCount = todayOrders
+        .where((o) => o.status == OrderStatus.delivered)
+        .length;
+    final todayPendingCount = todayOrders
+        .where((o) => o.status == OrderStatus.pending)
+        .length;
+    final todayTotal = todayCash + todayUpi;
+    final now = DateTime.now();
+    final dateLabel = DateFormat('EEE, d MMM').format(now);
+
+    final upcomingToday = [...todayOrders]
+      ..sort((a, b) {
+        final p = _statusPriority(a.status).compareTo(_statusPriority(b.status));
+        if (p != 0) return p;
+        return b.totalAmount.compareTo(a.totalAmount);
+      });
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -63,39 +80,118 @@ class DeliveryDashboardScreen extends ConsumerWidget {
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: 140.0,
+            expandedHeight: 240.0,
             floating: false,
             pinned: true,
+            toolbarHeight: 0,
+            automaticallyImplyLeading: false,
             backgroundColor: AppColors.backgroundPrimary,
             elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              title: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hello, ${user?.name ?? 'Driver'}',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+            surfaceTintColor: Colors.transparent,
+            flexibleSpace: Stack(
+              children: [
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppColors.infoLighter.withValues(alpha: 0.35),
+                          AppColors.backgroundPrimary,
+                          AppColors.backgroundPrimary,
+                        ],
+                        stops: const [0.0, 0.65, 1.0],
+                      ),
                     ),
                   ),
-                  const Text(
-                    'Your Dashboard',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                ),
+                Positioned(
+                  left: 24,
+                  right: 24,
+                  bottom: 18,
+                  child: SafeArea(
+                    top: false,
+                    bottom: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Hello, ${user?.name ?? 'Driver'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.textSecondary.withValues(
+                              alpha: 0.9,
+                            ),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Delivery Dashboard',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _HeaderPill(text: dateLabel),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          height: 86,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            children: [
+                              _KpiCard(
+                                title: 'Today Tasks',
+                                value: todayOrders.length.toString(),
+                                icon: Icons.today_rounded,
+                                tone: _KpiTone.primary,
+                              ),
+                              const SizedBox(width: 12),
+                              _KpiCard(
+                                title: 'Pending',
+                                value: todayPendingCount.toString(),
+                                icon: Icons.timer_rounded,
+                                tone: _KpiTone.warning,
+                              ),
+                              const SizedBox(width: 12),
+                              _KpiCard(
+                                title: 'Delivered',
+                                value: todayDeliveredCount.toString(),
+                                icon: Icons.check_circle_rounded,
+                                tone: _KpiTone.success,
+                              ),
+                              const SizedBox(width: 12),
+                              _KpiCard(
+                                title: 'Collected',
+                                value:
+                                    '₹${NumberFormat.compact().format(todayTotal)}',
+                                icon: Icons.payments_rounded,
+                                tone: _KpiTone.neutral,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-              background: Container(color: AppColors.backgroundPrimary),
+                ),
+              ],
             ),
           ),
           SliverToBoxAdapter(
@@ -104,20 +200,31 @@ class DeliveryDashboardScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _SectionHeader(title: 'OVERVIEW'),
-                  const SizedBox(height: 16),
-                  _buildOverviewGrid(
-                    myOrders.length,
-                    completedCount,
-                    pendingCount,
-                    todayOrders.length,
+                  const SizedBox(height: 18),
+                  _SectionTitle(
+                    title: 'Today',
+                    subtitle: 'Collections and outstanding amounts',
                   ),
-                  const SizedBox(height: 32),
-                  const _SectionHeader(title: 'TODAY\'S FINANCIALS'),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   _buildFinancialCard(todayCash, todayUpi, todayPending),
-                  const SizedBox(height: 32),
-                  const _SectionHeader(title: 'ACTIVITY SUMMARY'),
+                  const SizedBox(height: 20),
+                  _SectionTitle(
+                    title: 'Today’s Deliveries',
+                    subtitle: 'Focus on pending stops first',
+                  ),
+                  const SizedBox(height: 12),
+                  _TodayOrdersCard(orders: upcomingToday),
+                  const SizedBox(height: 20),
+                  _SectionTitle(
+                    title: 'All-Time Summary',
+                    subtitle: 'Your overall delivery performance',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPerformanceCard(
+                    total: myOrders.length,
+                    completed: completedCount,
+                    pending: pendingCount,
+                  ),
                   const SizedBox(height: 16),
                   _buildOrderSummary(myOrders),
                   const SizedBox(height: 40),
@@ -130,91 +237,78 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildOverviewGrid(int total, int completed, int pending, int today) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
-      childAspectRatio: 1.5,
-      children: [
-        _buildStatItem(
-          'Total Orders',
-          total.toString(),
-          Icons.inventory_2_outlined,
-          AppColors.info,
-        ),
-        _buildStatItem(
-          'Completed',
-          completed.toString(),
-          Icons.task_alt_outlined,
-          AppColors.success,
-        ),
-        _buildStatItem(
-          'Pending',
-          pending.toString(),
-          Icons.timer_outlined,
-          AppColors.warning,
-        ),
-        _buildStatItem(
-          'Today\'s Task',
-          today.toString(),
-          Icons.today_outlined,
-          AppColors.primary,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatItem(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildPerformanceCard({
+    required int total,
+    required int completed,
+    required int pending,
+  }) {
+    final completionRate = total == 0 ? 0.0 : completed / total;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 15,
-            offset: Offset(0, 8),
+            blurRadius: 16,
+            offset: Offset(0, 10),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+              _MiniStat(
+                label: 'Total',
+                value: total.toString(),
+                color: AppColors.info,
+              ),
+              const SizedBox(width: 12),
+              _MiniStat(
+                label: 'Completed',
+                value: completed.toString(),
+                color: AppColors.success,
+              ),
+              const SizedBox(width: 12),
+              _MiniStat(
+                label: 'Pending',
+                value: pending.toString(),
+                color: AppColors.warning,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: completionRate.clamp(0.0, 1.0),
+              minHeight: 10,
+              backgroundColor: AppColors.backgroundSecondary,
+              color: AppColors.success,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Completion rate',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               Text(
-                label,
+                '${(completionRate * 100).round()}%',
                 style: const TextStyle(
+                  color: AppColors.textPrimary,
                   fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],
@@ -384,20 +478,398 @@ class DeliveryDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
+int _statusPriority(OrderStatus status) {
+  switch (status) {
+    case OrderStatus.pending:
+      return 1;
+    case OrderStatus.confirmed:
+      return 2;
+    case OrderStatus.preparing:
+      return 3;
+    case OrderStatus.ready:
+      return 4;
+    case OrderStatus.delivered:
+      return 5;
+    case OrderStatus.cancelled:
+      return 6;
+  }
+}
+
+enum _KpiTone { primary, success, warning, neutral }
+
+class _HeaderPill extends StatelessWidget {
+  final String text;
+  const _HeaderPill({required this.text});
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w800,
-        color: AppColors.textLight,
-        letterSpacing: 1.2,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.1,
+        ),
       ),
     );
+  }
+}
+
+class _KpiCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final _KpiTone tone;
+
+  const _KpiCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.tone,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent;
+    final Color tint;
+    switch (tone) {
+      case _KpiTone.primary:
+        accent = AppColors.primary;
+        tint = AppColors.primaryLighter;
+        break;
+      case _KpiTone.success:
+        accent = AppColors.success;
+        tint = AppColors.successLighter;
+        break;
+      case _KpiTone.warning:
+        accent = AppColors.warning;
+        tint = AppColors.warningLighter;
+        break;
+      case _KpiTone.neutral:
+        accent = AppColors.textPrimary;
+        tint = AppColors.backgroundSecondary;
+        break;
+    }
+
+    return Container(
+      width: 178,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 16,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: accent, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  const _SectionTitle({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.2,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: TextStyle(
+            color: AppColors.textSecondary.withValues(alpha: 0.8),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _MiniStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.backgroundSecondary,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(
+                color: AppColors.textLight,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayOrdersCard extends StatelessWidget {
+  final List<Order> orders;
+  const _TodayOrdersCard({required this.orders});
+
+  @override
+  Widget build(BuildContext context) {
+    if (orders.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 16,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: const Text(
+          'No deliveries assigned for today.',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    final visible = orders.take(6).toList();
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 16,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < visible.length; i++) ...[
+            _TodayOrderTile(order: visible[i]),
+            if (i != visible.length - 1)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14),
+                child: Divider(height: 1, color: AppColors.divider),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayOrderTile extends StatelessWidget {
+  final Order order;
+  const _TodayOrderTile({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = order.status.name.toUpperCase();
+    final statusColor = _statusColor(order.status);
+    final payLabel = order.paymentStatus?.name.toUpperCase() ?? 'UNKNOWN';
+    final amount = '₹${NumberFormat.compact().format(order.totalAmount)}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  order.customerName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    _Chip(text: status, color: statusColor),
+                    const SizedBox(width: 8),
+                    _Chip(text: payLabel, color: AppColors.textLight),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            amount,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String text;
+  final Color color;
+  const _Chip({required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.6,
+        ),
+      ),
+    );
+  }
+}
+
+Color _statusColor(OrderStatus status) {
+  switch (status) {
+    case OrderStatus.delivered:
+      return AppColors.success;
+    case OrderStatus.pending:
+    case OrderStatus.confirmed:
+    case OrderStatus.preparing:
+    case OrderStatus.ready:
+      return AppColors.warning;
+    case OrderStatus.cancelled:
+      return AppColors.error;
   }
 }

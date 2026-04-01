@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/order.dart';
 
 class OrderStatusListScreen extends ConsumerStatefulWidget {
@@ -66,24 +67,9 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 120.0,
-            floating: false,
-            pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
-            flexibleSpace: const FlexibleSpaceBar(
-              titlePadding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              title: Text(
-                'Assigned Orders',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
+          const DeliveroSliverHeader(
+            title: 'Assigned Orders',
+            expandedHeight: 120,
           ),
           SliverToBoxAdapter(
             child: _buildFilters(

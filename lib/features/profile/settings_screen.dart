@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/delivero_sliver_header.dart';
 import '../../data/models/user.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -25,27 +26,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 140.0,
-            floating: false,
-            pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              title: const Text(
-                'Configuration',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
+          const DeliveroSliverHeader(
+            title: 'Configuration',
+            expandedHeight: 140,
           ),
           SliverToBoxAdapter(
             child: Padding(
