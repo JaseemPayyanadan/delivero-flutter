@@ -57,7 +57,9 @@ class OwnerDashboardScreen extends ConsumerWidget {
             surfaceTintColor: Colors.transparent,
             toolbarHeight: 0,
             automaticallyImplyLeading: false,
-            systemOverlayStyle: AppTheme.systemOverlayStyle,
+            systemOverlayStyle: AppTheme.systemOverlayStyle.copyWith(
+              statusBarColor: AppColors.primaryLighter.withValues(alpha: 0.35),
+            ),
             flexibleSpace: Stack(
               children: [
                 Positioned.fill(

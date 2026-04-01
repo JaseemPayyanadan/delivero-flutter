@@ -448,35 +448,38 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildStatCard(
-              'TOTAL ORDERS',
-              filteredOrders.length.toString(),
-              AppColors.primary,
-              Icons.receipt_long_rounded,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              'PENDING',
-              pendingCount.toString(),
-              AppColors.warning,
-              Icons.schedule_rounded,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              'FULFILLED',
+      child: SizedBox(
+        height: 86,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          itemCount: 3,
+          separatorBuilder: (context, index) => const SizedBox(width: 12),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return _buildStatCard(
+                'Total Orders',
+                filteredOrders.length.toString(),
+                AppColors.primary,
+                Icons.receipt_long_rounded,
+              );
+            }
+            if (index == 1) {
+              return _buildStatCard(
+                'Pending',
+                pendingCount.toString(),
+                AppColors.warning,
+                Icons.schedule_rounded,
+              );
+            }
+            return _buildStatCard(
+              'Fulfilled',
               deliveredCount.toString(),
               AppColors.success,
               Icons.check_circle_rounded,
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -488,45 +491,61 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     IconData icon,
   ) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      width: 170,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 14,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 12, color: color),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  label,
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, size: 22, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 8,
+                    fontSize: 9,
                     fontWeight: FontWeight.w900,
                     color: AppColors.textLight,
-                    letterSpacing: 0.5,
+                    letterSpacing: 1.0,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: color,
-              ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -641,6 +660,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   Widget _buildOrderCard(Order order) {
+    final drivers = ref.watch(driversProvider);
+
     final statusColor = _getStatusColor(order.status);
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentColor(paymentStatus);
@@ -649,6 +670,21 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         .toUpperCase();
     final shortId = order.id.substring(0, 8).toUpperCase();
     final hasNotes = (order.notes ?? '').trim().isNotEmpty;
+    final address = order.customerAddress.trim().isEmpty
+        ? 'Address not available'
+        : order.customerAddress.trim();
+    final driver = drivers.firstWhereOrNull(
+      (d) => d.id == order.assignedDriver,
+    );
+    final driverLabel = driver?.name ??
+        (order.assignedDriver?.trim().isNotEmpty == true
+            ? order.assignedDriver!.trim()
+            : 'Unassigned');
+    String truncate(String value, int max) {
+      if (value.length <= max) return value;
+      return '${value.substring(0, max - 1)}…';
+    }
+
     final previewItems = [...order.items]
       ..sort((a, b) => b.quantity.compareTo(a.quantity));
     final shownItems = previewItems.take(3).toList();
@@ -734,7 +770,30 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        order.customerAddress,
+                                        address,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.person_pin_circle_outlined,
+                                      size: 16,
+                                      color: AppColors.textLight,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        driverLabel,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
@@ -805,6 +864,16 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           physics: const BouncingScrollPhysics(),
                           child: Row(
                             children: [
+                              _InfoChip(
+                                icon: Icons.near_me_outlined,
+                                label: truncate(address, 26),
+                              ),
+                              const SizedBox(width: 10),
+                              _InfoChip(
+                                icon: Icons.person_pin_circle_rounded,
+                                label: truncate(driverLabel, 22),
+                              ),
+                              const SizedBox(width: 10),
                               if (shownItems.isEmpty)
                                 _InfoChip(
                                   icon: Icons.fastfood_rounded,
