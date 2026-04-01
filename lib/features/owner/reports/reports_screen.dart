@@ -330,20 +330,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Container(
                   height: 52,
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: AppColors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(999),
                     child: TabBar(
                       controller: _tabController,
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      indicatorSize: TabBarIndicatorSize.label,
+                      indicatorSize: TabBarIndicatorSize.tab,
                       indicator: BoxDecoration(
                         color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(999),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.05),
@@ -352,23 +351,26 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                           ),
                         ],
                       ),
-                      labelColor: AppColors.primary,
+                      labelColor: AppColors.textPrimary,
                       unselectedLabelColor: AppColors.textSecondary,
                       labelStyle: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        fontSize: 13,
-                        letterSpacing: 0.5,
+                        fontSize: 12,
+                        letterSpacing: 0.2,
                       ),
                       unselectedLabelStyle: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                        fontSize: 12,
                       ),
-                      labelPadding: const EdgeInsets.symmetric(horizontal: 14),
-                      indicatorPadding: EdgeInsets.zero,
+                      labelPadding: EdgeInsets.zero,
+                      indicatorPadding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 2,
+                      ),
                       tabs: const [
-                        Tab(text: 'OVERVIEW'),
-                        Tab(text: 'PRODUCTS'),
-                        Tab(text: 'CUSTOMERS'),
+                        Tab(text: 'Overview'),
+                        Tab(text: 'Products'),
+                        Tab(text: 'Customers'),
                       ],
                     ),
                   ),
