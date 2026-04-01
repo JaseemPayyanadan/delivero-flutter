@@ -20,6 +20,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     start: DateTime.now().subtract(const Duration(days: 7)),
     end: DateTime.now(),
   );
+  static const double _kTabBarHeight = 58;
 
   @override
   void initState() {
@@ -66,62 +67,63 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 210.0,
+            expandedHeight: 190.0,
             floating: false,
             pinned: true,
             backgroundColor: AppColors.backgroundPrimary,
             elevation: 0,
             surfaceTintColor: Colors.transparent,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 86,
-              ),
-              title: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Business Intelligence',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
+            flexibleSpace: Stack(
+              children: [
+                const Positioned.fill(
+                  child: ColoredBox(color: AppColors.backgroundPrimary),
+                ),
+                Positioned(
+                  left: 24,
+                  right: 24,
+                  bottom: _kTabBarHeight + 18,
+                  child: SafeArea(
+                    top: false,
+                    bottom: false,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Insights',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.6,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Business performance across revenue, orders, and customers',
+                          style: TextStyle(
+                            color: AppColors.textSecondary.withValues(
+                              alpha: 0.8,
+                            ),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    'Data-driven insights for your enterprise',
-                    style: TextStyle(
-                      color: AppColors.textSecondary.withValues(alpha: 0.7),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              background: Container(color: AppColors.backgroundPrimary),
-            ),
-            actions: [
-              IconButton(
-                onPressed: _selectDateRange,
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.date_range_rounded,
-                    color: AppColors.primary,
-                    size: 20,
                   ),
                 ),
+              ],
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: _buildDateRangeChip(context),
               ),
-              const SizedBox(width: 16),
             ],
             bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(58),
+              preferredSize: const Size.fromHeight(_kTabBarHeight),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Container(
@@ -172,69 +174,61 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
             ),
           ),
         ],
-        body: Column(
+        body: TabBarView(
+          controller: _tabController,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _buildDateRangeIndicator(),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _SummaryTab(reports: reports),
-                  _ProductsTab(productSales: reports.productSales),
-                  _CustomersTab(customerRevenue: reports.customerRevenue),
-                ],
-              ),
-            ),
+            _SummaryTab(reports: reports),
+            _ProductsTab(productSales: reports.productSales),
+            _CustomersTab(customerRevenue: reports.customerRevenue),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDateRangeIndicator() {
-    final df = DateFormat('MMM d, yyyy');
+  Widget _buildDateRangeChip(BuildContext context) {
+    final df = DateFormat('MMM d');
+    final rangeText =
+        '${df.format(_selectedDateRange.start)} — ${df.format(_selectedDateRange.end)}';
+    final showText = MediaQuery.sizeOf(context).width >= 380;
     return InkWell(
       onTap: _selectDateRange,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: EdgeInsets.symmetric(
+          horizontal: showText ? 12 : 10,
+          vertical: 10,
+        ),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.calendar_today_rounded,
-              color: AppColors.textLight,
+              Icons.date_range_rounded,
+              color: AppColors.textSecondary,
               size: 18,
             ),
-            const SizedBox(width: 12),
-            Text(
-              '${df.format(_selectedDateRange.start)} - ${df.format(_selectedDateRange.end)}',
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
+            if (showText) ...[
+              const SizedBox(width: 8),
+              Text(
+                rangeText,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  letterSpacing: -0.2,
+                ),
               ),
-            ),
-            const Spacer(),
+            ],
+            const SizedBox(width: 6),
             const Icon(
               Icons.unfold_more_rounded,
               color: AppColors.textLight,
-              size: 18,
+              size: 16,
             ),
           ],
         ),
@@ -251,7 +245,7 @@ class _SummaryTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).viewPadding.bottom + 96;
     return ListView(
-      padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPad),
+      padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
       children: [
         _ReportCard(
           title: 'Financial Liquidity',
@@ -372,7 +366,7 @@ class _ProductsTab extends StatelessWidget {
     if (sortedProducts.isEmpty) return _buildEmptyState();
 
     return ListView.builder(
-      padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPad),
+      padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
       itemCount: sortedProducts.length,
       itemBuilder: (context, index) {
         final p = sortedProducts[index];
@@ -400,7 +394,7 @@ class _CustomersTab extends StatelessWidget {
     if (sortedCustomers.isEmpty) return _buildEmptyState();
 
     return ListView.builder(
-      padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPad),
+      padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
       itemCount: sortedCustomers.length,
       itemBuilder: (context, index) {
         final c = sortedCustomers[index];
@@ -423,16 +417,16 @@ class _ReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 30,
-            offset: Offset(0, 15),
+            blurRadius: 18,
+            offset: Offset(0, 10),
           ),
         ],
       ),
@@ -602,6 +596,15 @@ Widget _buildEmptyState() {
           style: TextStyle(
             color: AppColors.textLight,
             fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Try changing the date range to see results.',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
