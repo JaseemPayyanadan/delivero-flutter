@@ -23,6 +23,15 @@ class OwnerDashboardScreen extends ConsumerWidget {
 
     final now = DateTime.now();
     final dateStr = DateFormat('EEEE, d MMMM').format(now);
+    final totalRevenue = reports.totalRevenue + reports.totalPendingRevenue;
+    final fulfillmentRate = reports.totalOrders == 0
+        ? 0.0
+        : reports.completedOrders / reports.totalOrders;
+    final todayOrdersCount = orders.where((o) {
+      return o.orderDate.year == now.year &&
+          o.orderDate.month == now.month &&
+          o.orderDate.day == now.day;
+    }).length;
 
     final bool isEmpty =
         customers.isEmpty &&
@@ -108,46 +117,66 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // KPI Grid - Matching RN Summary Grid
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 1.7,
+                    const SizedBox(height: 16),
+                    _KpiStrip(
                       children: [
-                        _SummaryCard(
-                          label: 'Total Customers',
+                        _KpiCard(
+                          title: 'Revenue',
+                          value:
+                              '₹${NumberFormat.compact().format(totalRevenue)}',
+                          icon: Icons.currency_rupee_rounded,
+                          tone: _KpiTone.primary,
+                        ),
+                        _KpiCard(
+                          title: 'Orders Today',
+                          value: todayOrdersCount.toString(),
+                          icon: Icons.today_rounded,
+                          tone: _KpiTone.neutral,
+                        ),
+                        _KpiCard(
+                          title: 'Customers',
                           value: customers.length.toString(),
                           icon: Icons.people_alt_rounded,
-                          iconColor: const Color(0xFFF59E0B),
-                          bgColor: const Color(0xFFFFF4E5),
+                          tone: _KpiTone.warning,
                         ),
-                        _SummaryCard(
-                          label: 'Total Drivers',
-                          value: drivers.length.toString(),
-                          icon: Icons.local_shipping_rounded,
-                          iconColor: const Color(0xFF0284C7),
-                          bgColor: const Color(0xFFE0F2FE),
-                        ),
-                        _SummaryCard(
-                          label: 'Total Products',
-                          value: foodItems.length.toString(),
-                          icon: Icons.inventory_2_rounded,
-                          iconColor: const Color(0xFFFF6B35),
-                          bgColor: const Color(0xFFFFECE6),
-                        ),
-                        _SummaryCard(
-                          label: 'Total Routes',
-                          value: routes.length.toString(),
-                          icon: Icons.alt_route_rounded,
-                          iconColor: const Color(0xFF7C3AED),
-                          bgColor: const Color(0xFFEDE9FE),
+                        _KpiCard(
+                          title: 'Fulfillment',
+                          value: '${(fulfillmentRate * 100).round()}%',
+                          icon: Icons.check_circle_rounded,
+                          tone: _KpiTone.success,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 18),
+                    _QuickActionsRow(
+                      actions: [
+                        _QuickAction(
+                          label: 'New Order',
+                          icon: Icons.add_shopping_cart_rounded,
+                          color: AppColors.primary,
+                          path: '/owner/orders/create',
+                        ),
+                        _QuickAction(
+                          label: 'Customers',
+                          icon: Icons.business_rounded,
+                          color: AppColors.success,
+                          path: '/owner/customers',
+                        ),
+                        _QuickAction(
+                          label: 'Routes',
+                          icon: Icons.alt_route_rounded,
+                          color: AppColors.info,
+                          path: '/owner/routes',
+                        ),
+                        _QuickAction(
+                          label: 'Insights',
+                          icon: Icons.analytics_rounded,
+                          color: AppColors.accent,
+                          path: '/owner/reports',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 28),
 
                     // Daily Statistics Row
                     _DashboardSection(
@@ -165,7 +194,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                             _DailyStatCard(
                               label: 'Total Revenue',
                               value:
-                                  '₹${NumberFormat.compact().format(reports.totalRevenue + reports.totalPendingRevenue)}',
+                                  '₹${NumberFormat.compact().format(totalRevenue)}',
                               color: AppColors.success,
                             ),
                             const SizedBox(width: 12),
@@ -360,78 +389,215 @@ class OwnerDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  final String label;
+enum _KpiTone { primary, success, warning, neutral }
+
+class _KpiStrip extends StatelessWidget {
+  final List<Widget> children;
+  const _KpiStrip({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 88,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: children.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        itemBuilder: (context, index) => children[index],
+      ),
+    );
+  }
+}
+
+class _KpiCard extends StatelessWidget {
+  final String title;
   final String value;
   final IconData icon;
-  final Color iconColor;
-  final Color bgColor;
+  final _KpiTone tone;
 
-  const _SummaryCard({
-    required this.label,
+  const _KpiCard({
+    required this.title,
     required this.value,
     required this.icon,
-    required this.iconColor,
-    required this.bgColor,
+    required this.tone,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Color accent;
+    final Color tint;
+    switch (tone) {
+      case _KpiTone.primary:
+        accent = AppColors.primary;
+        tint = AppColors.primaryLighter;
+        break;
+      case _KpiTone.success:
+        accent = AppColors.success;
+        tint = AppColors.successLighter;
+        break;
+      case _KpiTone.warning:
+        accent = AppColors.warning;
+        tint = AppColors.warningLighter;
+        break;
+      case _KpiTone.neutral:
+        accent = AppColors.secondary;
+        tint = AppColors.backgroundSecondary;
+        break;
+    }
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      width: 180,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 15,
-            offset: Offset(0, 8),
+            blurRadius: 16,
+            offset: Offset(0, 10),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: bgColor,
+              color: tint.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: iconColor, size: 22),
+            child: Icon(icon, color: accent, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
                 Text(
-                  label,
+                  title.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
                     color: AppColors.textLight,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.6,
                   ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _QuickAction {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final String path;
+
+  const _QuickAction({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.path,
+  });
+}
+
+class _QuickActionsRow extends StatelessWidget {
+  final List<_QuickAction> actions;
+  const _QuickActionsRow({required this.actions});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 14,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < actions.length; i++) ...[
+            Expanded(child: _QuickActionTile(action: actions[i])),
+            if (i != actions.length - 1)
+              Container(
+                width: 1,
+                height: 44,
+                color: AppColors.divider,
+                margin: const EdgeInsets.symmetric(horizontal: 10),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  final _QuickAction action;
+  const _QuickActionTile({required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => context.push(action.path),
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: action.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(action.icon, color: action.color, size: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              action.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

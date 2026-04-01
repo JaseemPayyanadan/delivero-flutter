@@ -28,11 +28,14 @@ class _DeliveryShellState extends ConsumerState<DeliveryShell> {
       body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: SafeArea(
         top: false,
-        child: Padding(
+        child: Container(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          decoration: const BoxDecoration(color: Colors.white),
           child: NavigationBarTheme(
             data: NavigationBarThemeData(
               height: 58,
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
               indicatorColor: Colors.transparent,
               overlayColor: WidgetStateProperty.all(Colors.transparent),
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,

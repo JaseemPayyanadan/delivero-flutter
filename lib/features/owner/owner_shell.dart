@@ -36,7 +36,7 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Colors.white,
             border: const Border(top: BorderSide(color: AppColors.border)),
             boxShadow: [
               BoxShadow(
@@ -49,6 +49,8 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
           child: NavigationBarTheme(
             data: NavigationBarThemeData(
               height: 58,
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
               indicatorColor: Colors.transparent,
               overlayColor: WidgetStateProperty.all(Colors.transparent),
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -81,8 +83,8 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
                     setState(() => _selectedIndex = index),
                 destinations: const [
                   NavigationDestination(
-                    icon: Icon(CupertinoIcons.house),
-                    selectedIcon: Icon(CupertinoIcons.house_fill),
+                    icon: Icon(CupertinoIcons.home),
+                    selectedIcon: Icon(CupertinoIcons.home),
                     label: 'Home',
                   ),
                   NavigationDestination(
