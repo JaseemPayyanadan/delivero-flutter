@@ -109,12 +109,12 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     final routeName = selectedRoute?.name ?? _selectedRouteId;
 
     final factoryId = await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
-    final existingCustomerEmail = _isEditMode
+    final existingCustomer = _isEditMode
         ? ref
-              .read(customersProvider)
-              .firstWhere((c) => c.id == widget.customerId)
-              .email
-        : '';
+            .read(customersProvider)
+            .firstWhereOrNull((c) => c.id == widget.customerId)
+        : null;
+    final existingCustomerEmail = existingCustomer?.email ?? '';
 
     final newCustomer = Customer(
       id: _isEditMode ? widget.customerId! : const Uuid().v4(),
@@ -131,10 +131,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       assignedRoute: routeName,
       products: products,
       createdAt: _isEditMode
-          ? ref
-                .read(customersProvider)
-                .firstWhere((c) => c.id == widget.customerId)
-                .createdAt
+          ? (existingCustomer?.createdAt ?? DateTime.now())
           : DateTime.now(),
       updatedAt: DateTime.now(),
     );

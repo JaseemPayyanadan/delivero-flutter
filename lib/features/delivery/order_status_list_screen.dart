@@ -32,8 +32,9 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     final allOrders = ref.watch(ordersProvider);
 
     // Filter orders for the current driver
+    final driverId = user?.linkedEntityId ?? user?.id;
     var myOrders = allOrders
-        .where((o) => o.assignedDriver == user?.id)
+        .where((o) => o.assignedDriver == driverId)
         .toList();
 
     // Filter by search query
@@ -73,7 +74,7 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
           ),
           SliverToBoxAdapter(
             child: _buildFilters(
-              allOrders.where((o) => o.assignedDriver == user?.id).toList(),
+              allOrders.where((o) => o.assignedDriver == driverId).toList(),
             ),
           ),
           if (myOrders.isEmpty)

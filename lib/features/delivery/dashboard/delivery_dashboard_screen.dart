@@ -15,8 +15,9 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     final allOrders = ref.watch(ordersProvider);
 
     // Filter orders for the current driver
+    final driverId = user?.linkedEntityId ?? user?.id;
     final myOrders = allOrders
-        .where((o) => o.assignedDriver == user?.id)
+        .where((o) => o.assignedDriver == driverId)
         .toList();
 
     // Today's orders
@@ -69,7 +70,9 @@ class DeliveryDashboardScreen extends ConsumerWidget {
 
     final upcomingToday = [...todayOrders]
       ..sort((a, b) {
-        final p = _statusPriority(a.status).compareTo(_statusPriority(b.status));
+        final p = _statusPriority(
+          a.status,
+        ).compareTo(_statusPriority(b.status));
         if (p != 0) return p;
         return b.totalAmount.compareTo(a.totalAmount);
       });
