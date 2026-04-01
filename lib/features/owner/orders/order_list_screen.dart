@@ -883,8 +883,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                 for (final item in shownItems) ...[
                                   _InfoChip(
                                     icon: Icons.fastfood_rounded,
-                                    label:
-                                        '${item.quantity}× ${item.foodItemName}',
+                                    label: item.quantity > 1
+                                        ? '${item.foodItemName} ×${item.quantity}'
+                                        : item.foodItemName,
                                   ),
                                   const SizedBox(width: 10),
                                 ],
@@ -1040,17 +1041,32 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: AppColors.textLight),
-          const SizedBox(width: 8),
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Icon(icon, size: 15, color: AppColors.textLight),
+          ),
+          const SizedBox(width: 10),
           Text(
             label,
             maxLines: 1,
