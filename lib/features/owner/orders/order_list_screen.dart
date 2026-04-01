@@ -666,8 +666,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentColor(paymentStatus);
     final itemCount = order.items.fold(0, (sum, item) => sum + item.quantity);
-    final paymentMethodLabel = (order.paymentMethod?.name ?? 'unpaid')
-        .toUpperCase();
     final shortId = order.id.substring(0, 8).toUpperCase();
     final hasNotes = (order.notes ?? '').trim().isNotEmpty;
     final address = order.customerAddress.trim().isEmpty
@@ -681,10 +679,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         (order.assignedDriver?.trim().isNotEmpty == true
             ? order.assignedDriver!.trim()
             : 'Unassigned');
-    String truncate(String value, int max) {
-      if (value.length <= max) return value;
-      return '${value.substring(0, max - 1)}…';
-    }
+    final orderTypeLabel = order.orderType == OrderType.oneTime
+        ? 'ONE-TIME ORDER'
+        : 'DAILY ORDER';
+    final orderTypeColor = order.orderType == OrderType.oneTime
+        ? AppColors.accent
+        : AppColors.primary;
+    final orderTypeIcon = order.orderType == OrderType.oneTime
+        ? Icons.bolt_rounded
+        : Icons.calendar_today_rounded;
 
     final previewItems = [...order.items]
       ..sort((a, b) => b.quantity.compareTo(a.quantity));
@@ -819,27 +822,52 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.add_rounded,
-                                    size: 14,
-                                    color: AppColors.textLight,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '$paymentMethodLabel included',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary.withValues(
-                                        alpha: 0.85,
-                                      ),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.2,
+                              Container(
+                                height: 36,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: orderTypeColor.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: orderTypeColor.withValues(
+                                      alpha: 0.18,
                                     ),
                                   ),
-                                ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 26,
+                                      height: 26,
+                                      decoration: BoxDecoration(
+                                        color: orderTypeColor.withValues(
+                                          alpha: 0.18,
+                                        ),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        orderTypeIcon,
+                                        size: 16,
+                                        color: orderTypeColor,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      orderTypeLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: orderTypeColor,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -861,16 +889,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           physics: const BouncingScrollPhysics(),
                           child: Row(
                             children: [
-                              _InfoChip(
-                                icon: Icons.near_me_outlined,
-                                label: truncate(address, 26),
-                              ),
-                              const SizedBox(width: 10),
-                              _InfoChip(
-                                icon: Icons.person_pin_circle_rounded,
-                                label: truncate(driverLabel, 22),
-                              ),
-                              const SizedBox(width: 10),
                               if (shownItems.isEmpty)
                                 _InfoChip(
                                   icon: Icons.fastfood_rounded,
@@ -1038,7 +1056,7 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(999),
@@ -1046,8 +1064,8 @@ class _InfoChip extends StatelessWidget {
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 10,
-            offset: Offset(0, 6),
+            blurRadius: 8,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -1055,22 +1073,22 @@ class _InfoChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 26,
-            height: 26,
+            width: 22,
+            height: 22,
             decoration: BoxDecoration(
               color: AppColors.backgroundSecondary,
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Icon(icon, size: 15, color: AppColors.textLight),
+            child: Icon(icon, size: 13, color: AppColors.textLight),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.1,
             ),
