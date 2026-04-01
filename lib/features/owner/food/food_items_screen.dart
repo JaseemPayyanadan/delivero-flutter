@@ -29,6 +29,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
   @override
   Widget build(BuildContext context) {
     final foodItems = ref.watch(foodItemsProvider);
+    final foodItemsLoaded = ref.watch(foodItemsLoadedProvider);
     final normalizedQuery = _searchQuery.trim().toLowerCase();
     final filteredItems = foodItems
         .where((item) => item.name.toLowerCase().contains(normalizedQuery))
@@ -106,7 +107,12 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
               ),
             ),
           ),
-          if (filteredItems.isEmpty)
+          if (!foodItemsLoaded && foodItems.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (filteredItems.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: _buildEmptyState(context, ref),

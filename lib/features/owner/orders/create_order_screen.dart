@@ -346,6 +346,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }
 
   Widget _buildItemsStep(List<FoodItem> foodItems) {
+    final foodItemsLoaded = ref.watch(foodItemsLoadedProvider);
+    if (!foodItemsLoaded && foodItems.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final query = _itemSearchQuery.trim().toLowerCase();
     final filteredItems = foodItems
         .where((item) => item.name.toLowerCase().contains(query))

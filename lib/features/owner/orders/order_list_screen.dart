@@ -310,6 +310,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   @override
   Widget build(BuildContext context) {
     final orders = ref.watch(ordersProvider);
+    final ordersLoaded = ref.watch(ordersLoadedProvider);
     final routes = ref.watch(routesProvider);
     final reports = ref.watch(reportsProvider);
 
@@ -395,7 +396,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               child: _buildQuickStats(reports, filteredOrders),
             ),
             SliverToBoxAdapter(child: _buildFilters(routes, availableRouteIds)),
-            if (filteredOrders.isEmpty)
+          if (!ordersLoaded && orders.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (filteredOrders.isEmpty)
               SliverToBoxAdapter(
                 child: SizedBox(
                   height: MediaQuery.of(context).size.height * 0.4,

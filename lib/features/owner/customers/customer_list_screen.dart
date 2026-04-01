@@ -64,6 +64,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
   @override
   Widget build(BuildContext context) {
     final customers = ref.watch(customersProvider);
+    final customersLoaded = ref.watch(customersLoadedProvider);
     final routes = ref.watch(routesProvider);
     final orders = ref.watch(ordersProvider);
     final reports = ref.watch(reportsProvider);
@@ -160,7 +161,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
               orders: totalOrdersCount,
             ),
           ),
-          if (filteredCustomers.isEmpty)
+          if (!customersLoaded && customers.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (filteredCustomers.isEmpty)
             SliverToBoxAdapter(
               child: SizedBox(
                 height: MediaQuery.of(context).size.height * 0.6,

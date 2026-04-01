@@ -58,7 +58,28 @@ final driversProvider = NotifierProvider<DriversNotifier, List<Driver>>(
   DriversNotifier.new,
 );
 
+final ordersLoadedProvider = NotifierProvider<_LoadedFlagNotifier, bool>(
+  _LoadedFlagNotifier.new,
+);
+final customersLoadedProvider = NotifierProvider<_LoadedFlagNotifier, bool>(
+  _LoadedFlagNotifier.new,
+);
+final foodItemsLoadedProvider = NotifierProvider<_LoadedFlagNotifier, bool>(
+  _LoadedFlagNotifier.new,
+);
+final routesLoadedProvider = NotifierProvider<_LoadedFlagNotifier, bool>(
+  _LoadedFlagNotifier.new,
+);
+final driversLoadedProvider = NotifierProvider<_LoadedFlagNotifier, bool>(
+  _LoadedFlagNotifier.new,
+);
+
 // Notifiers for domain states
+
+class _LoadedFlagNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+}
 
 class OrdersNotifier extends Notifier<List<Order>> {
   StreamSubscription? _subscription;
@@ -92,6 +113,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
       _subscription = null;
       _activeFactoryId = null;
       state = [];
+      ref.read(ordersLoadedProvider.notifier).state = false;
       return;
     }
 
@@ -99,6 +121,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
 
     _subscription?.cancel();
     _activeFactoryId = factoryId;
+    ref.read(ordersLoadedProvider.notifier).state = false;
 
     _subscription = FirebaseService.firestore
         .collection('orders')
@@ -109,9 +132,11 @@ class OrdersNotifier extends Notifier<List<Order>> {
             state = snapshot.docs
                 .map((doc) => Order.fromJson({...doc.data(), 'id': doc.id}))
                 .toList();
+            ref.read(ordersLoadedProvider.notifier).state = true;
           },
           onError: (e) {
             debugPrint('[Firestore] Error fetching orders: $e');
+            ref.read(ordersLoadedProvider.notifier).state = true;
           },
         );
   }
@@ -169,6 +194,7 @@ class CustomersNotifier extends Notifier<List<Customer>> {
       _subscription = null;
       _activeFactoryId = null;
       state = [];
+      ref.read(customersLoadedProvider.notifier).state = false;
       return;
     }
 
@@ -176,6 +202,7 @@ class CustomersNotifier extends Notifier<List<Customer>> {
 
     _subscription?.cancel();
     _activeFactoryId = factoryId;
+    ref.read(customersLoadedProvider.notifier).state = false;
 
     _subscription = FirebaseService.firestore
         .collection('customers')
@@ -186,9 +213,11 @@ class CustomersNotifier extends Notifier<List<Customer>> {
             state = snapshot.docs
                 .map((doc) => Customer.fromJson({...doc.data(), 'id': doc.id}))
                 .toList();
+            ref.read(customersLoadedProvider.notifier).state = true;
           },
           onError: (e) {
             debugPrint('[Firestore] Error fetching customers: $e');
+            ref.read(customersLoadedProvider.notifier).state = true;
           },
         );
   }
@@ -237,6 +266,7 @@ class FoodItemsNotifier extends Notifier<List<FoodItem>> {
       _subscription = null;
       _activeFactoryId = null;
       state = [];
+      ref.read(foodItemsLoadedProvider.notifier).state = false;
       return;
     }
 
@@ -244,6 +274,7 @@ class FoodItemsNotifier extends Notifier<List<FoodItem>> {
 
     _subscription?.cancel();
     _activeFactoryId = factoryId;
+    ref.read(foodItemsLoadedProvider.notifier).state = false;
 
     _subscription = FirebaseService.firestore
         .collection('foodItems')
@@ -254,9 +285,11 @@ class FoodItemsNotifier extends Notifier<List<FoodItem>> {
             state = snapshot.docs
                 .map((doc) => FoodItem.fromJson({...doc.data(), 'id': doc.id}))
                 .toList();
+            ref.read(foodItemsLoadedProvider.notifier).state = true;
           },
           onError: (e) {
             debugPrint('[Firestore] Error fetching food items: $e');
+            ref.read(foodItemsLoadedProvider.notifier).state = true;
           },
         );
   }
@@ -305,6 +338,7 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
       _subscription = null;
       _activeFactoryId = null;
       state = [];
+      ref.read(routesLoadedProvider.notifier).state = false;
       return;
     }
 
@@ -312,6 +346,7 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
 
     _subscription?.cancel();
     _activeFactoryId = factoryId;
+    ref.read(routesLoadedProvider.notifier).state = false;
 
     _subscription = FirebaseService.firestore
         .collection('routes')
@@ -325,9 +360,11 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
                       DeliveryRoute.fromJson({...doc.data(), 'id': doc.id}),
                 )
                 .toList();
+            ref.read(routesLoadedProvider.notifier).state = true;
           },
           onError: (e) {
             debugPrint('[Firestore] Error fetching routes: $e');
+            ref.read(routesLoadedProvider.notifier).state = true;
           },
         );
   }
@@ -376,6 +413,7 @@ class DriversNotifier extends Notifier<List<Driver>> {
       _subscription = null;
       _activeFactoryId = null;
       state = [];
+      ref.read(driversLoadedProvider.notifier).state = false;
       return;
     }
 
@@ -383,6 +421,7 @@ class DriversNotifier extends Notifier<List<Driver>> {
 
     _subscription?.cancel();
     _activeFactoryId = factoryId;
+    ref.read(driversLoadedProvider.notifier).state = false;
 
     _subscription = FirebaseService.firestore
         .collection('drivers')
@@ -393,9 +432,11 @@ class DriversNotifier extends Notifier<List<Driver>> {
             state = snapshot.docs
                 .map((doc) => Driver.fromJson({...doc.data(), 'id': doc.id}))
                 .toList();
+            ref.read(driversLoadedProvider.notifier).state = true;
           },
           onError: (e) {
             debugPrint('[Firestore] Error fetching drivers: $e');
+            ref.read(driversLoadedProvider.notifier).state = true;
           },
         );
   }
