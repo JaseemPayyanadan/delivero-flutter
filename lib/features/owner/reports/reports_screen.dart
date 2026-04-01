@@ -176,6 +176,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
   @override
   Widget build(BuildContext context) {
     final allOrders = ref.watch(ordersProvider);
+    final ordersLoaded = ref.watch(ordersLoadedProvider);
+    final isLoading = !ordersLoaded && allOrders.isEmpty;
     final start = DateTime(
       _selectedDateRange.start.year,
       _selectedDateRange.start.month,
@@ -193,7 +195,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
               o.orderDate.isBefore(endExclusive),
         )
         .toList();
-    final reports = _computeReports(inRange);
+    final reports = isLoading ? ReportsData.empty() : _computeReports(inRange);
     final df = DateFormat('MMM d');
     final rangeLabel =
         '${df.format(_selectedDateRange.start)} — ${df.format(_selectedDateRange.end)}';
@@ -378,9 +380,18 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
         body: TabBarView(
           controller: _tabController,
           children: [
-            _SummaryTab(reports: reports),
-            _ProductsTab(productSales: reports.productSales),
-            _CustomersTab(customerRevenue: reports.customerRevenue),
+            if (isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              _SummaryTab(reports: reports),
+            if (isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              _ProductsTab(productSales: reports.productSales),
+            if (isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              _CustomersTab(customerRevenue: reports.customerRevenue),
           ],
         ),
       ),
@@ -768,6 +779,7 @@ class _PaymentMix extends StatelessWidget {
             label: e.key.toUpperCase(),
             amount: e.value,
             fraction: e.value / total,
+            color: _paymentMethodColor(e.key),
           ),
           const SizedBox(height: 14),
         ],
@@ -776,15 +788,26 @@ class _PaymentMix extends StatelessWidget {
   }
 }
 
+Color _paymentMethodColor(String key) {
+  final k = key.toLowerCase();
+  if (k.contains('upi')) return AppColors.primary;
+  if (k.contains('cash')) return AppColors.success;
+  if (k.contains('card')) return AppColors.info;
+  if (k.contains('online')) return AppColors.accent;
+  return AppColors.textLight;
+}
+
 class _PaymentMixRow extends StatelessWidget {
   final String label;
   final double amount;
   final double fraction;
+  final Color color;
 
   const _PaymentMixRow({
     required this.label,
     required this.amount,
     required this.fraction,
+    required this.color,
   });
 
   @override
@@ -835,7 +858,7 @@ class _PaymentMixRow extends StatelessWidget {
             value: fraction.clamp(0.0, 1.0),
             minHeight: 8,
             backgroundColor: AppColors.backgroundSecondary,
-            color: AppColors.primary,
+            color: color,
           ),
         ),
       ],
@@ -1066,9 +1089,15 @@ class _RangePill extends StatelessWidget {
     final child = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: onTap == null
+            ? AppColors.surface
+            : AppColors.primaryLighter.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: onTap == null
+              ? AppColors.border
+              : AppColors.primary.withValues(alpha: 0.25),
+        ),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
@@ -1089,7 +1118,7 @@ class _RangePill extends StatelessWidget {
           Text(
             text,
             style: const TextStyle(
-              color: AppColors.textSecondary,
+              color: AppColors.textPrimary,
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.1,
@@ -1150,7 +1179,7 @@ class _KpiTile extends StatelessWidget {
     }
 
     return Container(
-      width: 164,
+      width: 176,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1193,15 +1222,18 @@ class _KpiTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.4,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                 ),
               ],
