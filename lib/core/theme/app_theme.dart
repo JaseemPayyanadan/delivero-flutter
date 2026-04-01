@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app_colors.dart';
 
 class AppTheme {
+  static const SystemUiOverlayStyle systemOverlayStyle = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+    systemNavigationBarColor: Colors.white,
+    systemNavigationBarIconBrightness: Brightness.dark,
+    systemNavigationBarDividerColor: Colors.transparent,
+  );
+
   static ThemeData light() {
     final baseTextTheme = ThemeData(useMaterial3: true).textTheme;
     return ThemeData(
@@ -31,6 +41,7 @@ class AppTheme {
         backgroundColor: AppColors.backgroundPrimary,
         elevation: 0,
         centerTitle: false,
+        systemOverlayStyle: systemOverlayStyle,
         iconTheme: IconThemeData(color: AppColors.textPrimary, size: 22),
         titleTextStyle: TextStyle(
           color: AppColors.textPrimary,

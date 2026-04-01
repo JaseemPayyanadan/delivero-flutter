@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 
 class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -25,6 +26,7 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: AppColors.backgroundPrimary,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
+      systemOverlayStyle: AppTheme.systemOverlayStyle,
       centerTitle: centerTitle,
       leading: leading,
       title: Text(
@@ -75,6 +77,7 @@ class DeliveroSliverHeader extends StatelessWidget {
       backgroundColor: AppColors.backgroundPrimary,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
+      systemOverlayStyle: AppTheme.systemOverlayStyle,
       actions: actions,
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: titlePadding,

@@ -174,6 +174,15 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                   icon: customers.isEmpty
                       ? Icons.business_center_outlined
                       : Icons.search_off_outlined,
+                  actionLabel: customers.isEmpty
+                      ? 'Add Customer'
+                      : 'Clear Search',
+                  onAction: customers.isEmpty
+                      ? () => context.push('/owner/customers/add')
+                      : () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
                 ),
               ),
             )
@@ -226,18 +235,33 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/owner/customers/add'),
-        backgroundColor: AppColors.primary,
-        elevation: 8,
-        icon: const Icon(Icons.add_business_rounded, color: Colors.white),
-        label: const Text(
-          '+ New Customer',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.5,
-            fontSize: 12,
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.28),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () => context.push('/owner/customers/add'),
+          backgroundColor: AppColors.primary,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          icon: const Icon(Icons.add_business_rounded, color: Colors.white),
+          label: const Text(
+            'Add Customer',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+              fontSize: 13,
+            ),
           ),
         ),
       ),
@@ -674,6 +698,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     required String subtitle,
     required IconData icon,
     bool showArrow = false,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     return Center(
       child: Padding(
@@ -710,6 +736,30 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                 height: 1.5,
               ),
             ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: 220,
+                child: FilledButton.icon(
+                  onPressed: onAction,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: Text(
+                    actionLabel,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
             if (showArrow) ...[
               const SizedBox(height: 48),
               AnimatedBuilder(

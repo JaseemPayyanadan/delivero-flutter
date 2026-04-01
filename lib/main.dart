@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import 'app/providers.dart';
 import 'app/router.dart';
@@ -8,6 +9,7 @@ import 'core/services/firebase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(AppTheme.systemOverlayStyle);
   await FirebaseService.init();
   runApp(const ProviderScope(child: DeliveroApp()));
 }

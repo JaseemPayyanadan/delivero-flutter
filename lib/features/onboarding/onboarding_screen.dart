@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/delivero_sliver_header.dart';
 
 class SetupStep {
   final String id;
@@ -109,8 +110,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        title: const Text('Setup Guide'),
+      appBar: DeliveroAppBar(
+        title: 'Setup Guide',
         actions: [
           TextButton(
             onPressed: () =>
