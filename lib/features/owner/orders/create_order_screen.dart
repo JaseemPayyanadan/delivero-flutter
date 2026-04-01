@@ -351,6 +351,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               item.name.toLowerCase().contains(_itemSearchQuery.toLowerCase()),
         )
         .toList();
+    final selected = _selectedItems.entries
+        .where((e) => e.value > 0)
+        .map((e) {
+          final item = foodItems.firstWhereOrNull((f) => f.id == e.key);
+          return item == null ? null : (item, e.value);
+        })
+        .whereType<(FoodItem, int)>()
+        .toList()
+      ..sort((a, b) => a.$1.name.compareTo(b.$1.name));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,6 +380,136 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ),
           ),
         ),
+        if (selected.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 16,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Selected Items',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${selected.length}',
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: (selected.length * 64.0).clamp(64.0, 220.0),
+                  child: ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: selected.length,
+                    separatorBuilder: (context, index) => const Divider(
+                      height: 1,
+                      color: AppColors.divider,
+                    ),
+                    itemBuilder: (context, index) {
+                      final (item, qty) = selected[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '₹${NumberFormat.decimalPattern().format(item.price)} / unit',
+                                    style: const TextStyle(
+                                      color: AppColors.textLight,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.backgroundSecondary,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildQtyBtn(
+                                    Icons.remove_rounded,
+                                    qty > 0
+                                        ? () => setState(
+                                              () => _selectedItems[item.id] =
+                                                  qty - 1,
+                                            )
+                                        : null,
+                                  ),
+                                  SizedBox(
+                                    width: 32,
+                                    child: Text(
+                                      qty.toString(),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 15,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  _buildQtyBtn(
+                                    Icons.add_rounded,
+                                    () => setState(
+                                      () => _selectedItems[item.id] = qty + 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         if (filteredItems.isEmpty)
           _buildEmptySearchState()
