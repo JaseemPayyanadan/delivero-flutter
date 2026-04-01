@@ -366,47 +366,54 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          DeliveroSliverHeader(
-            title: 'Orders',
-            subtitle: '${orders.length} transactions processed',
-            expandedHeight: 140,
-            floating: true,
-            pinned: true,
-            actions: [
-              if (filteredOrders.isNotEmpty)
-                IconButton(
-                  onPressed: () => _showPackagingSummary(filteredOrders),
-                  icon: const Icon(
-                    Icons.print_rounded,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              const SizedBox(width: 16),
-            ],
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
           ),
-          SliverToBoxAdapter(child: _buildQuickStats(reports, filteredOrders)),
-          SliverToBoxAdapter(child: _buildFilters(routes, availableRouteIds)),
-          if (filteredOrders.isEmpty)
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.4,
-                child: _buildEmptyState(),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final order = filteredOrders[index];
-                  return _buildOrderCard(order);
-                }, childCount: filteredOrders.length),
-              ),
+          slivers: [
+            DeliveroSliverHeader(
+              title: 'Orders',
+              subtitle: '${orders.length} transactions processed',
+              expandedHeight: 140,
+              floating: true,
+              pinned: true,
+              actions: [
+                if (filteredOrders.isNotEmpty)
+                  IconButton(
+                    onPressed: () => _showPackagingSummary(filteredOrders),
+                    icon: const Icon(
+                      Icons.print_rounded,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                const SizedBox(width: 16),
+              ],
             ),
-        ],
+            SliverToBoxAdapter(
+              child: _buildQuickStats(reports, filteredOrders),
+            ),
+            SliverToBoxAdapter(child: _buildFilters(routes, availableRouteIds)),
+            if (filteredOrders.isEmpty)
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.4,
+                  child: _buildEmptyState(),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final order = filteredOrders[index];
+                    return _buildOrderCard(order);
+                  }, childCount: filteredOrders.length),
+                ),
+              ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/owner/orders/create'),

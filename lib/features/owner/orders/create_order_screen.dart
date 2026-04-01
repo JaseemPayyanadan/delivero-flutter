@@ -26,6 +26,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   OrderType _orderType = OrderType.daily;
   Map<String, int> _selectedItems = {}; // foodItemId -> quantity
   String _itemSearchQuery = '';
+  bool _showSelectedOnly = false;
 
   @override
   Widget build(BuildContext context) {
@@ -345,21 +346,30 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }
 
   Widget _buildItemsStep(List<FoodItem> foodItems) {
+    final query = _itemSearchQuery.trim().toLowerCase();
     final filteredItems = foodItems
-        .where(
-          (item) =>
-              item.name.toLowerCase().contains(_itemSearchQuery.toLowerCase()),
-        )
+        .where((item) => item.name.toLowerCase().contains(query))
         .toList();
-    final selected = _selectedItems.entries
-        .where((e) => e.value > 0)
-        .map((e) {
-          final item = foodItems.firstWhereOrNull((f) => f.id == e.key);
-          return item == null ? null : (item, e.value);
-        })
-        .whereType<(FoodItem, int)>()
-        .toList()
-      ..sort((a, b) => a.$1.name.compareTo(b.$1.name));
+    final selected =
+        _selectedItems.entries
+            .where((e) => e.value > 0)
+            .map((e) {
+              final item = foodItems.firstWhereOrNull((f) => f.id == e.key);
+              return item == null ? null : (item, e.value);
+            })
+            .whereType<(FoodItem, int)>()
+            .toList()
+          ..sort((a, b) => a.$1.name.compareTo(b.$1.name));
+    final selectedFiltered = query.isEmpty
+        ? selected
+        : selected
+              .where((e) => e.$1.name.toLowerCase().contains(query))
+              .toList();
+
+    final showSelectedOnly = _showSelectedOnly && selected.isNotEmpty;
+    final itemsToRender = showSelectedOnly
+        ? selectedFiltered.map((e) => e.$1).toList()
+        : filteredItems;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,6 +390,30 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ),
           ),
         ),
+        if (selected.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text('All items'),
+                  selected: !_showSelectedOnly,
+                  onSelected: (v) => setState(() => _showSelectedOnly = false),
+                  showCheckmark: false,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ChoiceChip(
+                  label: Text('Selected (${selected.length})'),
+                  selected: _showSelectedOnly,
+                  onSelected: (v) => setState(() => _showSelectedOnly = true),
+                  showCheckmark: false,
+                ),
+              ),
+            ],
+          ),
+        ],
         if (selected.isNotEmpty) ...[
           const SizedBox(height: 16),
           Container(
@@ -427,10 +461,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   child: ListView.separated(
                     physics: const BouncingScrollPhysics(),
                     itemCount: selected.length,
-                    separatorBuilder: (context, index) => const Divider(
-                      height: 1,
-                      color: AppColors.divider,
-                    ),
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1, color: AppColors.divider),
                     itemBuilder: (context, index) {
                       final (item, qty) = selected[index];
                       return Padding(
@@ -474,9 +506,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                     Icons.remove_rounded,
                                     qty > 0
                                         ? () => setState(
-                                              () => _selectedItems[item.id] =
-                                                  qty - 1,
-                                            )
+                                            () => _selectedItems[item.id] =
+                                                qty - 1,
+                                          )
                                         : null,
                                   ),
                                   SizedBox(
@@ -511,82 +543,107 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           ),
         ],
         const SizedBox(height: 20),
-        if (filteredItems.isEmpty)
-          _buildEmptySearchState()
+        if (itemsToRender.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                showSelectedOnly
+                    ? 'No selected items yet'
+                    : 'No catalog matches found',
+                style: const TextStyle(
+                  color: AppColors.textLight,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          )
         else
-          ...filteredItems.map((item) {
-            final qty = _selectedItems[item.id] ?? 0;
-            final bool isSelected = qty > 0;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
-                  width: isSelected ? 1.5 : 1,
-                ),
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                title: Text(
-                  item.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                subtitle: Text(
-                  '₹${NumberFormat.decimalPattern().format(item.price)} / unit',
-                  style: const TextStyle(
-                    color: AppColors.textLight,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-                trailing: Container(
+          SizedBox(
+            height: 420,
+            child: ListView.builder(
+              physics: const BouncingScrollPhysics(),
+              itemCount: itemsToRender.length,
+              itemBuilder: (context, index) {
+                final item = itemsToRender[index];
+                final qty = _selectedItems[item.id] ?? 0;
+                final bool isSelected = qty > 0;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: AppColors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected ? AppColors.primary : AppColors.border,
+                      width: isSelected ? 1.5 : 1,
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildQtyBtn(
-                        Icons.remove_rounded,
-                        qty > 0
-                            ? () => setState(
-                                () => _selectedItems[item.id] = qty - 1,
-                              )
-                            : null,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
+                    title: Text(
+                      item.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: isSelected
+                            ? FontWeight.w900
+                            : FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
-                      SizedBox(
-                        width: 32,
-                        child: Text(
-                          qty.toString(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
-                            color: AppColors.textPrimary,
+                    ),
+                    subtitle: Text(
+                      '₹${NumberFormat.decimalPattern().format(item.price)} / unit',
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    trailing: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildQtyBtn(
+                            Icons.remove_rounded,
+                            qty > 0
+                                ? () => setState(
+                                    () => _selectedItems[item.id] = qty - 1,
+                                  )
+                                : null,
                           ),
-                        ),
+                          SizedBox(
+                            width: 32,
+                            child: Text(
+                              qty.toString(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          _buildQtyBtn(
+                            Icons.add_rounded,
+                            () => setState(
+                              () => _selectedItems[item.id] = qty + 1,
+                            ),
+                          ),
+                        ],
                       ),
-                      _buildQtyBtn(
-                        Icons.add_rounded,
-                        () => setState(() => _selectedItems[item.id] = qty + 1),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            );
-          }),
+                );
+              },
+            ),
+          ),
       ],
     );
   }
@@ -598,21 +655,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       color: AppColors.primary,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
       padding: EdgeInsets.zero,
-    );
-  }
-
-  Widget _buildEmptySearchState() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Text(
-          'No catalog matches found',
-          style: TextStyle(
-            color: AppColors.textLight,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
     );
   }
 

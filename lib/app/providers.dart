@@ -126,6 +126,15 @@ class OrdersNotifier extends Notifier<List<Order>> {
       .set(order.toJson());
   void deleteOrder(String id) =>
       FirebaseService.firestore.collection('orders').doc(id).delete();
+
+  Future<void> refresh() async {
+    final id = _activeFactoryId;
+    if (id == null) return;
+    _subscription?.cancel();
+    _subscription = null;
+    _setFactoryId(id);
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+  }
 }
 
 class CustomersNotifier extends Notifier<List<Customer>> {
