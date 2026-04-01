@@ -631,7 +631,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final routes = ref.watch(routesProvider);
     final drivers = ref.watch(driversProvider);
 
-    final dateStr = DateFormat('MMM d, yyyy').format(order.orderDate);
     final statusColor = _getStatusColor(order.status);
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentColor(paymentStatus);
@@ -646,6 +645,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final driverLabel = driver?.name ?? 'Unassigned';
     final paymentMethodLabel = (order.paymentMethod?.name ?? 'unpaid')
         .toUpperCase();
+    final shortId = order.id.substring(0, 8).toUpperCase();
+    final dateLabel = DateFormat('MMM d').format(order.orderDate);
+    final hasNotes = (order.notes ?? '').trim().isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -670,7 +672,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               child: InkWell(
                 onTap: () => context.push('/owner/orders/${order.id}'),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -735,21 +737,20 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Container(
-                                    width: 6,
-                                    height: 6,
-                                    decoration: BoxDecoration(
-                                      color: paymentColor,
-                                      shape: BoxShape.circle,
-                                    ),
+                                  const Icon(
+                                    Icons.add_rounded,
+                                    size: 14,
+                                    color: AppColors.textLight,
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    paymentStatus.name.toUpperCase(),
+                                    '$paymentMethodLabel included',
                                     style: TextStyle(
-                                      color: paymentColor,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textSecondary.withValues(
+                                        alpha: 0.85,
+                                      ),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
                                       letterSpacing: 0.2,
                                     ),
                                   ),
@@ -760,73 +761,80 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        child: Row(
-                          children: [
-                            _InfoChip(
-                              icon: Icons.qr_code_scanner_rounded,
-                              label: paymentMethodLabel,
-                            ),
-                            const SizedBox(width: 10),
-                            _InfoChip(
-                              icon: Icons.alt_route_rounded,
-                              label: routeLabel,
-                            ),
-                            const SizedBox(width: 10),
-                            _InfoChip(
-                              icon: Icons.person_pin_circle_rounded,
-                              label: driverLabel,
-                            ),
-                            const SizedBox(width: 10),
-                            _InfoChip(
-                              icon: Icons.receipt_long_rounded,
-                              label:
-                                  '#${order.id.substring(0, 8).toUpperCase()}',
-                            ),
-                          ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundPrimary,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            children: [
+                              _InfoChip(
+                                icon: Icons.calendar_today_rounded,
+                                label: dateLabel,
+                              ),
+                              const SizedBox(width: 10),
+                              _InfoChip(
+                                icon: Icons.alt_route_rounded,
+                                label: routeLabel,
+                              ),
+                              const SizedBox(width: 10),
+                              _InfoChip(
+                                icon: Icons.person_pin_circle_rounded,
+                                label: driverLabel,
+                              ),
+                              const SizedBox(width: 10),
+                              _InfoChip(
+                                icon: Icons.receipt_long_rounded,
+                                label: '#$shortId',
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: const BoxDecoration(
                           border: Border(
                             top: BorderSide(color: AppColors.border),
-                            bottom: BorderSide(color: AppColors.border),
                           ),
                         ),
                         child: Row(
                           children: [
                             Expanded(
-                              child: _SpecItem(
+                              child: _FeatureColumn(
                                 icon: Icons.inventory_2_outlined,
-                                label: 'Units',
-                                value: itemCount.toString(),
+                                value: '$itemCount Units',
                               ),
                             ),
-                            const _SpecDivider(),
+                            const _FeatureDivider(),
                             Expanded(
-                              child: _SpecItem(
-                                icon: Icons.schedule_rounded,
-                                label: 'Ordered',
-                                value: dateStr,
-                              ),
-                            ),
-                            const _SpecDivider(),
-                            Expanded(
-                              child: _SpecItem(
+                              child: _FeatureColumn(
                                 icon: Icons.local_shipping_outlined,
-                                label: 'Status',
                                 value: order.status.name.toUpperCase(),
                                 valueColor: statusColor,
+                              ),
+                            ),
+                            const _FeatureDivider(),
+                            Expanded(
+                              child: _FeatureColumn(
+                                icon: Icons.payments_outlined,
+                                value: paymentStatus.name.toUpperCase(),
+                                valueColor: paymentColor,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      if ((order.notes ?? '').trim().isNotEmpty) ...[
+                      if (hasNotes) ...[
                         const SizedBox(height: 12),
                         Row(
                           children: [
@@ -851,22 +859,27 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           ],
                         ),
                       ],
-                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.border)),
+              ),
               child: Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _showNotesEditor(order),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.secondary,
-                        side: const BorderSide(color: AppColors.border),
+                        foregroundColor: AppColors.success,
+                        side: const BorderSide(color: Colors.transparent),
+                        backgroundColor: AppColors.successLighter.withValues(
+                          alpha: 0.6,
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -874,9 +887,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       ),
                       icon: const Icon(Icons.edit_note_rounded, size: 18),
                       label: Text(
-                        (order.notes ?? '').trim().isEmpty
-                            ? 'Add notes'
-                            : 'Edit notes',
+                        hasNotes ? 'Edit notes' : 'Add notes',
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
                           letterSpacing: 0.2,
@@ -890,14 +901,14 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       onPressed: () =>
                           context.push('/owner/orders/${order.id}'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.secondary,
+                        backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                       child: const Text(
-                        'View Details',
+                        'View Order',
                         style: TextStyle(
                           fontWeight: FontWeight.w900,
                           letterSpacing: 0.2,
@@ -1074,7 +1085,7 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
@@ -1100,53 +1111,33 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-class _SpecItem extends StatelessWidget {
+class _FeatureColumn extends StatelessWidget {
   final IconData icon;
-  final String label;
   final String value;
   final Color? valueColor;
 
-  const _SpecItem({
+  const _FeatureColumn({
     required this.icon,
-    required this.label,
     required this.value,
     this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 18, color: AppColors.textLight),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: valueColor ?? AppColors.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
+        Icon(icon, size: 20, color: AppColors.textLight),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: valueColor ?? AppColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.2,
           ),
         ),
       ],
@@ -1154,8 +1145,8 @@ class _SpecItem extends StatelessWidget {
   }
 }
 
-class _SpecDivider extends StatelessWidget {
-  const _SpecDivider();
+class _FeatureDivider extends StatelessWidget {
+  const _FeatureDivider();
 
   @override
   Widget build(BuildContext context) {
