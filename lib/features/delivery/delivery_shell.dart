@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'dashboard/delivery_dashboard_screen.dart';
@@ -31,15 +32,15 @@ class _DeliveryShellState extends ConsumerState<DeliveryShell> {
             setState(() => _selectedIndex = index),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.local_shipping_outlined),
+            icon: Icon(CupertinoIcons.speedometer),
             label: 'Dashboard',
           ),
           NavigationDestination(
-            icon: Icon(Icons.list_alt_outlined),
+            icon: Icon(CupertinoIcons.list_bullet),
             label: 'Orders',
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
+            icon: Icon(CupertinoIcons.settings),
             label: 'Settings',
           ),
         ],

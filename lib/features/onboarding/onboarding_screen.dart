@@ -36,6 +36,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String? _expandedStepId = 'routes';
+  bool _autoMarked = false;
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +98,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         .where((s) => s.importance == 'critical' && !s.isCompleted)
         .length;
 
+    if (criticalStepsLeft == 0 && !_autoMarked) {
+      _autoMarked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await ref.read(appStartupProvider.notifier).markOnboardingSeen();
+        if (!mounted) return;
+        context.go('/owner');
+      });
+    }
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
@@ -131,7 +141,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               (entry) => _buildStepCard(entry.value, entry.key + 1),
             ),
             const SizedBox(height: 40),
-            if (completedCount == steps.length)
+            if (criticalStepsLeft == 0)
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(

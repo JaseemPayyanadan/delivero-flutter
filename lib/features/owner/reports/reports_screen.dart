@@ -131,37 +131,41 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                     color: AppColors.backgroundSecondary,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: TabBar(
-                    controller: _tabController,
-                    indicator: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: TabBar(
+                      controller: _tabController,
+                      indicatorSize: TabBarIndicatorSize.label,
+                      indicator: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      labelColor: AppColors.primary,
+                      unselectedLabelColor: AppColors.textSecondary,
+                      labelStyle: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                        letterSpacing: 0.5,
+                      ),
+                      unselectedLabelStyle: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+                      indicatorPadding: EdgeInsets.zero,
+                      tabs: const [
+                        Tab(text: 'OVERVIEW'),
+                        Tab(text: 'PRODUCTS'),
+                        Tab(text: 'CUSTOMERS'),
                       ],
                     ),
-                    labelColor: AppColors.primary,
-                    unselectedLabelColor: AppColors.textSecondary,
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                      letterSpacing: 0.5,
-                    ),
-                    unselectedLabelStyle: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-                    indicatorPadding: EdgeInsets.zero,
-                    tabs: const [
-                      Tab(text: 'OVERVIEW'),
-                      Tab(text: 'PRODUCTS'),
-                      Tab(text: 'CUSTOMERS'),
-                    ],
                   ),
                 ),
               ),
@@ -245,8 +249,9 @@ class _SummaryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).viewPadding.bottom + 96;
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPad),
       children: [
         _ReportCard(
           title: 'Financial Liquidity',
@@ -360,13 +365,14 @@ class _ProductsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).viewPadding.bottom + 96;
     final sortedProducts = productSales.values.toList()
       ..sort((a, b) => b.revenue.compareTo(a.revenue));
 
     if (sortedProducts.isEmpty) return _buildEmptyState();
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPad),
       itemCount: sortedProducts.length,
       itemBuilder: (context, index) {
         final p = sortedProducts[index];
@@ -387,13 +393,14 @@ class _CustomersTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).viewPadding.bottom + 96;
     final sortedCustomers = customerRevenue.values.toList()
       ..sort((a, b) => b.revenue.compareTo(a.revenue));
 
     if (sortedCustomers.isEmpty) return _buildEmptyState();
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPad),
       itemCount: sortedCustomers.length,
       itemBuilder: (context, index) {
         final c = sortedCustomers[index];
