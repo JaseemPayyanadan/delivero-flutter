@@ -696,6 +696,27 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.backgroundSecondary,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: Text(
+                                    '#$shortId',
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
                                 Text(
                                   order.customerName,
                                   maxLines: 2,
