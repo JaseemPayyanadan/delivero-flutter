@@ -48,7 +48,7 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
           ),
           child: NavigationBarTheme(
             data: NavigationBarThemeData(
-              height: 58,
+              height: 54,
               backgroundColor: Colors.white,
               surfaceTintColor: Colors.transparent,
               indicatorColor: Colors.transparent,
@@ -59,14 +59,14 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
                 return TextStyle(
                   color: selected ? AppColors.primary : AppColors.textLight,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-                  fontSize: 11,
+                  fontSize: 10,
                 );
               }),
               iconTheme: WidgetStateProperty.resolveWith((states) {
                 final selected = states.contains(WidgetState.selected);
                 return IconThemeData(
                   color: selected ? AppColors.primary : AppColors.textLight,
-                  size: 22,
+                  size: 20,
                 );
               }),
             ),
@@ -83,8 +83,8 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
                     setState(() => _selectedIndex = index),
                 destinations: const [
                   NavigationDestination(
-                    icon: Icon(CupertinoIcons.home),
-                    selectedIcon: Icon(CupertinoIcons.home),
+                    icon: Icon(CupertinoIcons.house),
+                    selectedIcon: Icon(CupertinoIcons.house_fill),
                     label: 'Home',
                   ),
                   NavigationDestination(

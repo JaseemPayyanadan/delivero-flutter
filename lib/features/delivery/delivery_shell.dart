@@ -33,7 +33,7 @@ class _DeliveryShellState extends ConsumerState<DeliveryShell> {
           decoration: const BoxDecoration(color: Colors.white),
           child: NavigationBarTheme(
             data: NavigationBarThemeData(
-              height: 58,
+              height: 54,
               backgroundColor: Colors.white,
               surfaceTintColor: Colors.transparent,
               indicatorColor: Colors.transparent,
@@ -44,14 +44,14 @@ class _DeliveryShellState extends ConsumerState<DeliveryShell> {
                 return TextStyle(
                   color: selected ? Colors.black : Colors.black54,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-                  fontSize: 11,
+                  fontSize: 10,
                 );
               }),
               iconTheme: WidgetStateProperty.resolveWith((states) {
                 final selected = states.contains(WidgetState.selected);
                 return IconThemeData(
                   color: selected ? Colors.black : Colors.black54,
-                  size: 22,
+                  size: 20,
                 );
               }),
             ),
