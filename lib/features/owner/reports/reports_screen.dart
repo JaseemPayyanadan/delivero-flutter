@@ -237,47 +237,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
       ),
     );
   }
-
-  Widget _buildTabSelector() {
-    return Container(
-      height: 52,
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        indicator: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        labelColor: AppColors.primary,
-        unselectedLabelColor: AppColors.textSecondary,
-        labelStyle: const TextStyle(
-          fontWeight: FontWeight.w900,
-          fontSize: 13,
-          letterSpacing: 0.5,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
-        ),
-        tabs: const [
-          Tab(text: 'OVERVIEW'),
-          Tab(text: 'PRODUCTS'),
-          Tab(text: 'CUSTOMERS'),
-        ],
-      ),
-    );
-  }
 }
 
 class _SummaryTab extends StatelessWidget {

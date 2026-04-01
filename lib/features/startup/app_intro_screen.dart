@@ -199,13 +199,16 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                _ArchedHero(
-                                  width: width - 80,
-                                  imageAsset: slide.imageAsset,
+                                Expanded(
+                                  child: Center(
+                                    child: _ArchedHero(
+                                      width: width - 80,
+                                      imageAsset: slide.imageAsset,
+                                    ),
+                                  ),
                                 ),
-                                const SizedBox(height: 32),
+                                const SizedBox(height: 20),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -391,24 +394,38 @@ class _ArchedHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: 320,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(size: Size(width, 320), painter: _ArchFramePainter()),
-          Positioned(
-            top: 40,
-            child: Image.asset(
-              imageAsset,
-              width: 240,
-              height: 240,
-              fit: BoxFit.contain,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxHeight = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : 320.0;
+        final frameHeight = maxHeight.clamp(180.0, 320.0).toDouble();
+        final imageSize = (frameHeight * 0.75).clamp(120.0, 240.0).toDouble();
+        final top = (frameHeight - imageSize) * 0.15;
+
+        return SizedBox(
+          width: width,
+          height: frameHeight,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CustomPaint(
+                size: Size(width, frameHeight),
+                painter: _ArchFramePainter(),
+              ),
+              Positioned(
+                top: top,
+                child: Image.asset(
+                  imageAsset,
+                  width: imageSize,
+                  height: imageSize,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
