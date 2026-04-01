@@ -20,14 +20,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
+    final isDelivery = user?.role == UserRole.delivery;
+    final subtitle = user == null
+        ? 'Account and preferences'
+        : (isDelivery
+              ? 'Account, availability and notifications'
+              : 'Account and business preferences');
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          const DeliveroSliverHeader(
-            title: 'Configuration',
+          DeliveroSliverHeader(
+            title: 'Profile',
+            subtitle: subtitle,
             expandedHeight: 140,
           ),
           SliverToBoxAdapter(
@@ -37,42 +44,66 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildProfileCard(user),
-                  const SizedBox(height: 40),
-                  const _SectionHeader(title: 'PREFERENCES'),
-                  _buildSwitchTile(
-                    'Operational Availability',
-                    'Set your current field status',
-                    _isAvailable,
-                    (val) => setState(() => _isAvailable = val),
-                    Icons.online_prediction_rounded,
-                  ),
-                  _buildSwitchTile(
-                    'Smart Notifications',
-                    'Alert on new route assignments',
-                    _notifyOnAssignment,
-                    (val) => setState(() => _notifyOnAssignment = val),
-                    Icons.notifications_active_rounded,
-                  ),
-                  _buildSwitchTile(
-                    'Haptic Feedback',
-                    'Vibrate on status updates',
-                    _vibrateOnStatus,
-                    (val) => setState(() => _vibrateOnStatus = val),
-                    Icons.vibration_rounded,
+                  const SizedBox(height: 28),
+                  _SectionCard(
+                    title: 'Preferences',
+                    child: Column(
+                      children: [
+                        _buildSwitchTileRow(
+                          title: isDelivery
+                              ? 'Operational availability'
+                              : 'Business availability',
+                          description: isDelivery
+                              ? 'Set your current field status'
+                              : 'Control business status visibility',
+                          value: _isAvailable,
+                          onChanged: (val) =>
+                              setState(() => _isAvailable = val),
+                          icon: Icons.online_prediction_rounded,
+                        ),
+                        const Divider(height: 1, color: AppColors.divider),
+                        _buildSwitchTileRow(
+                          title: 'Smart notifications',
+                          description: isDelivery
+                              ? 'Alert on new route assignments'
+                              : 'Alert on new order activity',
+                          value: _notifyOnAssignment,
+                          onChanged: (val) =>
+                              setState(() => _notifyOnAssignment = val),
+                          icon: Icons.notifications_active_rounded,
+                        ),
+                        const Divider(height: 1, color: AppColors.divider),
+                        _buildSwitchTileRow(
+                          title: 'Haptic feedback',
+                          description: 'Vibrate on important updates',
+                          value: _vibrateOnStatus,
+                          onChanged: (val) =>
+                              setState(() => _vibrateOnStatus = val),
+                          icon: Icons.vibration_rounded,
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 32),
-                  const _SectionHeader(title: 'INFRASTRUCTURE SUPPORT'),
-                  _buildSettingsOption(
-                    title: 'Enterprise Help Center',
-                    description: 'Access operational documentation',
-                    icon: Icons.help_center_rounded,
-                    onTap: () {},
-                  ),
-                  _buildSettingsOption(
-                    title: 'Compliance & Privacy',
-                    description: 'Data handling & protocols',
-                    icon: Icons.gavel_rounded,
-                    onTap: () {},
+                  _SectionCard(
+                    title: 'Support',
+                    child: Column(
+                      children: [
+                        _buildSettingsOptionRow(
+                          title: 'Help Center',
+                          description: 'Guides and operational documentation',
+                          icon: Icons.help_center_rounded,
+                          onTap: () {},
+                        ),
+                        const Divider(height: 1, color: AppColors.divider),
+                        _buildSettingsOptionRow(
+                          title: 'Compliance & Privacy',
+                          description: 'Data handling & protocols',
+                          icon: Icons.gavel_rounded,
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 40),
                   SizedBox(
@@ -111,6 +142,70 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildProfileCard(User? user) {
+    if (user == null) {
+      return Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 30,
+              offset: Offset(0, 15),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.backgroundSecondary,
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 16,
+                    width: 160,
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    height: 12,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    height: 12,
+                    width: 200,
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
@@ -150,7 +245,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             child: Center(
               child: Text(
-                user?.name.substring(0, 1).toUpperCase() ?? 'U',
+                user.name.substring(0, 1).toUpperCase(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
@@ -165,7 +260,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user?.name ?? 'User',
+                  user.name,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
@@ -184,7 +279,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    user?.role.name.toUpperCase() ?? '',
+                    user.role.name.toUpperCase(),
                     style: const TextStyle(
                       color: AppColors.textLight,
                       fontSize: 9,
@@ -194,10 +289,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (user?.email != null)
-                  _buildContactRow(Icons.alternate_email_rounded, user!.email),
-                if (user?.phone != null)
-                  _buildContactRow(Icons.phone_iphone_rounded, user!.phone!),
+                _buildContactRow(Icons.alternate_email_rounded, user.email),
+                if (user.phone != null && user.phone!.trim().isNotEmpty)
+                  _buildContactRow(Icons.phone_iphone_rounded, user.phone!),
+                if (user.factoryId != null && user.factoryId!.trim().isNotEmpty)
+                  _buildContactRow(
+                    Icons.factory_rounded,
+                    user.factoryId!.trim(),
+                  ),
               ],
             ),
           ),
@@ -226,99 +325,87 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildSettingsOption({
+  Widget _buildSettingsOptionRow({
     required String title,
     required String description,
     required IconData icon,
     required VoidCallback onTap,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Icon(icon, color: AppColors.primary, size: 20),
       ),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: AppColors.primary, size: 22),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w900,
+          fontSize: 14,
+          color: AppColors.textPrimary,
+          letterSpacing: -0.2,
         ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 15,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        subtitle: Text(
-          description,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textLight,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        trailing: const Icon(
-          Icons.chevron_right_rounded,
+      ),
+      subtitle: Text(
+        description,
+        style: const TextStyle(
+          fontSize: 12,
           color: AppColors.textLight,
-          size: 20,
+          fontWeight: FontWeight.w600,
         ),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right_rounded,
+        color: AppColors.textLight,
+        size: 20,
       ),
     );
   }
 
-  Widget _buildSwitchTile(
-    String title,
-    String description,
-    bool value,
-    ValueChanged<bool> onChanged,
-    IconData icon,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+  Widget _buildSwitchTileRow({
+    required String title,
+    required String description,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required IconData icon,
+  }) {
+    return SwitchListTile.adaptive(
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w900,
+          color: AppColors.textPrimary,
+          letterSpacing: -0.2,
+        ),
       ),
-      child: SwitchListTile.adaptive(
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
-          ),
+      subtitle: Text(
+        description,
+        style: const TextStyle(
+          fontSize: 12,
+          color: AppColors.textLight,
+          fontWeight: FontWeight.w600,
         ),
-        subtitle: Text(
-          description,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textLight,
-            fontWeight: FontWeight.w600,
-          ),
+      ),
+      value: value,
+      onChanged: onChanged,
+      activeThumbColor: AppColors.success,
+      activeTrackColor: AppColors.success.withValues(alpha: 0.35),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+      secondary: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: AppColors.backgroundSecondary,
+          borderRadius: BorderRadius.circular(14),
         ),
-        value: value,
-        onChanged: onChanged,
-        activeThumbColor: AppColors.success,
-        activeTrackColor: AppColors.success.withValues(alpha: 0.4),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        secondary: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.backgroundSecondary,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: AppColors.textLight, size: 22),
-        ),
+        child: Icon(icon, color: AppColors.textLight, size: 20),
       ),
     );
   }
@@ -366,22 +453,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
+class _SectionCard extends StatelessWidget {
   final String title;
-  const _SectionHeader({required this.title});
+  final Widget child;
+  const _SectionCard({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16, left: 4),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-          color: AppColors.textLight,
-          letterSpacing: 1.5,
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 16,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+            child: Text(
+              title.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textLight,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.divider),
+          child,
+        ],
       ),
     );
   }
