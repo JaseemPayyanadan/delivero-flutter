@@ -225,7 +225,28 @@ class CustomerDetailsScreen extends ConsumerWidget {
                   const SizedBox(height: 32),
                   _SectionCard(
                     title: 'Contracts',
-                    child: _buildConfigurationCard(customer, catalogPriceById),
+                    action: TextButton.icon(
+                      onPressed: () =>
+                          context.push('/owner/customers/edit/$customerId'),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text(
+                        'Add product',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    child: _buildConfigurationCard(
+                      context,
+                      customer,
+                      catalogPriceById,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   _SectionCard(
@@ -352,19 +373,67 @@ class CustomerDetailsScreen extends ConsumerWidget {
   }
 
   Widget _buildConfigurationCard(
+    BuildContext context,
     Customer customer,
     Map<String, double> catalogPriceById,
   ) {
     final products = customer.products ?? [];
     if (products.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(18),
-        child: Text(
-          'No contract items yet',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
-          ),
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'No contract items yet',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () =>
+                        context.push('/owner/customers/edit/$customerId'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text(
+                      'Add product',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/owner/food-items'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.inventory_2_rounded, size: 18),
+                    label: const Text(
+                      'Products',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       );
     }
@@ -775,7 +844,8 @@ class _KpiStrip extends StatelessWidget {
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
-  const _SectionCard({required this.title, required this.child});
+  final Widget? action;
+  const _SectionCard({required this.title, required this.child, this.action});
 
   @override
   Widget build(BuildContext context) {
@@ -797,14 +867,21 @@ class _SectionCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
-            child: Text(
-              title.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textLight,
-                letterSpacing: 1.2,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textLight,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                action ?? const SizedBox.shrink(),
+              ],
             ),
           ),
           const Divider(height: 1, color: AppColors.divider),
