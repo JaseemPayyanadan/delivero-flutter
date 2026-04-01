@@ -313,6 +313,15 @@ class FoodItemsNotifier extends Notifier<List<FoodItem>> {
       .set(item.toJson());
   void deleteFoodItem(String id) =>
       FirebaseService.firestore.collection('foodItems').doc(id).delete();
+
+  Future<void> refresh() async {
+    final id = _activeFactoryId;
+    if (id == null) return;
+    _subscription?.cancel();
+    _subscription = null;
+    _setFactoryId(id);
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+  }
 }
 
 class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
@@ -388,6 +397,15 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
       .set(route.toJson());
   void deleteRoute(String id) =>
       FirebaseService.firestore.collection('routes').doc(id).delete();
+
+  Future<void> refresh() async {
+    final id = _activeFactoryId;
+    if (id == null) return;
+    _subscription?.cancel();
+    _subscription = null;
+    _setFactoryId(id);
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+  }
 }
 
 class DriversNotifier extends Notifier<List<Driver>> {
@@ -460,4 +478,13 @@ class DriversNotifier extends Notifier<List<Driver>> {
       .set(driver.toJson());
   void deleteDriver(String id) =>
       FirebaseService.firestore.collection('drivers').doc(id).delete();
+
+  Future<void> refresh() async {
+    final id = _activeFactoryId;
+    if (id == null) return;
+    _subscription?.cancel();
+    _subscription = null;
+    _setFactoryId(id);
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+  }
 }

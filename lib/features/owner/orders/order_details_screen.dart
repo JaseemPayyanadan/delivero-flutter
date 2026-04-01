@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
@@ -62,7 +63,7 @@ class OrderDetailsScreen extends ConsumerWidget {
             _buildStatusHeader(order),
             const SizedBox(height: 22),
             _buildSectionTitle('FULFILLMENT MANIFEST'),
-            _buildFulfillmentCard(order, route, driver),
+            _buildFulfillmentCard(context, order, route, driver),
             const SizedBox(height: 22),
             _buildSectionTitle('INVENTORY MANIFEST'),
             _buildItemsSummary(order),
@@ -222,6 +223,7 @@ class OrderDetailsScreen extends ConsumerWidget {
   }
 
   Widget _buildFulfillmentCard(
+    BuildContext context,
     Order order,
     DeliveryRoute? route,
     Driver? driver,
@@ -299,8 +301,42 @@ class OrderDetailsScreen extends ConsumerWidget {
                 ),
               ),
               IconButton.filled(
-                onPressed: () {
-                  // TODO: Implement direct call logic
+                onPressed: () async {
+                  final raw = order.customerPhone.trim();
+                  final digits = raw.replaceAll(RegExp(r'[^0-9+]'), '');
+                  if (digits.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          'Phone number not available',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: AppColors.warning,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  final uri = Uri(scheme: 'tel', path: digits);
+                  final ok = await launchUrl(uri);
+                  if (!ok && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          'Unable to start call',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: AppColors.error,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  }
                 },
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.backgroundSecondary,

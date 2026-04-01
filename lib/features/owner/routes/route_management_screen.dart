@@ -37,68 +37,85 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
   Widget build(BuildContext context) {
     final routes = ref.watch(routesProvider);
     final drivers = ref.watch(driversProvider);
+    final routesLoaded = ref.watch(routesLoadedProvider);
+    final driversLoaded = ref.watch(driversLoadedProvider);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          DeliveroSliverHeader(
-            title: 'Logistics Control',
-            subtitle:
-                '${routes.length} active routes • ${drivers.where((d) => d.isActive).length} on-field agents',
-            expandedHeight: 140,
-            floating: true,
-            pinned: true,
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Container(
-                height: 52,
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(16),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            ref.read(routesProvider.notifier).refresh(),
+            ref.read(driversProvider.notifier).refresh(),
+          ]);
+        },
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => [
+            DeliveroSliverHeader(
+              title: 'Logistics Control',
+              subtitle:
+                  '${routes.length} active routes • ${drivers.where((d) => d.isActive).length} on-field agents',
+              expandedHeight: 140,
+              floating: true,
+              pinned: true,
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 8,
                 ),
-                child: TabBar(
-                  controller: _tabController,
-                  indicator: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
+                child: Container(
+                  height: 52,
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                    tabs: const [
+                      Tab(text: 'ROUTES'),
+                      Tab(text: 'FIELD AGENTS'),
                     ],
                   ),
-                  labelColor: AppColors.primary,
-                  unselectedLabelColor: AppColors.textSecondary,
-                  labelStyle: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                    letterSpacing: 0.5,
-                  ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                  tabs: const [
-                    Tab(text: 'ROUTES'),
-                    Tab(text: 'FIELD AGENTS'),
-                  ],
                 ),
               ),
             ),
-          ),
-        ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _RouteListTab(routes: routes, drivers: drivers),
-            _DriverListTab(drivers: drivers),
           ],
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              _RouteListTab(
+                routes: routes,
+                drivers: drivers,
+                routesLoaded: routesLoaded,
+              ),
+              _DriverListTab(drivers: drivers, driversLoaded: driversLoaded),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -334,10 +351,18 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
 class _RouteListTab extends ConsumerWidget {
   final List<DeliveryRoute> routes;
   final List<Driver> drivers;
-  const _RouteListTab({required this.routes, required this.drivers});
+  final bool routesLoaded;
+  const _RouteListTab({
+    required this.routes,
+    required this.drivers,
+    required this.routesLoaded,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!routesLoaded && routes.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (routes.isEmpty) {
       return _buildEmptyState(
         Icons.alt_route_rounded,
@@ -587,7 +612,9 @@ class _RouteListTab extends ConsumerWidget {
                       leading: CircleAvatar(
                         backgroundColor: AppColors.backgroundSecondary,
                         child: Text(
-                          driver.name[0].toUpperCase(),
+                          driver.name.trim().isNotEmpty
+                              ? driver.name.trim()[0].toUpperCase()
+                              : '?',
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
                             color: AppColors.primary,
@@ -954,10 +981,14 @@ class _RouteListTab extends ConsumerWidget {
 
 class _DriverListTab extends ConsumerWidget {
   final List<Driver> drivers;
-  const _DriverListTab({required this.drivers});
+  final bool driversLoaded;
+  const _DriverListTab({required this.drivers, required this.driversLoaded});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!driversLoaded && drivers.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (drivers.isEmpty) {
       return _buildEmptyState(
         Icons.person_off_rounded,

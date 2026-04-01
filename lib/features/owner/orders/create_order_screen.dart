@@ -324,7 +324,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                             ? AppColors.primary
                             : AppColors.backgroundSecondary,
                         child: Text(
-                          customer.name[0].toUpperCase(),
+                          customer.name.trim().isNotEmpty
+                              ? customer.name.trim()[0].toUpperCase()
+                              : '?',
                           style: TextStyle(
                             color: isSelected
                                 ? Colors.white

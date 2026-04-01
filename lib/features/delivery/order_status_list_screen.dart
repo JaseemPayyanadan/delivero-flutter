@@ -30,6 +30,8 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final allOrders = ref.watch(ordersProvider);
+    final ordersLoaded = ref.watch(ordersLoadedProvider);
+    final isLoading = !ordersLoaded && allOrders.isEmpty;
 
     // Filter orders for the current driver
     final driverId = user?.linkedEntityId ?? user?.id;
@@ -65,32 +67,48 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          const DeliveroSliverHeader(
-            title: 'Assigned Orders',
-            expandedHeight: 120,
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
           ),
-          SliverToBoxAdapter(
-            child: _buildFilters(
-              allOrders.where((o) => o.assignedDriver == driverId).toList(),
+          slivers: [
+            const DeliveroSliverHeader(
+              title: 'Assigned Orders',
+              expandedHeight: 120,
             ),
-          ),
-          if (myOrders.isEmpty)
-            SliverFillRemaining(hasScrollBody: false, child: _buildEmptyState())
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) =>
-                      _buildOrderCard(context, ref, myOrders[index]),
-                  childCount: myOrders.length,
-                ),
+            SliverToBoxAdapter(
+              child: _buildFilters(
+                allOrders.where((o) => o.assignedDriver == driverId).toList(),
               ),
             ),
-        ],
+            if (isLoading)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (myOrders.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildEmptyState(),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) =>
+                        _buildOrderCard(context, ref, myOrders[index]),
+                    childCount: myOrders.length,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

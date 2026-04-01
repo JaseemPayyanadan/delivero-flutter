@@ -48,89 +48,91 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          DeliveroSliverHeader(
-            title: 'Products',
-            subtitle: '${foodItems.length} active inventory items',
-            expandedHeight: 140,
-            floating: true,
-            pinned: true,
-            actions: [
-              PopupMenuButton<_ProductSort>(
-                icon: const Icon(
-                  Icons.tune_rounded,
-                  color: AppColors.textPrimary,
-                ),
-                onSelected: (val) => setState(() => _sort = val),
-                itemBuilder: (context) => const [
-                  PopupMenuItem(
-                    value: _ProductSort.nameAsc,
-                    child: Text('Sort: Name'),
-                  ),
-                  PopupMenuItem(
-                    value: _ProductSort.priceAsc,
-                    child: Text('Sort: Price (Low)'),
-                  ),
-                  PopupMenuItem(
-                    value: _ProductSort.priceDesc,
-                    child: Text('Sort: Price (High)'),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 12),
-            ],
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(foodItemsProvider.notifier).refresh(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) => setState(() => _searchQuery = val),
-                decoration: InputDecoration(
-                  hintText: 'Search catalog by name...',
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    color: AppColors.textLight,
+          slivers: [
+            DeliveroSliverHeader(
+              title: 'Products',
+              subtitle: '${foodItems.length} active inventory items',
+              expandedHeight: 140,
+              floating: true,
+              pinned: true,
+              actions: [
+                PopupMenuButton<_ProductSort>(
+                  icon: const Icon(
+                    Icons.tune_rounded,
+                    color: AppColors.textPrimary,
                   ),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 20),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
+                  onSelected: (val) => setState(() => _sort = val),
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: _ProductSort.nameAsc,
+                      child: Text('Sort: Name'),
+                    ),
+                    PopupMenuItem(
+                      value: _ProductSort.priceAsc,
+                      child: Text('Sort: Price (Low)'),
+                    ),
+                    PopupMenuItem(
+                      value: _ProductSort.priceDesc,
+                      child: Text('Sort: Price (High)'),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+              ],
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                  decoration: InputDecoration(
+                    hintText: 'Search catalog by name...',
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.textLight,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 20),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                  ),
                 ),
               ),
             ),
-          ),
-          if (!foodItemsLoaded && foodItems.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (filteredItems.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: _buildEmptyState(context, ref),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
+            if (!foodItemsLoaded && foodItems.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (filteredItems.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildEmptyState(context, ref),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
                     final item = filteredItems[index];
                     return _buildFoodItemRow(context, ref, item);
-                  },
-                  childCount: filteredItems.length,
+                  }, childCount: filteredItems.length),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddEditDialog(context, ref),
@@ -150,11 +152,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
     );
   }
 
-  Widget _buildFoodItemRow(
-    BuildContext context,
-    WidgetRef ref,
-    FoodItem item,
-  ) {
+  Widget _buildFoodItemRow(BuildContext context, WidgetRef ref, FoodItem item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -343,7 +341,10 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                   Navigator.pop(context);
                   _showAddEditDialog(this.context, ref, item);
                 },
-                leading: const Icon(Icons.edit_rounded, color: AppColors.primary),
+                leading: const Icon(
+                  Icons.edit_rounded,
+                  color: AppColors.primary,
+                ),
                 title: const Text(
                   'Edit Product',
                   style: TextStyle(fontWeight: FontWeight.w900),
@@ -354,7 +355,9 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                   Navigator.pop(context);
                   final confirmed = await _confirmDelete(this.context, item);
                   if (confirmed == true) {
-                    ref.read(foodItemsProvider.notifier).deleteFoodItem(item.id);
+                    ref
+                        .read(foodItemsProvider.notifier)
+                        .deleteFoodItem(item.id);
                   }
                 },
                 leading: const Icon(

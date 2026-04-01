@@ -114,7 +114,9 @@ class CustomerDetailsScreen extends ConsumerWidget {
                           ),
                           child: Center(
                             child: Text(
-                              customer.name.substring(0, 1).toUpperCase(),
+                              customer.name.trim().isNotEmpty
+                                  ? customer.name.trim()[0].toUpperCase()
+                                  : '?',
                               style: const TextStyle(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w900,

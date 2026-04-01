@@ -341,7 +341,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             child: Center(
               child: Text(
-                user.name.substring(0, 1).toUpperCase(),
+                user.name.trim().isNotEmpty
+                    ? user.name.trim()[0].toUpperCase()
+                    : '?',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
