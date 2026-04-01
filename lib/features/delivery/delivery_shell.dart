@@ -5,27 +5,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dashboard/delivery_dashboard_screen.dart';
 import 'order_status_list_screen.dart';
 import '../profile/settings_screen.dart';
+import 'delivery_nav_provider.dart';
 
-class DeliveryShell extends ConsumerStatefulWidget {
+class DeliveryShell extends ConsumerWidget {
   const DeliveryShell({super.key});
 
   @override
-  ConsumerState<DeliveryShell> createState() => _DeliveryShellState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedIndex = ref.watch(deliveryNavIndexProvider);
+    final screens = const [
+      DeliveryDashboardScreen(),
+      OrderStatusListScreen(),
+      SettingsScreen(),
+    ];
 
-class _DeliveryShellState extends ConsumerState<DeliveryShell> {
-  int _selectedIndex = 0;
-
-  final List<Widget> _screens = [
-    const DeliveryDashboardScreen(),
-    const OrderStatusListScreen(),
-    const SettingsScreen(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _screens),
+      body: IndexedStack(index: selectedIndex, children: screens),
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
@@ -63,9 +58,10 @@ class _DeliveryShellState extends ConsumerState<DeliveryShell> {
                 splashFactory: NoSplash.splashFactory,
               ),
               child: NavigationBar(
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: (index) =>
-                    setState(() => _selectedIndex = index),
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (index) => ref
+                    .read(deliveryNavIndexProvider.notifier)
+                    .setIndex(index),
                 destinations: const [
                   NavigationDestination(
                     icon: Icon(CupertinoIcons.speedometer),

@@ -41,6 +41,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  void _showForgotDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          'Forgot Password',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: const Text(
+          'This app uses admin-managed accounts. Please contact your admin/support team to reset your credentials.',
+          style: TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'OK',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSupportDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          'Contact Support',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: const Text(
+          'If you don’t have an account, please contact your organization admin to get access.',
+          style: TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'CLOSE',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.textLight,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -223,7 +281,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                               TextButton(
-                                onPressed: () {},
+                                onPressed: _showForgotDialog,
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
                                   minimumSize: Size.zero,
@@ -301,7 +359,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: _showSupportDialog,
                           child: const Text(
                             'Contact Support',
                             style: TextStyle(

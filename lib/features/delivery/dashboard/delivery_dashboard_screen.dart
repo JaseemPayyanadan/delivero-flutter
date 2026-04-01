@@ -6,8 +6,7 @@ import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/order.dart';
-import '../order_status_list_screen.dart';
-import '../../profile/settings_screen.dart';
+import '../delivery_nav_provider.dart';
 
 class DeliveryDashboardScreen extends ConsumerWidget {
   const DeliveryDashboardScreen({super.key});
@@ -150,7 +149,23 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                               ),
                               _HeaderIconButton(
                                 icon: Icons.notifications_none_rounded,
-                                onTap: () {},
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                        'Notifications coming soon',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: AppColors.secondary,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -259,11 +274,9 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                             icon: Icons.list_alt_rounded,
                             color: AppColors.primary,
                             onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const OrderStatusListScreen(),
-                                ),
-                              );
+                              ref
+                                  .read(deliveryNavIndexProvider.notifier)
+                                  .setIndex(1);
                             },
                           ),
                           _QuickAction(
@@ -271,11 +284,9 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                             icon: Icons.settings_rounded,
                             color: AppColors.info,
                             onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
-                                ),
-                              );
+                              ref
+                                  .read(deliveryNavIndexProvider.notifier)
+                                  .setIndex(2);
                             },
                           ),
                           _QuickAction(

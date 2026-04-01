@@ -373,7 +373,7 @@ class _RouteListTab extends ConsumerWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
             child: InkWell(
-              onTap: () {}, // Detail view if needed
+              onTap: () => _showRouteDetails(context, route, driverName),
               child: Column(
                 children: [
                   Padding(
@@ -515,6 +515,8 @@ class _RouteListTab extends ConsumerWidget {
       ],
       onSelected: (val) {
         if (val == 'assign') _showAssignDialog(context, ref, route);
+        if (val == 'edit') _showEditRouteDialog(context, ref, route);
+        if (val == 'delete') _confirmDeleteRoute(context, ref, route);
       },
     );
   }
@@ -653,6 +655,299 @@ class _RouteListTab extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showEditRouteDialog(
+    BuildContext context,
+    WidgetRef ref,
+    DeliveryRoute route,
+  ) {
+    final nameController = TextEditingController(text: route.name);
+    final areaController = TextEditingController(text: route.area);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text(
+          'Modify Route',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Route Identifier'),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: areaController,
+              decoration: const InputDecoration(labelText: 'Operational Area'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.textLight,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final updated = DeliveryRoute(
+                id: route.id,
+                factoryId: route.factoryId,
+                name: nameController.text.trim(),
+                description: route.description,
+                area: areaController.text.trim(),
+                assignedDriver: route.assignedDriver,
+                isActive: route.isActive,
+                estimatedDeliveryTime: route.estimatedDeliveryTime,
+                maxOrders: route.maxOrders,
+                currentOrders: route.currentOrders,
+                createdAt: route.createdAt,
+                updatedAt: DateTime.now(),
+              );
+              ref.read(routesProvider.notifier).updateRoute(updated);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'UPDATE',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).whenComplete(() {
+      nameController.dispose();
+      areaController.dispose();
+    });
+  }
+
+  void _confirmDeleteRoute(
+    BuildContext context,
+    WidgetRef ref,
+    DeliveryRoute route,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text(
+          'Decommission Route',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: Text(
+          'Delete "${route.name}" permanently? This will unassign its agent (if any).',
+          style: const TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.textLight,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              final assignedDriverId = route.assignedDriver;
+              if (assignedDriverId != null && assignedDriverId.isNotEmpty) {
+                final driver = ref
+                    .read(driversProvider)
+                    .firstWhereOrNull((d) => d.id == assignedDriverId);
+                if (driver != null) {
+                  final updatedDriver = Driver(
+                    id: driver.id,
+                    factoryId: driver.factoryId,
+                    name: driver.name,
+                    phone: driver.phone,
+                    vehicleType: driver.vehicleType,
+                    isActive: driver.isActive,
+                    currentRoute: null,
+                    createdAt: driver.createdAt,
+                    updatedAt: DateTime.now(),
+                  );
+                  ref
+                      .read(driversProvider.notifier)
+                      .updateDriver(updatedDriver);
+                }
+              }
+              ref.read(routesProvider.notifier).deleteRoute(route.id);
+              Navigator.pop(context);
+            },
+            child: const Text(
+              'DELETE',
+              style: TextStyle(
+                color: AppColors.error,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRouteDetails(
+    BuildContext context,
+    DeliveryRoute route,
+    String driverName,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.alt_route_rounded,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          route.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          route.area,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1, color: AppColors.divider),
+              const SizedBox(height: 14),
+              _detailRow('Assigned Agent', driverName),
+              const SizedBox(height: 10),
+              _detailRow(
+                'Capacity',
+                '${route.currentOrders}/${route.maxOrders} orders',
+              ),
+              const SizedBox(height: 10),
+              _detailRow('ETA', '${route.estimatedDeliveryTime} min'),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textLight,
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

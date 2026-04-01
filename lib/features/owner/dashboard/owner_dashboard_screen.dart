@@ -118,7 +118,23 @@ class OwnerDashboardScreen extends ConsumerWidget {
                             ),
                             _HeaderIconButton(
                               icon: Icons.notifications_none_rounded,
-                              onTap: () {},
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text(
+                                      'Notifications coming soon',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: AppColors.secondary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/delivero_sliver_header.dart';
 import '../../data/models/user.dart';
+import '../../data/models/driver.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -16,16 +19,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isAvailable = true;
   bool _notifyOnAssignment = true;
   bool _vibrateOnStatus = false;
+  String? _prefsKey;
+  bool _prefsLoaded = false;
+  bool _availabilitySynced = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefs(null);
+  }
+
+  Future<void> _loadPrefs(String? key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = key == null ? 'settings' : 'settings_$key';
+    final available = prefs.getBool('${prefix}_available');
+    final notify = prefs.getBool('${prefix}_notify');
+    final vibrate = prefs.getBool('${prefix}_vibrate');
+    if (!mounted) return;
+    setState(() {
+      if (available != null) _isAvailable = available;
+      if (notify != null) _notifyOnAssignment = notify;
+      if (vibrate != null) _vibrateOnStatus = vibrate;
+      _prefsKey = key;
+      _prefsLoaded = true;
+    });
+  }
+
+  Future<void> _savePref(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = _prefsKey == null ? 'settings' : 'settings_$_prefsKey';
+    await prefs.setBool('${prefix}_$key', value);
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
+    final drivers = ref.watch(driversProvider);
+    final driversLoaded = ref.watch(driversLoadedProvider);
     final isDelivery = user?.role == UserRole.delivery;
     final subtitle = user == null
         ? 'Account and preferences'
         : (isDelivery
               ? 'Account, availability and notifications'
               : 'Account and business preferences');
+
+    final userKey = user?.email;
+    if (!_prefsLoaded || _prefsKey != userKey) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _loadPrefs(userKey);
+      });
+    }
+
+    Driver? driver;
+    if (isDelivery && user != null) {
+      final driverId = user.linkedEntityId;
+      if (driverId != null && driverId.isNotEmpty) {
+        for (final d in drivers) {
+          if (d.id == driverId) {
+            driver = d;
+            break;
+          }
+        }
+      }
+    }
+
+    if (isDelivery && !_availabilitySynced && driver != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _isAvailable = driver!.isActive;
+          _availabilitySynced = true;
+        });
+      });
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -57,8 +124,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ? 'Set your current field status'
                               : 'Control business status visibility',
                           value: _isAvailable,
-                          onChanged: (val) =>
-                              setState(() => _isAvailable = val),
+                          onChanged:
+                              isDelivery &&
+                                  (!driversLoaded ||
+                                      (user?.linkedEntityId != null &&
+                                          driver == null))
+                              ? null
+                              : (val) {
+                                  setState(() => _isAvailable = val);
+                                  _savePref('available', val);
+                                  if (isDelivery && driver != null) {
+                                    final d = driver;
+                                    final updated = Driver(
+                                      id: d.id,
+                                      factoryId: d.factoryId,
+                                      name: d.name,
+                                      phone: d.phone,
+                                      vehicleType: d.vehicleType,
+                                      isActive: val,
+                                      currentRoute: d.currentRoute,
+                                      createdAt: d.createdAt,
+                                      updatedAt: DateTime.now(),
+                                    );
+                                    ref
+                                        .read(driversProvider.notifier)
+                                        .updateDriver(updated);
+                                  }
+                                },
                           icon: Icons.online_prediction_rounded,
                         ),
                         const Divider(height: 1, color: AppColors.divider),
@@ -68,8 +160,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ? 'Alert on new route assignments'
                               : 'Alert on new order activity',
                           value: _notifyOnAssignment,
-                          onChanged: (val) =>
-                              setState(() => _notifyOnAssignment = val),
+                          onChanged: (val) {
+                            setState(() => _notifyOnAssignment = val);
+                            _savePref('notify', val);
+                          },
                           icon: Icons.notifications_active_rounded,
                         ),
                         const Divider(height: 1, color: AppColors.divider),
@@ -77,8 +171,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           title: 'Haptic feedback',
                           description: 'Vibrate on important updates',
                           value: _vibrateOnStatus,
-                          onChanged: (val) =>
-                              setState(() => _vibrateOnStatus = val),
+                          onChanged: (val) {
+                            setState(() => _vibrateOnStatus = val);
+                            _savePref('vibrate', val);
+                          },
                           icon: Icons.vibration_rounded,
                         ),
                       ],
@@ -93,14 +189,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           title: 'Help Center',
                           description: 'Guides and operational documentation',
                           icon: Icons.help_center_rounded,
-                          onTap: () {},
+                          onTap: () => context.go('/onboarding'),
                         ),
                         const Divider(height: 1, color: AppColors.divider),
                         _buildSettingsOptionRow(
                           title: 'Compliance & Privacy',
                           description: 'Data handling & protocols',
                           icon: Icons.gavel_rounded,
-                          onTap: () {},
+                          onTap: () => showLicensePage(context: context),
                         ),
                       ],
                     ),
@@ -372,7 +468,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required String title,
     required String description,
     required bool value,
-    required ValueChanged<bool> onChanged,
+    required ValueChanged<bool>? onChanged,
     required IconData icon,
   }) {
     return SwitchListTile.adaptive(
