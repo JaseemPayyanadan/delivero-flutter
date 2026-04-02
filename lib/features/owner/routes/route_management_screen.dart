@@ -156,7 +156,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
     if (_tabController.index == 0) {
       _showRouteDialog();
     } else {
-      _showDriverDialog();
+      _showAddEditDriverDialog(context, ref);
     }
   }
 
@@ -249,153 +249,6 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
       ),
     );
   }
-
-  void _showDriverDialog([Driver? driver]) {
-    final isEdit = driver != null;
-    final nameController = TextEditingController(text: driver?.name);
-    final phoneController = TextEditingController(text: driver?.phone);
-    VehicleType selectedVehicle = driver?.vehicleType ?? VehicleType.bike;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          title: Text(
-            isEdit ? 'Update Agent' : 'Onboard New Agent',
-            style: const TextStyle(fontWeight: FontWeight.w900),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Image.asset(
-                  _vehicleAsset(selectedVehicle),
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 18),
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Full Legal Name',
-                  hintText: 'e.g. Alexander Pierce',
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Contact Number',
-                  hintText: '+91 00000 00000',
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 20),
-              DropdownButtonFormField<VehicleType>(
-                initialValue: selectedVehicle,
-                items: VehicleType.values
-                    .map(
-                      (v) => DropdownMenuItem(
-                        value: v,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: AppColors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: Image.asset(
-                                _vehicleAsset(v),
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              v.name.toUpperCase(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (val) => setState(() => selectedVehicle = val!),
-                decoration: const InputDecoration(labelText: 'Vehicle Type'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'CANCEL',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textLight,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final factoryId =
-                    await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
-
-                final newDriver = Driver(
-                  id: isEdit ? driver.id : const Uuid().v4(),
-                  factoryId: factoryId,
-                  name: nameController.text,
-                  phone: phoneController.text,
-                  vehicleType: selectedVehicle,
-                  isActive: driver?.isActive ?? true,
-                  currentRoute: driver?.currentRoute,
-                  createdAt: driver?.createdAt ?? DateTime.now(),
-                  updatedAt: DateTime.now(),
-                );
-                if (isEdit) {
-                  ref.read(driversProvider.notifier).updateDriver(newDriver);
-                } else {
-                  ref.read(driversProvider.notifier).addDriver(newDriver);
-                }
-                if (context.mounted) Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                isEdit ? 'UPDATE' : 'ONBOARD',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _RouteListTab extends ConsumerWidget {
@@ -422,7 +275,7 @@ class _RouteListTab extends ConsumerWidget {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 72),
       itemCount: routes.length,
       itemBuilder: (context, index) {
         final route = routes[index];
@@ -1050,7 +903,7 @@ class _DriverListTab extends ConsumerWidget {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 72),
       itemCount: drivers.length,
       itemBuilder: (context, index) {
         final driver = drivers[index];
@@ -1081,6 +934,7 @@ class _DriverListTab extends ConsumerWidget {
                 fit: BoxFit.contain,
               ),
             ),
+            onTap: () => _showAddEditDriverDialog(context, ref, driver: driver),
             title: Text(
               driver.name,
               style: const TextStyle(
@@ -1137,31 +991,132 @@ class _DriverListTab extends ConsumerWidget {
                     ],
                   ),
                 ],
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    driver.vehicleType.name.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textLight,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+              ],
+            ),
+            trailing: PopupMenuButton<String>(
+              icon: const Icon(
+                Icons.more_vert_rounded,
+                size: 20,
+                color: AppColors.textLight,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              itemBuilder: (context) => [
+                _buildDriverPopupItem('edit', Icons.edit_rounded, 'Edit Agent'),
+                _buildDriverPopupItem(
+                  'toggle',
+                  driver.isActive
+                      ? Icons.pause_circle_outline_rounded
+                      : Icons.play_circle_outline_rounded,
+                  driver.isActive ? 'Mark Inactive' : 'Mark Active',
+                ),
+                _buildDriverPopupItem(
+                  'delete',
+                  Icons.delete_outline_rounded,
+                  'Delete Agent',
+                  isDestructive: true,
                 ),
               ],
+              onSelected: (val) async {
+                if (val == 'edit') {
+                  _showAddEditDriverDialog(context, ref, driver: driver);
+                  return;
+                }
+                if (val == 'toggle') {
+                  final updated = Driver(
+                    id: driver.id,
+                    factoryId: driver.factoryId,
+                    name: driver.name,
+                    phone: driver.phone,
+                    vehicleType: driver.vehicleType,
+                    isActive: !driver.isActive,
+                    currentRoute: driver.currentRoute,
+                    createdAt: driver.createdAt,
+                    updatedAt: DateTime.now(),
+                  );
+                  ref.read(driversProvider.notifier).updateDriver(updated);
+                  return;
+                }
+                if (val == 'delete') {
+                  final confirmed = await _confirmDeleteDriver(context);
+                  if (confirmed == true) {
+                    ref.read(driversProvider.notifier).deleteDriver(driver.id);
+                  }
+                }
+              },
             ),
           ),
         );
       },
+    );
+  }
+
+  PopupMenuItem<String> _buildDriverPopupItem(
+    String value,
+    IconData icon,
+    String label, {
+    bool isDestructive = false,
+  }) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: isDestructive ? AppColors.error : AppColors.textPrimary,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: isDestructive ? AppColors.error : AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _confirmDeleteDriver(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text(
+          'Delete Agent?',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: const Text(
+          'This will permanently remove the agent.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.textLight,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'DELETE',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.error,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1214,4 +1169,156 @@ String _vehicleAsset(VehicleType type) {
     case VehicleType.van:
       return 'assets/images/scooter.webp';
   }
+}
+
+void _showAddEditDriverDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  Driver? driver,
+}) {
+  final isEdit = driver != null;
+  final nameController = TextEditingController(text: driver?.name);
+  final phoneController = TextEditingController(text: driver?.phone);
+  VehicleType selectedVehicle = driver?.vehicleType ?? VehicleType.bike;
+
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text(
+          isEdit ? 'Update Agent' : 'Onboard New Agent',
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundSecondary,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Image.asset(
+                _vehicleAsset(selectedVehicle),
+                fit: BoxFit.contain,
+              ),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Full Legal Name',
+                hintText: 'e.g. Alexander Pierce',
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: phoneController,
+              decoration: const InputDecoration(
+                labelText: 'Contact Number',
+                hintText: '+91 00000 00000',
+              ),
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 20),
+            DropdownButtonFormField<VehicleType>(
+              initialValue: selectedVehicle,
+              items: VehicleType.values
+                  .map(
+                    (v) => DropdownMenuItem(
+                      value: v,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: AppColors.backgroundSecondary,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Image.asset(
+                              _vehicleAsset(v),
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            v.name.toUpperCase(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (val) => setState(() => selectedVehicle = val!),
+              decoration: const InputDecoration(labelText: 'Vehicle Type'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.textLight,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final factoryId =
+                  await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+
+              final newDriver = Driver(
+                id: isEdit ? driver.id : const Uuid().v4(),
+                factoryId: factoryId,
+                name: nameController.text,
+                phone: phoneController.text,
+                vehicleType: selectedVehicle,
+                isActive: driver?.isActive ?? true,
+                currentRoute: driver?.currentRoute,
+                createdAt: driver?.createdAt ?? DateTime.now(),
+                updatedAt: DateTime.now(),
+              );
+              if (isEdit) {
+                ref.read(driversProvider.notifier).updateDriver(newDriver);
+              } else {
+                ref.read(driversProvider.notifier).addDriver(newDriver);
+              }
+              if (context.mounted) Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              isEdit ? 'UPDATE' : 'ONBOARD',
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  ).whenComplete(() {
+    nameController.dispose();
+    phoneController.dispose();
+  });
 }
