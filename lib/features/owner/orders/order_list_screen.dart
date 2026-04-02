@@ -717,9 +717,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             ? order.assignedDriver!.trim()
             : 'Unassigned');
     final isOneTime = order.orderType == OrderType.oneTime;
-    final orderTypeBannerText = isOneTime
-        ? 'One-time order for ${order.customerName}'
-        : 'Order for ${order.customerName}';
+    final orderTypeLabel = isOneTime ? 'One-time Order' : 'Daily Order';
     final orderTypeIcon = isOneTime
         ? Icons.bolt_rounded
         : Icons.calendar_today_rounded;
@@ -968,37 +966,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         ),
                       ],
                       const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: orderTypeBg,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              orderTypeIcon,
-                              size: 18,
-                              color: orderTypeAccent,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                orderTypeBannerText,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: orderTypeAccent,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.1,
-                                ),
-                              ),
-                            ),
-                          ],
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: _InfoChip(
+                          icon: orderTypeIcon,
+                          label: orderTypeLabel,
+                          tone: orderTypeAccent,
+                          background: orderTypeBg,
                         ),
                       ),
                     ],
@@ -1076,16 +1050,32 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _InfoChip({required this.icon, required this.label});
+  final Color? tone;
+  final Color? background;
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    this.tone,
+    this.background,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final accent = tone;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color:
+            background ??
+            (accent == null
+                ? AppColors.surface
+                : accent.withValues(alpha: 0.10)),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: accent == null
+              ? AppColors.border
+              : accent.withValues(alpha: 0.22),
+        ),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
@@ -1101,18 +1091,20 @@ class _InfoChip extends StatelessWidget {
             width: 22,
             height: 22,
             decoration: BoxDecoration(
-              color: AppColors.backgroundSecondary,
+              color: accent == null
+                  ? AppColors.backgroundSecondary
+                  : accent.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Icon(icon, size: 13, color: AppColors.textLight),
+            child: Icon(icon, size: 13, color: accent ?? AppColors.textLight),
           ),
           const SizedBox(width: 8),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: accent ?? AppColors.textSecondary,
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.1,
