@@ -717,7 +717,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             ? order.assignedDriver!.trim()
             : 'Unassigned');
     final isOneTime = order.orderType == OrderType.oneTime;
-    final orderTypeLabel = isOneTime ? 'One-time Order' : 'Daily Order';
+    final orderTypeLabel = isOneTime ? 'ONE-TIME' : 'DAILY';
     final orderTypeIcon = isOneTime
         ? Icons.bolt_rounded
         : Icons.calendar_today_rounded;
