@@ -39,11 +39,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final foodItemsLoaded = ref.watch(foodItemsLoadedProvider);
     final routesLoaded = ref.watch(routesLoadedProvider);
     final selection = _computeSelectionSummary(foodItems);
+    final hasSelectedUnits = _selectedItems.values.any((v) => v > 0);
 
     final canContinue = switch (_currentStep) {
       0 => _selectedCustomer != null,
-      1 => selection.totalUnits > 0,
-      _ => _selectedCustomer != null && selection.totalUnits > 0,
+      1 => hasSelectedUnits,
+      _ => _selectedCustomer != null && hasSelectedUnits,
     };
     final helperText = canContinue
         ? null
@@ -147,8 +148,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       onPressed: _isSubmitting
                           ? null
                           : _currentStep == 0
-                              ? () => context.pop()
-                              : () => setState(() => _currentStep -= 1),
+                          ? () => context.pop()
+                          : () => setState(() => _currentStep -= 1),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: AppColors.border),
                         foregroundColor: AppColors.textPrimary,
@@ -170,7 +171,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       onPressed: (_isSubmitting || !canContinue)
                           ? () {
                               if (_currentStep < 2) {
-                              FocusScope.of(context).unfocus();
+                                FocusScope.of(context).unfocus();
                                 setState(() => _currentStep += 1);
                               } else {
                                 _submitOrder();
@@ -194,7 +195,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               ),
                             )
                           : Text(
-                              _currentStep == 2 ? 'Authorize Order' : 'Continue',
+                              _currentStep == 2
+                                  ? 'Authorize Order'
+                                  : 'Continue',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0.2,
@@ -710,180 +713,36 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               ),
             ],
           ),
-        ],
-        if (selected.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.border),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadow,
-                  blurRadius: 16,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Selected items',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '${selected.length}',
-                      style: const TextStyle(
-                        color: AppColors.textLight,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () => setState(() {
-                        _selectedItems = {};
-                        _customUnitPrices = {};
-                        _showSelectedOnly = false;
-                      }),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text(
-                        'Clear',
-                        style: TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: (selected.length * 64.0).clamp(64.0, 200.0),
-                  child: ListView.separated(
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: selected.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1, color: AppColors.divider),
-                    itemBuilder: (context, index) {
-                      final (item, qty) = selected[index];
-                      final isCustom = _customUnitPrices.containsKey(item.id);
-                      final unitPrice = _effectiveUnitPrice(item);
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          '₹${NumberFormat.decimalPattern().format(unitPrice)} / unit',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: AppColors.textLight,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      TextButton(
-                                        onPressed: () =>
-                                            _showCustomPriceDialog(item),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: isCustom
-                                              ? AppColors.primary
-                                              : AppColors.textSecondary,
-                                          padding: EdgeInsets.zero,
-                                          tapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        child: Text(
-                                          isCustom ? 'Custom' : 'Add custom',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _buildQtyBtn(
-                                    Icons.remove_rounded,
-                                    qty > 0
-                                        ? () => setState(
-                                            () => _selectedItems[item.id] =
-                                                qty - 1,
-                                          )
-                                        : null,
-                                  ),
-                                  SizedBox(
-                                    width: 32,
-                                    child: Text(
-                                      qty.toString(),
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 15,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                  _buildQtyBtn(
-                                    Icons.add_rounded,
-                                    () => setState(
-                                      () => _selectedItems[item.id] = qty + 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${selected.length} selected',
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
                   ),
                 ),
-              ],
-            ),
+              ),
+              TextButton(
+                onPressed: () => setState(() {
+                  _selectedItems = {};
+                  _customUnitPrices = {};
+                  _showSelectedOnly = false;
+                }),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Clear',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
           ),
         ],
         const SizedBox(height: 20),
@@ -985,9 +844,21 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           _buildQtyBtn(
                             Icons.remove_rounded,
                             qty > 0
-                                ? () => setState(
-                                    () => _selectedItems[item.id] = qty - 1,
-                                  )
+                                ? () => setState(() {
+                                    final next = qty - 1;
+                                    if (next <= 0) {
+                                      _selectedItems.remove(item.id);
+                                      _customUnitPrices.remove(item.id);
+                                      if (_showSelectedOnly &&
+                                          _selectedItems.values.every(
+                                            (v) => v <= 0,
+                                          )) {
+                                        _showSelectedOnly = false;
+                                      }
+                                    } else {
+                                      _selectedItems[item.id] = next;
+                                    }
+                                  })
                                 : null,
                           ),
                           SizedBox(
