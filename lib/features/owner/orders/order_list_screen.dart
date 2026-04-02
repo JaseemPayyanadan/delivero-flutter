@@ -719,7 +719,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final isOneTime = order.orderType == OrderType.oneTime;
     final orderTypeBannerText = isOneTime
         ? 'One-time order for ${order.customerName}'
-        : 'Daily order for ${order.customerName}';
+        : 'Order for ${order.customerName}';
     final orderTypeIcon = isOneTime
         ? Icons.bolt_rounded
         : Icons.calendar_today_rounded;
