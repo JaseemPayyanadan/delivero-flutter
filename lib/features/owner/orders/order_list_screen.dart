@@ -726,6 +726,21 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         ? AppColors.warningLighter.withValues(alpha: 0.6)
         : AppColors.successLighter.withValues(alpha: 0.6);
 
+    final unitsLabel = '$itemCount U';
+    final statusLabel = switch (order.status) {
+      OrderStatus.pending => 'PEND',
+      OrderStatus.confirmed => 'CONF',
+      OrderStatus.preparing => 'PREP',
+      OrderStatus.ready => 'READY',
+      OrderStatus.delivered => 'DLVD',
+      OrderStatus.cancelled => 'CNCL',
+    };
+    final paymentLabel = switch (paymentStatus) {
+      PaymentStatus.paid => 'PAID',
+      PaymentStatus.partial => 'PART',
+      PaymentStatus.unpaid => 'DUE',
+    };
+
     final previewItems = [...order.items]
       ..sort((a, b) => b.quantity.compareTo(a.quantity));
     final shownItems = previewItems.take(3).toList();
@@ -735,21 +750,21 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 24,
-            offset: Offset(0, 12),
+            blurRadius: 16,
+            offset: Offset(0, 8),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(22),
         child: Column(
           children: [
             Material(
@@ -757,7 +772,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               child: InkWell(
                 onTap: () => context.push('/owner/orders/${order.id}'),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -765,12 +780,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
+                              horizontal: 8,
+                              vertical: 5,
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.backgroundSecondary,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                               border: Border.all(color: AppColors.border),
                             ),
                             child: Text(
@@ -800,7 +815,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           Text(
                             '₹${NumberFormat.decimalPattern().format(order.totalAmount)}',
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 17,
                               fontWeight: FontWeight.w900,
                               color: AppColors.textPrimary,
                               letterSpacing: -0.4,
@@ -808,19 +823,19 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Text(
                         order.customerName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
-                          fontSize: 18,
+                          fontSize: 17,
                           color: AppColors.textPrimary,
                           letterSpacing: -0.4,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           const Icon(
@@ -862,15 +877,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                          horizontal: 10,
+                          vertical: 8,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(14),
                           border: Border.all(color: AppColors.border),
                         ),
                         child: SingleChildScrollView(
@@ -891,7 +906,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                         ? '${item.foodItemName} ×${item.quantity}'
                                         : item.foodItemName,
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: 8),
                                 ],
                                 if (remainingItems > 0)
                                   _InfoChip(
@@ -905,9 +920,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
                       Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: const BoxDecoration(
                           border: Border(
                             top: BorderSide(color: AppColors.border),
@@ -918,14 +933,14 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             Expanded(
                               child: _FeatureColumn(
                                 icon: Icons.inventory_2_outlined,
-                                value: '$itemCount Units',
+                                value: unitsLabel,
                               ),
                             ),
                             const _FeatureDivider(),
                             Expanded(
                               child: _FeatureColumn(
                                 icon: Icons.local_shipping_outlined,
-                                value: order.status.name.toUpperCase(),
+                                value: statusLabel,
                                 valueColor: statusColor,
                               ),
                             ),
@@ -933,7 +948,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             Expanded(
                               child: _FeatureColumn(
                                 icon: Icons.payments_outlined,
-                                value: paymentStatus.name.toUpperCase(),
+                                value: paymentLabel,
                                 valueColor: paymentColor,
                               ),
                             ),
@@ -941,7 +956,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         ),
                       ),
                       if (hasNotes) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         Row(
                           children: [
                             const Icon(
@@ -965,7 +980,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           ],
                         ),
                       ],
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Align(
                         alignment: Alignment.centerLeft,
                         child: _InfoChip(
