@@ -60,7 +60,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: isEmpty ? 190.0 : 278.0,
+            expandedHeight: isEmpty ? 190.0 : 332.0,
             floating: false,
             pinned: true,
             backgroundColor: AppColors.backgroundPrimary,
@@ -490,15 +490,36 @@ class _KpiStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 88,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: children.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 12),
-        itemBuilder: (context, index) => children[index],
-      ),
+    final items = children.length > 4 ? children.take(4).toList() : children;
+    if (items.length <= 2) {
+      return Row(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            Expanded(child: items[i]),
+            if (i != items.length - 1) const SizedBox(width: 12),
+          ],
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: items[0]),
+            const SizedBox(width: 12),
+            Expanded(child: items[1]),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: items[2]),
+            const SizedBox(width: 12),
+            Expanded(child: items[3]),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -540,8 +561,8 @@ class _KpiCard extends StatelessWidget {
     }
 
     return Container(
-      width: 180,
-      padding: const EdgeInsets.all(14),
+      height: 86,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
