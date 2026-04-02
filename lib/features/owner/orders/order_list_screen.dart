@@ -381,6 +381,29 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               floating: true,
               pinned: true,
               actions: [
+                IconButton(
+                  onPressed: () => context.push('/owner/orders/create'),
+                  icon: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AppColors.shadow,
+                          blurRadius: 12,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ),
                 if (filteredOrders.isNotEmpty)
                   IconButton(
                     onPressed: () => _showPackagingSummary(filteredOrders),
@@ -419,20 +442,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 ),
               ),
           ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/owner/orders/create'),
-        backgroundColor: AppColors.secondary,
-        elevation: 8,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'New Order',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.5,
-          ),
         ),
       ),
     );
