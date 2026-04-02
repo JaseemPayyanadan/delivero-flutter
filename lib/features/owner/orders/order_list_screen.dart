@@ -454,41 +454,68 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final deliveredCount = filteredOrders
         .where((o) => o.status == OrderStatus.delivered)
         .length;
+    final totalValue = filteredOrders.fold<double>(
+      0,
+      (sum, o) => sum + o.totalAmount,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: SizedBox(
-        height: 86,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          itemCount: 3,
-          separatorBuilder: (context, index) => const SizedBox(width: 12),
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return _buildStatCard(
-                'Total Orders',
-                filteredOrders.length.toString(),
-                AppColors.primary,
-                Icons.receipt_long_rounded,
-              );
-            }
-            if (index == 1) {
-              return _buildStatCard(
-                'Pending',
-                pendingCount.toString(),
-                AppColors.warning,
-                Icons.schedule_rounded,
-              );
-            }
-            return _buildStatCard(
-              'Fulfilled',
-              deliveredCount.toString(),
-              AppColors.success,
-              Icons.check_circle_rounded,
-            );
-          },
-        ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Revenue',
+                  '₹${NumberFormat.compact().format(totalValue)}',
+                  AppColors.primary,
+                  Icons.currency_rupee_rounded,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Orders Today',
+                  filteredOrders
+                      .where((o) {
+                        final d = o.orderDate;
+                        final now = DateTime.now();
+                        return d.year == now.year &&
+                            d.month == now.month &&
+                            d.day == now.day;
+                      })
+                      .length
+                      .toString(),
+                  AppColors.secondary,
+                  Icons.today_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Pending',
+                  pendingCount.toString(),
+                  AppColors.warning,
+                  Icons.schedule_rounded,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Fulfilled',
+                  deliveredCount.toString(),
+                  AppColors.success,
+                  Icons.check_circle_rounded,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -500,8 +527,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     IconData icon,
   ) {
     return Container(
-      width: 170,
-      padding: const EdgeInsets.all(14),
+      height: 86,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
