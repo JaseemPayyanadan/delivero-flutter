@@ -63,6 +63,32 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
               expandedHeight: 140,
               floating: true,
               pinned: true,
+              actions: [
+                IconButton(
+                  onPressed: () => _showAddDialog(),
+                  icon: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AppColors.shadow,
+                          blurRadius: 12,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+              ],
             ),
             SliverToBoxAdapter(
               child: Padding(
@@ -120,21 +146,6 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
               ),
               _DriverListTab(drivers: drivers, driversLoaded: driversLoaded),
             ],
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddDialog(),
-        backgroundColor: AppColors.secondary,
-        elevation: 8,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text(
-          _tabController.index == 0 ? 'NEW ROUTE' : 'REGISTER AGENT',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1,
-            fontSize: 12,
           ),
         ),
       ),
@@ -259,6 +270,21 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 72,
+                height: 72,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Image.asset(
+                  _vehicleAsset(selectedVehicle),
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 18),
               TextField(
                 controller: nameController,
                 decoration: const InputDecoration(
@@ -282,18 +308,37 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
                     .map(
                       (v) => DropdownMenuItem(
                         value: v,
-                        child: Text(
-                          v.name.toUpperCase(),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.backgroundSecondary,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Image.asset(
+                                _vehicleAsset(v),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              v.name.toUpperCase(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     )
                     .toList(),
                 onChanged: (val) => setState(() => selectedVehicle = val!),
-                decoration: const InputDecoration(labelText: 'Asset Type'),
+                decoration: const InputDecoration(labelText: 'Vehicle Type'),
               ),
             ],
           ),
@@ -991,6 +1036,8 @@ class _DriverListTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final routes = ref.watch(routesProvider);
+    final routesLoaded = ref.watch(routesLoadedProvider);
     if (!driversLoaded && drivers.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -1007,6 +1054,9 @@ class _DriverListTab extends ConsumerWidget {
       itemCount: drivers.length,
       itemBuilder: (context, index) {
         final driver = drivers[index];
+        final routeName = !routesLoaded || driver.currentRoute == null
+            ? null
+            : routes.firstWhereOrNull((r) => r.id == driver.currentRoute)?.name;
         return Container(
           margin: const EdgeInsets.only(bottom: 20),
           decoration: BoxDecoration(
@@ -1023,14 +1073,13 @@ class _DriverListTab extends ConsumerWidget {
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.all(20),
-            leading: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: AppColors.info.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
+            leading: SizedBox(
+              width: 60,
+              height: 60,
+              child: Image.asset(
+                _vehicleAsset(driver.vehicleType),
+                fit: BoxFit.contain,
               ),
-              child: const Icon(Icons.person_rounded, color: AppColors.info),
             ),
             title: Text(
               driver.name,
@@ -1063,6 +1112,31 @@ class _DriverListTab extends ConsumerWidget {
                     ),
                   ],
                 ),
+                if (routeName != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.alt_route_rounded,
+                        size: 12,
+                        color: AppColors.textLight,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          routeName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -1084,25 +1158,6 @@ class _DriverListTab extends ConsumerWidget {
                   ),
                 ),
               ],
-            ),
-            trailing: Switch.adaptive(
-              value: driver.isActive,
-              onChanged: (val) {
-                final updatedDriver = Driver(
-                  id: driver.id,
-                  factoryId: driver.factoryId,
-                  name: driver.name,
-                  phone: driver.phone,
-                  vehicleType: driver.vehicleType,
-                  isActive: val,
-                  currentRoute: driver.currentRoute,
-                  createdAt: driver.createdAt,
-                  updatedAt: DateTime.now(),
-                );
-                ref.read(driversProvider.notifier).updateDriver(updatedDriver);
-              },
-              activeThumbColor: AppColors.success,
-              activeTrackColor: AppColors.success.withValues(alpha: 0.4),
             ),
           ),
         );
@@ -1146,4 +1201,17 @@ Widget _buildEmptyState(IconData icon, String title, String subtitle) {
       ),
     ),
   );
+}
+
+String _vehicleAsset(VehicleType type) {
+  switch (type) {
+    case VehicleType.bike:
+      return 'assets/images/scooty.png';
+    case VehicleType.scooter:
+      return 'assets/images/scooter.webp';
+    case VehicleType.auto:
+      return 'assets/images/auto.png';
+    case VehicleType.van:
+      return 'assets/images/scooter.webp';
+  }
 }
