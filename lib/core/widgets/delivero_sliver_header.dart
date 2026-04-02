@@ -54,6 +54,8 @@ class DeliveroSliverHeader extends StatelessWidget {
   final bool centerTitle;
   final List<Widget>? actions;
   final EdgeInsetsGeometry titlePadding;
+  final Color backgroundColor;
+  final Gradient? backgroundGradient;
 
   const DeliveroSliverHeader({
     super.key,
@@ -68,6 +70,8 @@ class DeliveroSliverHeader extends StatelessWidget {
       horizontal: 24,
       vertical: 16,
     ),
+    this.backgroundColor = AppColors.backgroundPrimary,
+    this.backgroundGradient,
   });
 
   @override
@@ -77,7 +81,7 @@ class DeliveroSliverHeader extends StatelessWidget {
       floating: floating,
       pinned: pinned,
       centerTitle: centerTitle,
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: backgroundColor,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       systemOverlayStyle: AppTheme.systemOverlayStyle,
@@ -85,6 +89,12 @@ class DeliveroSliverHeader extends StatelessWidget {
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: titlePadding,
         centerTitle: centerTitle,
+        background:
+            backgroundGradient == null
+                ? null
+                : Container(
+                    decoration: BoxDecoration(gradient: backgroundGradient),
+                  ),
         title: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

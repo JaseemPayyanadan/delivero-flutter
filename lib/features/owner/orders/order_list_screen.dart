@@ -381,6 +381,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               expandedHeight: 140,
               floating: true,
               pinned: true,
+              backgroundGradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.14),
+                  AppColors.secondary.withValues(alpha: 0.10),
+                  AppColors.backgroundPrimary,
+                ],
+              ),
               actions: [
                 PrimarySquareIconButton(
                   icon: Icons.add_rounded,
@@ -513,7 +522,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       height: 86,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [color.withValues(alpha: 0.10), AppColors.surface],
+        ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
@@ -530,7 +543,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: Colors.white.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(icon, size: 22, color: color),
@@ -577,72 +590,94 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     List<String> availableRouteIds,
   ) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            controller: _searchController,
-            onChanged: (val) => setState(() => _searchQuery = val),
-            decoration: InputDecoration(
-              hintText: 'Search by ID or Customer...',
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                color: AppColors.textLight,
-              ),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 18),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() => _searchQuery = '');
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: AppColors.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 16,
-              ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 16,
+                  offset: Offset(0, 10),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'LOGISTICS ROUTES',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textLight,
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildRouteChip(null, 'All Routes'),
-                ...availableRouteIds
-                    .sortedBy(
-                      (id) =>
-                          routes.firstWhereOrNull((r) => r.id == id)?.name ??
-                          '',
-                    )
-                    .map((routeId) {
-                      final route = routes.firstWhereOrNull(
-                        (r) => r.id == routeId,
-                      );
-                      return _buildRouteChip(
-                        routeId,
-                        route?.name ?? 'Unknown Route',
-                      );
-                    }),
+                TextField(
+                  controller: _searchController,
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                  decoration: InputDecoration(
+                    hintText: 'Search by ID or Customer...',
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.textLight,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AppColors.backgroundSecondary,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'LOGISTICS ROUTES',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textLight,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _buildRouteChip(null, 'All Routes'),
+                      ...availableRouteIds
+                          .sortedBy(
+                            (id) =>
+                                routes
+                                    .firstWhereOrNull((r) => r.id == id)
+                                    ?.name ??
+                                '',
+                          )
+                          .map((routeId) {
+                            final route = routes.firstWhereOrNull(
+                              (r) => r.id == routeId,
+                            );
+                            return _buildRouteChip(
+                              routeId,
+                              route?.name ?? 'Unknown Route',
+                            );
+                          }),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -733,7 +768,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
+        border: Border(
+          left: BorderSide(color: statusColor.withValues(alpha: 0.9), width: 3),
+          top: const BorderSide(color: AppColors.border),
+          right: const BorderSide(color: AppColors.border),
+          bottom: const BorderSide(color: AppColors.border),
+        ),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
