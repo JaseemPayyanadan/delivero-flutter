@@ -704,7 +704,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final paymentColor = _getPaymentColor(paymentStatus);
     final itemCount = order.items.fold(0, (sum, item) => sum + item.quantity);
     final shortId = order.id.substring(0, 8).toUpperCase();
-    final hasNotes = (order.notes ?? '').trim().isNotEmpty;
     final orderDateLabel = DateFormat('MMM d • h:mm a').format(order.orderDate);
     final driver = drivers.firstWhereOrNull(
       (d) => d.id == order.assignedDriver,
@@ -722,44 +721,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         (order.assignedRoute?.trim().isNotEmpty == true
             ? order.assignedRoute!.trim()
             : 'Unassigned');
-
-    final deliveryChipLabel = switch (order.status) {
-      OrderStatus.delivered => 'Delivered',
-      OrderStatus.cancelled => 'Cancelled',
-      _ => 'Pending Delivery',
-    };
-    final deliveryChipTone = switch (order.status) {
-      OrderStatus.delivered => AppColors.success,
-      OrderStatus.cancelled => AppColors.error,
-      _ => AppColors.warning,
-    };
-    final deliveryChipBg = switch (order.status) {
-      OrderStatus.delivered => AppColors.successLighter,
-      OrderStatus.cancelled => AppColors.errorLighter,
-      _ => AppColors.warningLighter,
-    }.withValues(alpha: 0.65);
-    final deliveryChipIcon = switch (order.status) {
-      OrderStatus.delivered => Icons.check_circle_rounded,
-      OrderStatus.cancelled => Icons.cancel_rounded,
-      _ => Icons.local_shipping_outlined,
-    };
-
-    final paymentChipLabel = switch (paymentStatus) {
-      PaymentStatus.paid => 'Paid',
-      PaymentStatus.partial => 'Partial',
-      PaymentStatus.unpaid => 'Payment Due',
-    };
-    final paymentChipTone = paymentColor;
-    final paymentChipBg = switch (paymentStatus) {
-      PaymentStatus.paid => AppColors.successLighter,
-      PaymentStatus.partial => AppColors.warningLighter,
-      PaymentStatus.unpaid => AppColors.errorLighter,
-    }.withValues(alpha: 0.65);
-    final paymentChipIcon = switch (paymentStatus) {
-      PaymentStatus.paid => Icons.check_rounded,
-      PaymentStatus.partial => Icons.payments_outlined,
-      PaymentStatus.unpaid => Icons.currency_rupee_rounded,
-    };
 
     final unitsLabel = '$itemCount U';
     final statusLabel = switch (order.status) {
@@ -870,35 +831,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           letterSpacing: -0.4,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          _InfoChip(
-                            icon: deliveryChipIcon,
-                            label: deliveryChipLabel,
-                            tone: deliveryChipTone,
-                            background: deliveryChipBg,
-                          ),
-                          _InfoChip(
-                            icon: paymentChipIcon,
-                            label: paymentChipLabel,
-                            tone: paymentChipTone,
-                            background: paymentChipBg,
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: 12),
-                      Container(
+                      Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
+                          horizontal: 2,
+                          vertical: 2,
                         ),
                         child: Row(
                           children: [
@@ -1014,31 +951,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           ],
                         ),
                       ),
-                      if (hasNotes) ...[
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.sticky_note_2_outlined,
-                              size: 16,
-                              color: AppColors.textLight,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                order.notes!.trim(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -1104,68 +1016,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           const Text(
             'Try adjusting your filters or search terms',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color? tone;
-  final Color? background;
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    this.tone,
-    this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = tone;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color:
-            background ??
-            (accent == null
-                ? AppColors.surface
-                : accent.withValues(alpha: 0.10)),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: accent == null
-              ? AppColors.border
-              : accent.withValues(alpha: 0.22),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: accent == null
-                  ? AppColors.backgroundSecondary
-                  : accent.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Icon(icon, size: 13, color: accent ?? AppColors.textLight),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: accent ?? AppColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.1,
-            ),
           ),
         ],
       ),

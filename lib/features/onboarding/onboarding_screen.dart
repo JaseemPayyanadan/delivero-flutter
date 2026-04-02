@@ -83,8 +83,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       SetupStep(
         id: 'orders',
         title: 'Create Orders',
-        description:
-            'Start creating orders for your customers. Daily orders or one-time orders.',
+        description: 'Start creating orders for your customers.',
         icon: Icons.receipt_long_rounded,
         isCompleted: orders.isNotEmpty,
         actionLabel: 'Create Order',
