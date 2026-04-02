@@ -6,6 +6,7 @@ import 'package:collection/collection.dart';
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/widgets/primary_square_icon_button.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/driver.dart';
 
@@ -64,28 +65,9 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
               floating: true,
               pinned: true,
               actions: [
-                IconButton(
+                PrimarySquareIconButton(
+                  icon: Icons.add_rounded,
                   onPressed: () => _showAddDialog(),
-                  icon: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppColors.shadow,
-                          blurRadius: 12,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
                 ),
                 const SizedBox(width: 16),
               ],
@@ -424,7 +406,7 @@ class _RouteListTab extends ConsumerWidget {
     WidgetRef ref,
     DeliveryRoute route,
   ) {
-    return PopupMenuButton(
+    return PopupMenuButton<String>(
       icon: const Icon(
         Icons.more_vert_rounded,
         size: 20,
@@ -432,9 +414,9 @@ class _RouteListTab extends ConsumerWidget {
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       itemBuilder: (context) => [
-        _buildPopupItem('assign', Icons.person_add_rounded, 'Assign Agent'),
-        _buildPopupItem('edit', Icons.edit_rounded, 'Modify Route'),
-        _buildPopupItem(
+        _menuItem('assign', Icons.person_add_rounded, 'Assign Agent'),
+        _menuItem('edit', Icons.edit_rounded, 'Modify Route'),
+        _menuItem(
           'delete',
           Icons.delete_outline_rounded,
           'Decommission',
@@ -446,35 +428,6 @@ class _RouteListTab extends ConsumerWidget {
         if (val == 'edit') _showEditRouteDialog(context, ref, route);
         if (val == 'delete') _confirmDeleteRoute(context, ref, route);
       },
-    );
-  }
-
-  PopupMenuItem _buildPopupItem(
-    String value,
-    IconData icon,
-    String label, {
-    bool isDestructive = false,
-  }) {
-    return PopupMenuItem(
-      value: value,
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: isDestructive ? AppColors.error : AppColors.textPrimary,
-          ),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: isDestructive ? AppColors.error : AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1003,15 +956,15 @@ class _DriverListTab extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(16),
               ),
               itemBuilder: (context) => [
-                _buildDriverPopupItem('edit', Icons.edit_rounded, 'Edit Agent'),
-                _buildDriverPopupItem(
+                _menuItem('edit', Icons.edit_rounded, 'Edit Agent'),
+                _menuItem(
                   'toggle',
                   driver.isActive
                       ? Icons.pause_circle_outline_rounded
                       : Icons.play_circle_outline_rounded,
                   driver.isActive ? 'Mark Inactive' : 'Mark Active',
                 ),
-                _buildDriverPopupItem(
+                _menuItem(
                   'delete',
                   Icons.delete_outline_rounded,
                   'Delete Agent',
@@ -1049,35 +1002,6 @@ class _DriverListTab extends ConsumerWidget {
           ),
         );
       },
-    );
-  }
-
-  PopupMenuItem<String> _buildDriverPopupItem(
-    String value,
-    IconData icon,
-    String label, {
-    bool isDestructive = false,
-  }) {
-    return PopupMenuItem(
-      value: value,
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: isDestructive ? AppColors.error : AppColors.textPrimary,
-          ),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: isDestructive ? AppColors.error : AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1154,6 +1078,35 @@ Widget _buildEmptyState(IconData icon, String title, String subtitle) {
           ),
         ],
       ),
+    ),
+  );
+}
+
+PopupMenuItem<String> _menuItem(
+  String value,
+  IconData icon,
+  String label, {
+  bool isDestructive = false,
+}) {
+  return PopupMenuItem(
+    value: value,
+    child: Row(
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: isDestructive ? AppColors.error : AppColors.textPrimary,
+        ),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: isDestructive ? AppColors.error : AppColors.textPrimary,
+          ),
+        ),
+      ],
     ),
   );
 }

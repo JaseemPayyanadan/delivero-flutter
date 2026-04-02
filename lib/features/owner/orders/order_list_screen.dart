@@ -11,6 +11,7 @@ import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/widgets/primary_square_icon_button.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 
@@ -381,28 +382,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               floating: true,
               pinned: true,
               actions: [
-                IconButton(
+                PrimarySquareIconButton(
+                  icon: Icons.add_rounded,
+                  color: AppColors.secondary,
                   onPressed: () => context.push('/owner/orders/create'),
-                  icon: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppColors.shadow,
-                          blurRadius: 12,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
                 ),
                 if (filteredOrders.isNotEmpty)
                   IconButton(
@@ -433,7 +416,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 80),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final order = filteredOrders[index];
@@ -460,7 +443,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 8),
       child: Column(
         children: [
           Row(
@@ -594,7 +577,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     List<String> availableRouteIds,
   ) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -628,7 +611,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           const Text(
             'LOGISTICS ROUTES',
             style: TextStyle(

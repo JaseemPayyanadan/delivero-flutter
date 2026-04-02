@@ -169,15 +169,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     flex: 2,
                     child: FilledButton(
                       onPressed: (_isSubmitting || !canContinue)
-                          ? () {
+                          ? null
+                          : () {
                               if (_currentStep < 2) {
                                 FocusScope.of(context).unfocus();
                                 setState(() => _currentStep += 1);
                               } else {
                                 _submitOrder();
                               }
-                            }
-                          : null,
+                            },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
