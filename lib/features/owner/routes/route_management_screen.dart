@@ -10,7 +10,8 @@ import '../../../data/models/delivery_route.dart';
 import '../../../data/models/driver.dart';
 
 class RouteManagementScreen extends ConsumerStatefulWidget {
-  const RouteManagementScreen({super.key});
+  final int initialTabIndex;
+  const RouteManagementScreen({super.key, this.initialTabIndex = 0});
 
   @override
   ConsumerState<RouteManagementScreen> createState() =>
@@ -24,7 +25,11 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 1),
+    );
   }
 
   @override

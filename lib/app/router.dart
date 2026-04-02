@@ -121,7 +121,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: 'routes',
-            builder: (context, state) => const RouteManagementScreen(),
+            builder: (context, state) {
+              final tab = state.uri.queryParameters['tab'];
+              final initialTabIndex = tab == 'drivers' ? 1 : 0;
+              return RouteManagementScreen(initialTabIndex: initialTabIndex);
+            },
           ),
           GoRoute(
             path: 'food-items',
