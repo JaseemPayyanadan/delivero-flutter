@@ -13,26 +13,36 @@ class FirebaseService {
       return;
     }
 
-    // Manual initialization for development based on .env.local
-    // In production, use flutterfire configure to generate firebase_options.dart
-    // Note: On Android, if google-services.json is present, it will initialize automatically.
-    const webOptions = FirebaseOptions(
-      apiKey: 'AIzaSyBtd6op8KUKyAhyHor_3kM4sOvYwkBIe4M',
-      authDomain: 'delivero-48322.firebaseapp.com',
-      projectId: 'delivero-48322',
-      storageBucket: 'delivero-48322.firebasestorage.app',
-      messagingSenderId: '246967732090',
-      appId: '1:246967732090:web:7ad49c8e94ee32584e38c3',
-      measurementId: 'G-TG2E932BCK',
-    );
+    final FirebaseOptions? webOptions = kIsWeb
+        ? FirebaseOptions(
+            apiKey: const String.fromEnvironment('FIREBASE_WEB_API_KEY'),
+            authDomain: const String.fromEnvironment(
+              'FIREBASE_WEB_AUTH_DOMAIN',
+            ),
+            projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+            storageBucket: const String.fromEnvironment(
+              'FIREBASE_STORAGE_BUCKET',
+            ),
+            messagingSenderId: const String.fromEnvironment(
+              'FIREBASE_MESSAGING_SENDER_ID',
+            ),
+            appId: const String.fromEnvironment('FIREBASE_WEB_APP_ID'),
+            measurementId: const String.fromEnvironment(
+              'FIREBASE_WEB_MEASUREMENT_ID',
+            ),
+          )
+        : null;
 
-    await Firebase.initializeApp(
-      options: kIsWeb
-          ? webOptions
-          : defaultTargetPlatform == TargetPlatform.android
-              ? null
-              : webOptions,
-    );
+    if (kIsWeb) {
+      final o = webOptions!;
+      if (o.apiKey.isEmpty || o.projectId.isEmpty || o.appId.isEmpty) {
+        throw FlutterError(
+          'Missing Firebase web config. Provide --dart-define values for FIREBASE_WEB_API_KEY, FIREBASE_PROJECT_ID, FIREBASE_WEB_APP_ID.',
+        );
+      }
+    }
+
+    await Firebase.initializeApp(options: webOptions);
 
     if (kDebugMode) {
       print('[Firebase] Initialized successfully');

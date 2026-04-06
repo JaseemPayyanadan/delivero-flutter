@@ -313,19 +313,31 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final orders = ref.watch(ordersProvider);
     final ordersLoaded = ref.watch(ordersLoadedProvider);
     final routes = ref.watch(routesProvider);
+    final routesLoaded = ref.watch(routesLoadedProvider);
     final reports = ref.watch(reportsProvider);
 
     // Get unique route IDs from existing orders
     final availableRouteIds = orders
         .map((o) {
+          final raw = o.assignedRoute?.trim();
+          if (raw == null || raw.isEmpty) return null;
           final route = routes.firstWhereOrNull(
-            (r) => r.id == o.assignedRoute || r.name == o.assignedRoute,
+            (r) => r.id == raw || r.name == raw,
           );
-          return route?.id;
+          return route?.id ?? raw;
         })
         .whereType<String>()
         .toSet()
         .toList();
+
+    if (routesLoaded &&
+        _selectedRouteId != null &&
+        !availableRouteIds.contains(_selectedRouteId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _selectedRouteId = null);
+      });
+    }
 
     final filteredOrders = orders.where((order) {
       final matchesSearch =
@@ -338,10 +350,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       final route = routes.firstWhereOrNull(
         (r) => r.id == order.assignedRoute || r.name == order.assignedRoute,
       );
+      final selectedRouteId = routesLoaded ? _selectedRouteId : null;
       final matchesRoute =
-          _selectedRouteId == null ||
-          order.assignedRoute == _selectedRouteId ||
-          route?.id == _selectedRouteId;
+          selectedRouteId == null ||
+          order.assignedRoute == selectedRouteId ||
+          route?.id == selectedRouteId;
 
       return matchesSearch && matchesRoute;
     }).toList();
@@ -410,7 +423,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             SliverToBoxAdapter(
               child: _buildQuickStats(reports, filteredOrders),
             ),
-            SliverToBoxAdapter(child: _buildFilters(routes, availableRouteIds)),
+            SliverToBoxAdapter(
+              child: _buildFilters(
+                routes,
+                availableRouteIds,
+                routesLoaded: routesLoaded,
+              ),
+            ),
             if (!ordersLoaded && orders.isEmpty)
               const SliverFillRemaining(
                 hasScrollBody: false,
@@ -518,35 +537,42 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     Color color,
     IconData icon,
   ) {
+    final Color tint;
+    if (color == AppColors.primary) {
+      tint = AppColors.primaryLighter;
+    } else if (color == AppColors.success) {
+      tint = AppColors.successLighter;
+    } else if (color == AppColors.warning) {
+      tint = AppColors.warningLighter;
+    } else {
+      tint = AppColors.backgroundSecondary;
+    }
+
     return Container(
       height: 86,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [color.withValues(alpha: 0.10), AppColors.surface],
-        ),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 14,
-            offset: Offset(0, 8),
+            blurRadius: 16,
+            offset: Offset(0, 10),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(16),
+              color: tint.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, size: 22, color: color),
+            child: Icon(icon, size: 20, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -570,11 +596,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 20,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    color: color,
-                    letterSpacing: -0.4,
+                    letterSpacing: -0.6,
                   ),
                 ),
               ],
@@ -587,8 +613,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
   Widget _buildFilters(
     List<DeliveryRoute> routes,
-    List<String> availableRouteIds,
-  ) {
+    List<String> availableRouteIds, {
+    required bool routesLoaded,
+  }) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
       child: Column(
@@ -657,7 +684,17 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: [
-                      _buildRouteChip(null, 'All Routes'),
+                      _buildRouteChip(
+                        null,
+                        'All Routes',
+                        routesLoaded: routesLoaded,
+                      ),
+                      if (!routesLoaded && routes.isEmpty)
+                        _buildRouteChip(
+                          'loading',
+                          'Loading…',
+                          routesLoaded: routesLoaded,
+                        ),
                       ...availableRouteIds
                           .sortedBy(
                             (id) =>
@@ -673,6 +710,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             return _buildRouteChip(
                               routeId,
                               route?.name ?? 'Unknown Route',
+                              routesLoaded: routesLoaded,
                             );
                           }),
                     ],
@@ -686,15 +724,22 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
   }
 
-  Widget _buildRouteChip(String? routeId, String label) {
-    final isSelected = _selectedRouteId == routeId;
+  Widget _buildRouteChip(
+    String? routeId,
+    String label, {
+    required bool routesLoaded,
+  }) {
+    final isLoading = routeId == 'loading';
+    final selectedRouteId = routesLoaded ? _selectedRouteId : null;
+    final isSelected = !isLoading && selectedRouteId == routeId;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
         label: Text(label),
         selected: isSelected,
-        onSelected: (val) =>
-            setState(() => _selectedRouteId = val ? routeId : null),
+        onSelected: (isLoading || (!routesLoaded && routeId != null))
+            ? null
+            : (val) => setState(() => _selectedRouteId = val ? routeId : null),
         selectedColor: AppColors.primary,
         labelStyle: TextStyle(
           color: isSelected ? Colors.white : AppColors.textPrimary,
@@ -824,7 +869,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: AppColors.textLight,
+                                color: AppColors.textSecondary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -865,7 +910,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             const Icon(
                               Icons.location_on_outlined,
                               size: 18,
-                              color: AppColors.textLight,
+                              color: AppColors.textSecondary,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -900,7 +945,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             const Icon(
                               Icons.restaurant_rounded,
                               size: 18,
-                              color: AppColors.textLight,
+                              color: AppColors.textSecondary,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -929,7 +974,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                               Text(
                                 '+$remainingItems more',
                                 style: const TextStyle(
-                                  color: AppColors.textLight,
+                                  color: AppColors.textSecondary,
                                   fontWeight: FontWeight.w900,
                                   fontSize: 12,
                                 ),
@@ -1062,7 +1107,7 @@ class _InlineMeta extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: 16, color: AppColors.textLight),
+        Icon(icon, size: 16, color: AppColors.textSecondary),
         const SizedBox(width: 8),
         Flexible(
           child: Text(

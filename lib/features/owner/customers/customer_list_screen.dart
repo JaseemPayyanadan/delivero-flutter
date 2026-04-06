@@ -186,8 +186,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                     icon: customers.isEmpty
                         ? Icons.business_center_outlined
                         : Icons.search_off_outlined,
-                    actionLabel:
-                        customers.isEmpty ? 'Add Customer' : 'Clear Search',
+                    actionLabel: customers.isEmpty
+                        ? 'Add Customer'
+                        : 'Clear Search',
                     onAction: customers.isEmpty
                         ? () => context.push('/owner/customers/add')
                         : () {
@@ -211,7 +212,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                     final routeName = !routesLoaded && routes.isEmpty
                         ? 'Loading route…'
                         : (route?.name ??
-                            (customer.assignedRoute ?? 'No Route'));
+                              (customer.assignedRoute ?? 'No Route'));
 
                     final customerOrders =
                         ordersByCustomer[customer.id] ?? const [];
@@ -527,7 +528,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                                 width: 6,
                                 height: 6,
                                 decoration: BoxDecoration(
-                                  color: AppColors.textLight,
+                                  color: AppColors.textSecondary,
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                               ),
@@ -591,7 +592,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w900,
-                            color: AppColors.textLight,
+                            color: AppColors.textSecondary,
                             letterSpacing: 0.8,
                           ),
                         ),
@@ -671,14 +672,14 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       children: [
         Row(
           children: [
-            Icon(icon, size: 12, color: AppColors.textLight),
+            Icon(icon, size: 12, color: AppColors.textSecondary),
             const SizedBox(width: 4),
             Text(
               label,
               style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textLight,
+                color: AppColors.textSecondary,
                 letterSpacing: 0.5,
               ),
             ),
