@@ -733,27 +733,37 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final selectedRouteId = routesLoaded ? _selectedRouteId : null;
     final isSelected = !isLoading && selectedRouteId == routeId;
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (isLoading || (!routesLoaded && routeId != null))
+      padding: const EdgeInsets.only(right: 12),
+      child: InkWell(
+        onTap: (isLoading || (!routesLoaded && routeId != null))
             ? null
-            : (val) => setState(() => _selectedRouteId = val ? routeId : null),
-        selectedColor: AppColors.primary,
-        labelStyle: TextStyle(
-          color: isSelected ? Colors.white : AppColors.textPrimary,
-          fontSize: 13,
-          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-        ),
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: isSelected ? AppColors.primary : AppColors.border,
+            : () {
+                setState(() {
+                  _selectedRouteId = isSelected ? null : routeId;
+                });
+              },
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? Colors.white
+                  : isLoading || (!routesLoaded && routeId != null)
+                  ? AppColors.textDisabled
+                  : AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
+              letterSpacing: -0.1,
+            ),
           ),
         ),
-        showCheckmark: false,
       ),
     );
   }

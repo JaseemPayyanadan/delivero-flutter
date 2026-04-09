@@ -9,6 +9,7 @@ import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/widgets/primary_square_icon_button.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/order.dart';
@@ -140,21 +141,11 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
               floating: true,
               pinned: true,
               actions: [
-                Container(
-                  margin: const EdgeInsets.only(right: 16),
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.backgroundSecondary,
-                    child: const Text(
-                      'CM',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 12,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
+                PrimarySquareIconButton(
+                  icon: Icons.add_rounded,
+                  onPressed: () => context.push('/owner/customers/add'),
                 ),
+                const SizedBox(width: 16),
               ],
             ),
             SliverToBoxAdapter(
@@ -250,36 +241,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
           ],
         ),
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.28),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: () => context.push('/owner/customers/add'),
-          backgroundColor: AppColors.primary,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          icon: const Icon(Icons.add_business_rounded, color: Colors.white),
-          label: const Text(
-            'Add Customer',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
-              fontSize: 13,
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -292,67 +253,99 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     required bool routesLoaded,
   }) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            controller: _searchController,
-            onChanged: (value) => setState(() => _searchQuery = value),
-            decoration: InputDecoration(
-              hintText: 'Search partners, routes, IDs...',
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                color: AppColors.textLight,
-              ),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear_rounded, size: 20),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() => _searchQuery = '');
-                      },
-                    )
-                  : null,
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 16,
+                  offset: Offset(0, 10),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
-          _buildSummaryStrip(partners, outstanding, orders),
-          const SizedBox(height: 20),
-          const Text(
-            'LOGISTICS ROUTES',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textLight,
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildRouteTab(null, 'All Partners'),
-                if (!routesLoaded && routes.isEmpty)
-                  _buildRouteTab('loading', 'Loading…')
-                else
-                  ...availableRouteIds
-                      .sortedBy(
-                        (id) =>
-                            routes.firstWhereOrNull((r) => r.id == id)?.name ??
-                            '',
-                      )
-                      .map((routeId) {
-                        final route = routes.firstWhereOrNull(
-                          (r) => r.id == routeId,
-                        );
-                        return _buildRouteTab(
-                          routeId,
-                          route?.name ?? 'Unknown Route',
-                        );
-                      }),
+                TextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                  decoration: InputDecoration(
+                    hintText: 'Search partners, routes, IDs...',
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.textSecondary,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 20),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AppColors.backgroundSecondary,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _buildSummaryStrip(partners, outstanding, orders),
+                const SizedBox(height: 16),
+                const Text(
+                  'LOGISTICS ROUTES',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textLight,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _buildRouteTab(null, 'All Partners'),
+                      if (!routesLoaded && routes.isEmpty)
+                        _buildRouteTab('loading', 'Loading…')
+                      else
+                        ...availableRouteIds
+                            .sortedBy(
+                              (id) =>
+                                  routes
+                                      .firstWhereOrNull((r) => r.id == id)
+                                      ?.name ??
+                                  '',
+                            )
+                            .map((routeId) {
+                              final route = routes.firstWhereOrNull(
+                                (r) => r.id == routeId,
+                              );
+                              return _buildRouteTab(
+                                routeId,
+                                route?.name ?? 'Unknown Route',
+                              );
+                            }),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -362,30 +355,40 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
   }
 
   Widget _buildRouteTab(String? routeId, String label) {
-    final isSelected = _selectedRouteId == routeId;
+    final isLoading = routeId == 'loading';
+    final isSelected = !isLoading && _selectedRouteId == routeId;
     return Padding(
-      padding: const EdgeInsets.only(right: 10),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (val) {
-          if (routeId == 'loading') return;
-          setState(() => _selectedRouteId = val ? routeId : null);
-        },
-        selectedColor: AppColors.primary,
-        labelStyle: TextStyle(
-          color: isSelected ? Colors.white : AppColors.textPrimary,
-          fontSize: 12,
-          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-        ),
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: isSelected ? AppColors.primary : AppColors.border,
+      padding: const EdgeInsets.only(right: 12),
+      child: InkWell(
+        onTap: isLoading
+            ? null
+            : () {
+                setState(() {
+                  _selectedRouteId = isSelected ? null : routeId;
+                });
+              },
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? Colors.white
+                  : isLoading
+                  ? AppColors.textDisabled
+                  : AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
+              letterSpacing: -0.1,
+            ),
           ),
         ),
-        showCheckmark: false,
       ),
     );
   }
