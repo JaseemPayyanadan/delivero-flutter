@@ -13,36 +13,41 @@ class FirebaseService {
       return;
     }
 
-    final FirebaseOptions? webOptions = kIsWeb
-        ? FirebaseOptions(
-            apiKey: const String.fromEnvironment('FIREBASE_WEB_API_KEY'),
-            authDomain: const String.fromEnvironment(
-              'FIREBASE_WEB_AUTH_DOMAIN',
-            ),
-            projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
-            storageBucket: const String.fromEnvironment(
-              'FIREBASE_STORAGE_BUCKET',
-            ),
-            messagingSenderId: const String.fromEnvironment(
-              'FIREBASE_MESSAGING_SENDER_ID',
-            ),
-            appId: const String.fromEnvironment('FIREBASE_WEB_APP_ID'),
-            measurementId: const String.fromEnvironment(
-              'FIREBASE_WEB_MEASUREMENT_ID',
-            ),
-          )
-        : null;
-
     if (kIsWeb) {
-      final o = webOptions!;
-      if (o.apiKey.isEmpty || o.projectId.isEmpty || o.appId.isEmpty) {
-        throw FlutterError(
-          'Missing Firebase web config. Provide --dart-define values for FIREBASE_WEB_API_KEY, FIREBASE_PROJECT_ID, FIREBASE_WEB_APP_ID.',
-        );
+      final webOptions = FirebaseOptions(
+        apiKey: const String.fromEnvironment('FIREBASE_WEB_API_KEY'),
+        authDomain: const String.fromEnvironment('FIREBASE_WEB_AUTH_DOMAIN'),
+        projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+        storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
+        messagingSenderId: const String.fromEnvironment(
+          'FIREBASE_MESSAGING_SENDER_ID',
+        ),
+        appId: const String.fromEnvironment('FIREBASE_WEB_APP_ID'),
+        measurementId: const String.fromEnvironment(
+          'FIREBASE_WEB_MEASUREMENT_ID',
+        ),
+      );
+
+      if (webOptions.apiKey.isEmpty ||
+          webOptions.projectId.isEmpty ||
+          webOptions.appId.isEmpty) {
+        if (kDebugMode) {
+          print('[Firebase] Skipped (missing web config)');
+        }
+        return;
+      }
+
+      await Firebase.initializeApp(options: webOptions);
+    } else {
+      try {
+        await Firebase.initializeApp();
+      } catch (e) {
+        if (kDebugMode) {
+          print('[Firebase] Skipped ($e)');
+        }
+        return;
       }
     }
-
-    await Firebase.initializeApp(options: webOptions);
 
     if (kDebugMode) {
       print('[Firebase] Initialized successfully');

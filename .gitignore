@@ -51,3 +51,7 @@ app.*.map.json
 # Firebase (do not commit real configs)
 **/google-services.json
 **/GoogleService-Info.plist
+
+# Android signing (do not commit keys)
+android/key.properties
+**/*.jks
