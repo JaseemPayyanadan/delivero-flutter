@@ -776,7 +776,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentColor(paymentStatus);
     final itemCount = order.items.fold(0, (sum, item) => sum + item.quantity);
-    final shortId = order.id.substring(0, 8).toUpperCase();
+    final shortId =
+        (order.id.trim().isEmpty
+                ? '--------'
+                : (order.id.length > 8 ? order.id.substring(0, 8) : order.id))
+            .toUpperCase();
     final orderDateLabel = DateFormat('MMM d • h:mm a').format(order.orderDate);
     final driver = drivers.firstWhereOrNull(
       (d) => d.id == order.assignedDriver,
@@ -817,6 +821,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       0,
       999,
     );
+    final customerLabel = order.customerName.trim().isEmpty
+        ? 'Unknown Customer'
+        : order.customerName;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -899,7 +906,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        order.customerName,
+                        customerLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

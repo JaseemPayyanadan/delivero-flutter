@@ -37,13 +37,44 @@ class OrderItem {
   }
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
+    int readInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    double readDouble(dynamic value) {
+      if (value is double) return value;
+      if (value is num) return value.toDouble();
+      return double.tryParse(value?.toString() ?? '') ?? 0.0;
+    }
+
+    String readString(dynamic value) {
+      return value?.toString() ?? '';
+    }
+
+    final foodItemId = readString(
+      json['foodItemId'] ?? json['itemId'] ?? json['productId'],
+    );
+    final foodItemName = readString(
+      json['foodItemName'] ?? json['name'] ?? json['itemName'],
+    );
+    final quantity = readInt(json['quantity'] ?? json['qty'] ?? json['count']);
+    final unitPrice = readDouble(
+      json['unitPrice'] ?? json['price'] ?? json['unit_price'],
+    );
+    final totalPriceRaw = json['totalPrice'] ?? json['total'] ?? json['amount'];
+    final totalPrice = totalPriceRaw == null
+        ? unitPrice * quantity
+        : readDouble(totalPriceRaw);
+
     return OrderItem(
-      id: json['id'] as String,
-      foodItemId: json['foodItemId'] as String,
-      foodItemName: json['foodItemName'] as String,
-      quantity: json['quantity'] as int,
-      unitPrice: (json['unitPrice'] as num).toDouble(),
-      totalPrice: (json['totalPrice'] as num).toDouble(),
+      id: readString(json['id'] ?? json['lineId'] ?? foodItemId),
+      foodItemId: foodItemId,
+      foodItemName: foodItemName,
+      quantity: quantity,
+      unitPrice: unitPrice,
+      totalPrice: totalPrice,
     );
   }
 }
@@ -134,30 +165,95 @@ class Order {
   }
 
   factory Order.fromJson(Map<String, dynamic> json) {
+    String readString(dynamic value) {
+      return value?.toString() ?? '';
+    }
+
+    double readDouble(dynamic value) {
+      if (value is double) return value;
+      if (value is num) return value.toDouble();
+      return double.tryParse(value?.toString() ?? '') ?? 0.0;
+    }
+
+    Map<String, dynamic>? readMap(dynamic value) {
+      if (value is Map<String, dynamic>) return value;
+      if (value is Map) {
+        return value.map((k, v) => MapEntry(k.toString(), v));
+      }
+      return null;
+    }
+
+    final customerMap = readMap(json['customer']);
+    final customerName = readString(json['customerName']).isNotEmpty
+        ? readString(json['customerName'])
+        : readString(json['customer_name']);
+
+    final resolvedCustomerName = customerName.isNotEmpty
+        ? customerName
+        : readString(customerMap?['name'] ?? customerMap?['customerName']);
+
     return Order(
-      id: json['id'] as String,
-      factoryId: json['factoryId'] ?? '',
+      id: readString(json['id']),
+      factoryId: readString(json['factoryId'] ?? json['factory_id']),
       orderType: _parseOrderType(json['orderType']),
-      customerId: json['customerId'] ?? '',
-      customerName: json['customerName'] ?? '',
-      customerEmail: json['customerEmail'] ?? '',
-      customerPhone: json['customerPhone'] ?? '',
-      customerAddress: json['customerAddress'] ?? '',
+      customerId: readString(
+        json['customerId'] ?? json['customer_id'] ?? customerMap?['id'],
+      ),
+      customerName: resolvedCustomerName,
+      customerEmail: readString(
+        json['customerEmail'] ??
+            json['customer_email'] ??
+            customerMap?['email'],
+      ),
+      customerPhone: readString(
+        json['customerPhone'] ??
+            json['customer_phone'] ??
+            customerMap?['phone'],
+      ),
+      customerAddress: readString(
+        json['customerAddress'] ??
+            json['customer_address'] ??
+            customerMap?['address'],
+      ),
       items:
           (json['items'] as List<dynamic>?)
               ?.map((i) => OrderItem.fromJson(i as Map<String, dynamic>))
               .toList() ??
           [],
-      subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0.0,
-      discountAmount: (json['discountAmount'] as num?)?.toDouble() ?? 0.0,
-      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      subtotal: readDouble(json['subtotal'] ?? json['sub_total']),
+      discountAmount: readDouble(
+        json['discountAmount'] ?? json['discount'] ?? json['discount_amount'],
+      ),
+      totalAmount: readDouble(
+        json['totalAmount'] ?? json['total'] ?? json['total_amount'],
+      ),
       paymentStatus: _parsePaymentStatus(json['paymentStatus']),
       paymentMethod: _parsePaymentMethod(json['paymentMethod']),
-      amountPaid: (json['amountPaid'] as num?)?.toDouble(),
-      status: _parseOrderStatus(json['status']),
-      assignedRoute: json['assignedRoute'] as String?,
-      assignedDriver: json['assignedDriver'] as String?,
-      orderDate: app_utils.DateUtils.parse(json['orderDate']),
+      amountPaid: (json['amountPaid'] is num)
+          ? (json['amountPaid'] as num).toDouble()
+          : (json['amount_paid'] is num)
+          ? (json['amount_paid'] as num).toDouble()
+          : null,
+      status: _parseOrderStatus(json['status'] ?? json['orderStatus']),
+      assignedRoute:
+          readString(
+            json['assignedRoute'] ?? json['routeId'] ?? json['route_id'],
+          ).isEmpty
+          ? null
+          : readString(
+              json['assignedRoute'] ?? json['routeId'] ?? json['route_id'],
+            ),
+      assignedDriver:
+          readString(
+            json['assignedDriver'] ?? json['driverId'] ?? json['driver_id'],
+          ).isEmpty
+          ? null
+          : readString(
+              json['assignedDriver'] ?? json['driverId'] ?? json['driver_id'],
+            ),
+      orderDate: app_utils.DateUtils.parse(
+        json['orderDate'] ?? json['order_date'] ?? json['createdAt'],
+      ),
       deliveryDate: json['deliveryDate'] != null
           ? app_utils.DateUtils.parse(json['deliveryDate'])
           : null,
