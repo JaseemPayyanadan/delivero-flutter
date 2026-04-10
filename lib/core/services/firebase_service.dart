@@ -52,6 +52,20 @@ class FirebaseService {
     if (kDebugMode) {
       print('[Firebase] Initialized successfully');
     }
+
+    try {
+      if (FirebaseAuth.instance.currentUser == null) {
+        await FirebaseAuth.instance.signInAnonymously();
+      }
+      if (kDebugMode) {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        print('[FirebaseAuth] Signed in${uid == null ? '' : ' ($uid)'}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[FirebaseAuth] Sign-in skipped ($e)');
+      }
+    }
   }
 
   static FirebaseFirestore get firestore => FirebaseFirestore.instance;

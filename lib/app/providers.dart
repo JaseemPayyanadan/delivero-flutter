@@ -123,22 +123,27 @@ class OrdersNotifier extends Notifier<List<Order>> {
     _activeFactoryId = factoryId;
     ref.read(ordersLoadedProvider.notifier).state = false;
 
-    _subscription = FirebaseService.firestore
-        .collection('orders')
-        .where('factoryId', isEqualTo: factoryId)
-        .snapshots()
-        .listen(
-          (snapshot) {
-            state = snapshot.docs
-                .map((doc) => Order.fromJson({...doc.data(), 'id': doc.id}))
-                .toList();
-            ref.read(ordersLoadedProvider.notifier).state = true;
-          },
-          onError: (e) {
-            debugPrint('[Firestore] Error fetching orders: $e');
-            ref.read(ordersLoadedProvider.notifier).state = true;
-          },
-        );
+    try {
+      _subscription = FirebaseService.firestore
+          .collection('orders')
+          .where('factoryId', isEqualTo: factoryId)
+          .snapshots()
+          .listen(
+            (snapshot) {
+              state = snapshot.docs
+                  .map((doc) => Order.fromJson({...doc.data(), 'id': doc.id}))
+                  .toList();
+              ref.read(ordersLoadedProvider.notifier).state = true;
+            },
+            onError: (Object e, StackTrace st) {
+              debugPrint('[Firestore] Error fetching orders: $e');
+              ref.read(ordersLoadedProvider.notifier).state = true;
+            },
+          );
+    } catch (e) {
+      debugPrint('[Firestore] Error fetching orders: $e');
+      ref.read(ordersLoadedProvider.notifier).state = true;
+    }
   }
 
   void addOrder(Order order) => FirebaseService.firestore
@@ -204,22 +209,29 @@ class CustomersNotifier extends Notifier<List<Customer>> {
     _activeFactoryId = factoryId;
     ref.read(customersLoadedProvider.notifier).state = false;
 
-    _subscription = FirebaseService.firestore
-        .collection('customers')
-        .where('factoryId', isEqualTo: factoryId)
-        .snapshots()
-        .listen(
-          (snapshot) {
-            state = snapshot.docs
-                .map((doc) => Customer.fromJson({...doc.data(), 'id': doc.id}))
-                .toList();
-            ref.read(customersLoadedProvider.notifier).state = true;
-          },
-          onError: (e) {
-            debugPrint('[Firestore] Error fetching customers: $e');
-            ref.read(customersLoadedProvider.notifier).state = true;
-          },
-        );
+    try {
+      _subscription = FirebaseService.firestore
+          .collection('customers')
+          .where('factoryId', isEqualTo: factoryId)
+          .snapshots()
+          .listen(
+            (snapshot) {
+              state = snapshot.docs
+                  .map(
+                    (doc) => Customer.fromJson({...doc.data(), 'id': doc.id}),
+                  )
+                  .toList();
+              ref.read(customersLoadedProvider.notifier).state = true;
+            },
+            onError: (Object e, StackTrace st) {
+              debugPrint('[Firestore] Error fetching customers: $e');
+              ref.read(customersLoadedProvider.notifier).state = true;
+            },
+          );
+    } catch (e) {
+      debugPrint('[Firestore] Error fetching customers: $e');
+      ref.read(customersLoadedProvider.notifier).state = true;
+    }
   }
 
   void addCustomer(Customer customer) => FirebaseService.firestore
@@ -285,22 +297,29 @@ class FoodItemsNotifier extends Notifier<List<FoodItem>> {
     _activeFactoryId = factoryId;
     ref.read(foodItemsLoadedProvider.notifier).state = false;
 
-    _subscription = FirebaseService.firestore
-        .collection('foodItems')
-        .where('factoryId', isEqualTo: factoryId)
-        .snapshots()
-        .listen(
-          (snapshot) {
-            state = snapshot.docs
-                .map((doc) => FoodItem.fromJson({...doc.data(), 'id': doc.id}))
-                .toList();
-            ref.read(foodItemsLoadedProvider.notifier).state = true;
-          },
-          onError: (e) {
-            debugPrint('[Firestore] Error fetching food items: $e');
-            ref.read(foodItemsLoadedProvider.notifier).state = true;
-          },
-        );
+    try {
+      _subscription = FirebaseService.firestore
+          .collection('foodItems')
+          .where('factoryId', isEqualTo: factoryId)
+          .snapshots()
+          .listen(
+            (snapshot) {
+              state = snapshot.docs
+                  .map(
+                    (doc) => FoodItem.fromJson({...doc.data(), 'id': doc.id}),
+                  )
+                  .toList();
+              ref.read(foodItemsLoadedProvider.notifier).state = true;
+            },
+            onError: (Object e, StackTrace st) {
+              debugPrint('[Firestore] Error fetching food items: $e');
+              ref.read(foodItemsLoadedProvider.notifier).state = true;
+            },
+          );
+    } catch (e) {
+      debugPrint('[Firestore] Error fetching food items: $e');
+      ref.read(foodItemsLoadedProvider.notifier).state = true;
+    }
   }
 
   void addFoodItem(FoodItem item) => FirebaseService.firestore
@@ -366,25 +385,30 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
     _activeFactoryId = factoryId;
     ref.read(routesLoadedProvider.notifier).state = false;
 
-    _subscription = FirebaseService.firestore
-        .collection('routes')
-        .where('factoryId', isEqualTo: factoryId)
-        .snapshots()
-        .listen(
-          (snapshot) {
-            state = snapshot.docs
-                .map(
-                  (doc) =>
-                      DeliveryRoute.fromJson({...doc.data(), 'id': doc.id}),
-                )
-                .toList();
-            ref.read(routesLoadedProvider.notifier).state = true;
-          },
-          onError: (e) {
-            debugPrint('[Firestore] Error fetching routes: $e');
-            ref.read(routesLoadedProvider.notifier).state = true;
-          },
-        );
+    try {
+      _subscription = FirebaseService.firestore
+          .collection('routes')
+          .where('factoryId', isEqualTo: factoryId)
+          .snapshots()
+          .listen(
+            (snapshot) {
+              state = snapshot.docs
+                  .map(
+                    (doc) =>
+                        DeliveryRoute.fromJson({...doc.data(), 'id': doc.id}),
+                  )
+                  .toList();
+              ref.read(routesLoadedProvider.notifier).state = true;
+            },
+            onError: (Object e, StackTrace st) {
+              debugPrint('[Firestore] Error fetching routes: $e');
+              ref.read(routesLoadedProvider.notifier).state = true;
+            },
+          );
+    } catch (e) {
+      debugPrint('[Firestore] Error fetching routes: $e');
+      ref.read(routesLoadedProvider.notifier).state = true;
+    }
   }
 
   void addRoute(DeliveryRoute route) => FirebaseService.firestore
@@ -450,22 +474,27 @@ class DriversNotifier extends Notifier<List<Driver>> {
     _activeFactoryId = factoryId;
     ref.read(driversLoadedProvider.notifier).state = false;
 
-    _subscription = FirebaseService.firestore
-        .collection('drivers')
-        .where('factoryId', isEqualTo: factoryId)
-        .snapshots()
-        .listen(
-          (snapshot) {
-            state = snapshot.docs
-                .map((doc) => Driver.fromJson({...doc.data(), 'id': doc.id}))
-                .toList();
-            ref.read(driversLoadedProvider.notifier).state = true;
-          },
-          onError: (e) {
-            debugPrint('[Firestore] Error fetching drivers: $e');
-            ref.read(driversLoadedProvider.notifier).state = true;
-          },
-        );
+    try {
+      _subscription = FirebaseService.firestore
+          .collection('drivers')
+          .where('factoryId', isEqualTo: factoryId)
+          .snapshots()
+          .listen(
+            (snapshot) {
+              state = snapshot.docs
+                  .map((doc) => Driver.fromJson({...doc.data(), 'id': doc.id}))
+                  .toList();
+              ref.read(driversLoadedProvider.notifier).state = true;
+            },
+            onError: (Object e, StackTrace st) {
+              debugPrint('[Firestore] Error fetching drivers: $e');
+              ref.read(driversLoadedProvider.notifier).state = true;
+            },
+          );
+    } catch (e) {
+      debugPrint('[Firestore] Error fetching drivers: $e');
+      ref.read(driversLoadedProvider.notifier).state = true;
+    }
   }
 
   void addDriver(Driver driver) => FirebaseService.firestore
