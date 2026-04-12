@@ -8,6 +8,7 @@ import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/customer.dart';
+import '../../../data/models/delivery_route.dart';
 import '../../../data/models/food_item.dart';
 
 class AddEditCustomerScreen extends ConsumerStatefulWidget {
@@ -30,6 +31,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   final Map<String, TextEditingController> _quantityControllers = {};
   final Map<String, TextEditingController> _priceControllers = {};
 
+  bool _hydratedFromProvider = false;
+  bool _hydratePostFrameScheduled = false;
+
   bool get _isEditMode => widget.customerId != null;
 
   @override
@@ -39,33 +43,39 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     _ownerNameController = TextEditingController();
     _phoneController = TextEditingController();
     _addressController = TextEditingController();
+  }
 
-    if (_isEditMode) {
-      final customer = ref
-          .read(customersProvider)
-          .firstWhere((c) => c.id == widget.customerId);
-      _nameController.text = customer.name;
-      _ownerNameController.text = customer.ownerName ?? '';
-      _phoneController.text = customer.phone;
-      _addressController.text = customer.address;
+  void _populateFromCustomer(Customer customer) {
+    _nameController.text = customer.name;
+    _ownerNameController.text = customer.ownerName ?? '';
+    _phoneController.text = customer.phone;
+    _addressController.text = customer.address;
 
-      final routes = ref.read(routesProvider);
-      final route = routes.firstWhereOrNull(
-        (r) =>
-            r.id == customer.assignedRoute || r.name == customer.assignedRoute,
+    final routes = ref.read(routesProvider);
+    final route = routes.firstWhereOrNull(
+      (r) =>
+          r.id == customer.assignedRoute || r.name == customer.assignedRoute,
+    );
+    _selectedRouteId = route?.id ?? customer.assignedRoute;
+
+    for (final c in _quantityControllers.values) {
+      c.dispose();
+    }
+    for (final c in _priceControllers.values) {
+      c.dispose();
+    }
+    _quantityControllers.clear();
+    _priceControllers.clear();
+
+    _selectedProducts = List.from(customer.products ?? []);
+    for (final p in _selectedProducts) {
+      _quantityControllers[p.id] = TextEditingController(
+        text: p.quantity.toString(),
       );
-      _selectedRouteId = route?.id ?? customer.assignedRoute;
-
-      _selectedProducts = List.from(customer.products ?? []);
-      for (var p in _selectedProducts) {
-        _quantityControllers[p.id] = TextEditingController(
-          text: p.quantity.toString(),
+      if (p.customPrice != null) {
+        _priceControllers[p.id] = TextEditingController(
+          text: p.customPrice.toString(),
         );
-        if (p.customPrice != null) {
-          _priceControllers[p.id] = TextEditingController(
-            text: p.customPrice.toString(),
-          );
-        }
       }
     }
   }
@@ -127,7 +137,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       phone: _phoneController.text.trim(),
       address: _addressController.text,
       area: selectedRoute?.area ?? 'Central',
-      isActive: true,
+      isActive: existingCustomer?.isActive ?? true,
+      discountPercentage: existingCustomer?.discountPercentage,
       assignedRoute: routeName,
       products: products,
       createdAt: _isEditMode
@@ -145,10 +156,87 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     if (mounted) context.pop();
   }
 
+  String? _routeDropdownValue(List<DeliveryRoute> routes) {
+    if (routes.isEmpty) return null;
+    final id = _selectedRouteId;
+    if (id != null && routes.any((r) => r.id == id)) return id;
+    if (id != null) {
+      final byName = routes.firstWhereOrNull((r) => r.name == id);
+      if (byName != null) return byName.id;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final routes = ref.watch(routesProvider);
     final foodItems = ref.watch(foodItemsProvider);
+
+    if (_isEditMode && !_hydratedFromProvider) {
+      final customersLoaded = ref.watch(customersLoadedProvider);
+      final customer = ref
+          .watch(customersProvider)
+          .firstWhereOrNull((c) => c.id == widget.customerId);
+
+      if (!customersLoaded && customer == null) {
+        return const Scaffold(
+          backgroundColor: AppColors.backgroundPrimary,
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
+      if (customersLoaded && customer == null) {
+        return Scaffold(
+          backgroundColor: AppColors.backgroundPrimary,
+          appBar: AppBar(
+            backgroundColor: AppColors.surface,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: () => context.pop(),
+            ),
+            title: const Text('Partner'),
+          ),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Enterprise Partner not found.'),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => context.pop(),
+                    child: const Text('Go back'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      if (customer != null && !_hydratePostFrameScheduled) {
+        _hydratePostFrameScheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _hydratedFromProvider) return;
+          final latest = ref
+              .read(customersProvider)
+              .firstWhereOrNull((c) => c.id == widget.customerId);
+          if (latest != null) {
+            setState(() {
+              _populateFromCustomer(latest);
+              _hydratedFromProvider = true;
+            });
+          } else {
+            setState(() => _hydratePostFrameScheduled = false);
+          }
+        });
+      }
+      if (customer != null && !_hydratedFromProvider) {
+        return const Scaffold(
+          backgroundColor: AppColors.backgroundPrimary,
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -285,9 +373,13 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     );
   }
 
-  Widget _buildRouteDropdown(List routes) {
+  Widget _buildRouteDropdown(List<DeliveryRoute> routes) {
+    final dropdownValue = _routeDropdownValue(routes);
     return DropdownButtonFormField<String>(
-      initialValue: _selectedRouteId,
+      key: ValueKey(
+        '${routes.map((r) => r.id).join('|')}||${dropdownValue ?? ''}',
+      ),
+      initialValue: dropdownValue,
       items: routes.map<DropdownMenuItem<String>>((route) {
         return DropdownMenuItem<String>(
           value: route.id,
