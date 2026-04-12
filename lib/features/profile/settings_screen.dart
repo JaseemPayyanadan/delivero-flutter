@@ -58,10 +58,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final driversLoaded = ref.watch(driversLoadedProvider);
     final isDelivery = user?.role == UserRole.delivery;
     final subtitle = user == null
-        ? 'Account and preferences'
+        ? 'Your account and settings'
         : (isDelivery
-              ? 'Account, availability and notifications'
-              : 'Account and business preferences');
+              ? 'Your account, when you are on duty, and alerts'
+              : 'Your account and how the app behaves');
 
     final userKey = user?.email;
     if (!_prefsLoaded || _prefsKey != userKey) {
@@ -118,11 +118,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       children: [
                         _buildSwitchTileRow(
                           title: isDelivery
-                              ? 'Operational availability'
-                              : 'Business availability',
+                              ? 'On duty'
+                              : 'Open for business',
                           description: isDelivery
-                              ? 'Set your current field status'
-                              : 'Control business status visibility',
+                              ? 'Turn this off when you are not taking deliveries'
+                              : 'Turn this off when you are closed',
                           value: _isAvailable,
                           onChanged:
                               isDelivery &&
@@ -155,10 +155,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const Divider(height: 1, color: AppColors.divider),
                         _buildSwitchTileRow(
-                          title: 'Smart notifications',
+                          title: 'Notifications',
                           description: isDelivery
-                              ? 'Alert on new route assignments'
-                              : 'Alert on new order activity',
+                              ? 'Let me know when I get a new route'
+                              : 'Let me know when something changes with orders',
                           value: _notifyOnAssignment,
                           onChanged: (val) {
                             setState(() => _notifyOnAssignment = val);
@@ -168,8 +168,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const Divider(height: 1, color: AppColors.divider),
                         _buildSwitchTileRow(
-                          title: 'Haptic feedback',
-                          description: 'Vibrate on important updates',
+                          title: 'Vibration',
+                          description: 'Buzz the phone for important updates',
                           value: _vibrateOnStatus,
                           onChanged: (val) {
                             setState(() => _vibrateOnStatus = val);
@@ -186,15 +186,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: Column(
                       children: [
                         _buildSettingsOptionRow(
-                          title: 'Help Center',
-                          description: 'Guides and operational documentation',
+                          title: 'Help',
+                          description: 'Walkthrough and tips',
                           icon: Icons.help_center_rounded,
                           onTap: () => context.go('/onboarding'),
                         ),
                         const Divider(height: 1, color: AppColors.divider),
                         _buildSettingsOptionRow(
-                          title: 'Compliance & Privacy',
-                          description: 'Data handling & protocols',
+                          title: 'Licenses & privacy',
+                          description: 'Open-source licenses and legal info',
                           icon: Icons.gavel_rounded,
                           onTap: () => showLicensePage(context: context),
                         ),
@@ -208,11 +208,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onPressed: _showLogoutDialog,
                       icon: const Icon(Icons.logout_rounded, size: 20),
                       label: const Text(
-                        'TERMINATE SESSION',
+                        'Sign out',
                         style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1,
-                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                          fontSize: 15,
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
@@ -514,20 +514,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: const Text(
-          'Terminate Session',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          'Sign out?',
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         content: const Text(
-          'Are you sure you want to end your current operational session and sign out?',
+          'You will need to sign in again to keep using the app.',
           style: TextStyle(height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'CANCEL',
+              'Stay signed in',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
               ),
             ),
@@ -538,10 +538,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ref.read(authProvider.notifier).logout();
             },
             child: const Text(
-              'SIGN OUT',
+              'Sign out',
               style: TextStyle(
                 color: AppColors.error,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),

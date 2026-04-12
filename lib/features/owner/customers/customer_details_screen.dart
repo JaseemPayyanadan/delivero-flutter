@@ -48,7 +48,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
       return Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
         appBar: const DeliveroAppBar(title: 'Customer'),
-        body: const Center(child: Text('Enterprise Partner Not Found')),
+        body: const Center(child: Text('Customer not found')),
       );
     }
 
@@ -224,7 +224,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 32),
                   _SectionCard(
-                    title: 'Contracts',
+                    title: 'Products & pricing',
                     action: TextButton.icon(
                       onPressed: () =>
                           context.push('/owner/customers/edit/$customerId'),
@@ -280,12 +280,12 @@ class CustomerDetailsScreen extends ConsumerWidget {
         children: [
           _buildContactTile(
             Icons.person_pin_rounded,
-            'Decision Maker',
-            customer.ownerName ?? 'Proprietor',
+            'Owner or manager',
+            customer.ownerName ?? 'Not added',
           ),
           _buildContactTile(
             Icons.phone_iphone_rounded,
-            'Primary Contact',
+            'Phone',
             customer.phone.trim().isEmpty ? 'Not available' : customer.phone,
             onTap: phoneDigits.isEmpty
                 ? null
@@ -298,7 +298,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
           ),
           _buildContactTile(
             Icons.map_rounded,
-            'Operational HQ',
+            'Address',
             address,
             onTap: address.trim().isEmpty
                 ? null
@@ -385,7 +385,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'No contract items yet',
+              'No products yet',
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w700,
@@ -451,7 +451,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
         final shownPrice = p.customPrice ?? catalogPrice;
         final isContract = p.customPrice != null;
         final tone = isContract ? AppColors.success : AppColors.textSecondary;
-        final priceLabel = isContract ? 'Contract' : 'Catalog';
+        final priceLabel = isContract ? 'Their price' : 'List price';
 
         return ListTile(
           contentPadding: const EdgeInsets.symmetric(
@@ -483,7 +483,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
             ),
           ),
           subtitle: Text(
-            'Commitment: ${p.quantity} units',
+            'Quantity: ${p.quantity} units',
             style: const TextStyle(
               color: AppColors.textLight,
               fontWeight: FontWeight.w700,

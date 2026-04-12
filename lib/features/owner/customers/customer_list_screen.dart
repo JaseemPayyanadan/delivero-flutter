@@ -136,7 +136,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
           slivers: [
             DeliveroSliverHeader(
               title: 'Customers',
-              subtitle: '${customers.length} business partners',
+              subtitle: '${customers.length} customers',
               expandedHeight: 140,
               floating: true,
               pinned: true,
@@ -169,11 +169,11 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                   height: MediaQuery.of(context).size.height * 0.6,
                   child: _buildEmptyState(
                     title: customers.isEmpty
-                        ? 'No Customers Managed'
-                        : 'No Matching Results',
+                        ? 'No customers yet'
+                        : 'Nothing matches your search',
                     subtitle: customers.isEmpty
-                        ? 'Add your first customer to start tracking orders and logistics.'
-                        : 'Try adjusting your search criteria or route filters.',
+                        ? 'Add a customer to start taking orders and assigning routes.'
+                        : 'Try a different search or pick another route.',
                     icon: customers.isEmpty
                         ? Icons.business_center_outlined
                         : Icons.search_off_outlined,
@@ -278,7 +278,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                   controller: _searchController,
                   onChanged: (value) => setState(() => _searchQuery = value),
                   decoration: InputDecoration(
-                    hintText: 'Search partners, routes, IDs...',
+                    hintText: 'Search by name, phone, or address…',
                     prefixIcon: const Icon(
                       Icons.search_rounded,
                       color: AppColors.textSecondary,
@@ -308,7 +308,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                 _buildSummaryStrip(partners, outstanding, orders),
                 const SizedBox(height: 16),
                 const Text(
-                  'LOGISTICS ROUTES',
+                  'Routes',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
@@ -322,7 +322,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                   physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: [
-                      _buildRouteTab(null, 'All Partners'),
+                      _buildRouteTab(null, 'All'),
                       if (!routesLoaded && routes.isEmpty)
                         _buildRouteTab('loading', 'Loading…')
                       else
@@ -405,7 +405,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
         children: [
           Expanded(
             child: _buildSummaryMetric(
-              label: 'Partners',
+              label: 'Customers',
               value: partners.toString(),
               color: AppColors.textPrimary,
             ),
@@ -591,7 +591,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'LAST ENGAGEMENT',
+                          'Last order',
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w900,

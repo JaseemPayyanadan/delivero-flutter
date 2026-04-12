@@ -201,7 +201,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('Enterprise Partner not found.'),
+                  const Text('We could not find this customer.'),
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () => context.pop(),
@@ -244,7 +244,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         physics: const BouncingScrollPhysics(),
         slivers: [
           DeliveroSliverHeader(
-            title: _isEditMode ? 'Modify Partner' : 'Register Partner',
+            title: _isEditMode ? 'Edit customer' : 'Add customer',
             expandedHeight: 120,
             floating: true,
             pinned: true,
@@ -257,17 +257,17 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader('BASIC ENTITY INFORMATION'),
+                    _buildSectionHeader('Basics'),
                     const SizedBox(height: 16),
                     _buildTextField(
-                      'Hotel/Commercial Name',
+                      'Business name',
                       _nameController,
                       Icons.business_rounded,
                       hint: 'e.g. Grand Plaza Hotel',
                     ),
                     const SizedBox(height: 16),
                     _buildTextField(
-                      'Authorized Signatory',
+                      'Owner or manager',
                       _ownerNameController,
                       Icons.person_pin_rounded,
                       hint: 'e.g. John Smith',
@@ -275,7 +275,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                     ),
                     const SizedBox(height: 16),
                     _buildTextField(
-                      'Operational Contact',
+                      'Phone',
                       _phoneController,
                       Icons.phone_iphone_rounded,
                       keyboardType: TextInputType.phone,
@@ -284,18 +284,18 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                     ),
                     const SizedBox(height: 16),
                     _buildTextField(
-                      'Operational Address',
+                      'Address',
                       _addressController,
                       Icons.map_rounded,
                       maxLines: 3,
-                      hint: 'Full physical location details...',
+                      hint: 'Street, area, landmark…',
                     ),
                     const SizedBox(height: 32),
-                    _buildSectionHeader('LOGISTICS ASSIGNMENT'),
+                    _buildSectionHeader('Delivery route'),
                     const SizedBox(height: 16),
                     _buildRouteDropdown(routes),
                     const SizedBox(height: 32),
-                    _buildSectionHeader('CONTRACTUAL INVENTORY'),
+                    _buildSectionHeader('Products & prices'),
                     const SizedBox(height: 16),
                     _buildProductList(foodItems),
                   ],
@@ -323,7 +323,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
             shadowColor: AppColors.primary.withValues(alpha: 0.4),
           ),
           child: Text(
-            _isEditMode ? 'UPDATE CONTRACT' : 'FINALIZE REGISTRATION',
+            _isEditMode ? 'Save changes' : 'Add customer',
             style: const TextStyle(
               fontWeight: FontWeight.w900,
               color: Colors.white,
@@ -362,7 +362,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       keyboardType: keyboardType,
       maxLines: maxLines,
       validator: requiredField
-          ? (value) => (value == null || value.isEmpty) ? 'Required' : null
+          ? (value) => (value == null || value.isEmpty) ? 'This field is required' : null
           : null,
       decoration: InputDecoration(
         labelText: label,
@@ -391,14 +391,14 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       }).toList(),
       onChanged: (value) => setState(() => _selectedRouteId = value),
       decoration: const InputDecoration(
-        labelText: 'Select Logistics Route',
+        labelText: 'Route',
         prefixIcon: Icon(
           Icons.alt_route_rounded,
           color: AppColors.textLight,
           size: 20,
         ),
       ),
-      validator: (value) => value == null ? 'Please select a route' : null,
+      validator: (value) => value == null ? 'Choose a route' : null,
     );
   }
 
@@ -458,7 +458,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 ),
               ),
               subtitle: Text(
-                'Catalog Price: ₹${item.price}',
+                'List price: ₹${item.price}',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -475,8 +475,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                           controller: _quantityControllers[item.id],
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                            labelText: 'Default Quantity',
-                            hintText: 'Units',
+                            labelText: 'Quantity',
+                            hintText: 'Units per order',
                             isDense: true,
                           ),
                         ),
@@ -487,8 +487,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                           controller: _priceControllers[item.id],
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            labelText: 'Contract Price',
-                            hintText: 'Default ₹${item.price}',
+                            labelText: 'Their price',
+                            hintText: 'Leave blank to use ₹${item.price}',
                             isDense: true,
                           ),
                         ),
