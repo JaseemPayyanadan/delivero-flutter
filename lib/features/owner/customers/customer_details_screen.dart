@@ -12,6 +12,52 @@ import '../../../data/models/customer.dart';
 import '../../../data/models/food_item.dart';
 import '../../../data/models/order.dart';
 
+Future<void> _confirmAndDeleteCustomer(
+  BuildContext context,
+  WidgetRef ref,
+  String customerId,
+  String customerName,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: const Text(
+        'Delete this customer?',
+        style: TextStyle(fontWeight: FontWeight.w800),
+      ),
+      content: Text(
+        'Remove "$customerName" from your list. Past orders are not deleted, but you cannot undo this.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text(
+            'Keep customer',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textLight,
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text(
+            'Delete',
+            style: TextStyle(
+              color: AppColors.error,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  ref.read(customersProvider.notifier).deleteCustomer(customerId);
+  if (context.mounted) context.pop();
+}
+
 class CustomerDetailsScreen extends ConsumerWidget {
   final String customerId;
   const CustomerDetailsScreen({super.key, required this.customerId});
@@ -75,13 +121,16 @@ class CustomerDetailsScreen extends ConsumerWidget {
 
     final displayRoute =
         route?.name ?? (customer.assignedRoute ?? 'Unassigned');
-    final address = customer.address.trim().isEmpty
-        ? 'Address not available'
-        : customer.address.trim();
+    final rawAddress = customer.address.trim();
+    final displayAddress =
+        rawAddress.isEmpty ? 'Address not available' : rawAddress;
     final phoneDigits = customer.phone.trim().replaceAll(
       RegExp(r'[^0-9+]'),
       '',
     );
+    final ownerDisplay = customer.ownerName?.trim().isNotEmpty == true
+        ? customer.ownerName!.trim()
+        : 'Not added';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -111,6 +160,26 @@ class CustomerDetailsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              IconButton(
+                onPressed: () => _confirmAndDeleteCustomer(
+                  context,
+                  ref,
+                  customer.id,
+                  customer.name,
+                ),
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
+                ),
+              ),
               const SizedBox(width: 16),
             ],
           ),
@@ -126,7 +195,8 @@ class CustomerDetailsScreen extends ConsumerWidget {
                     avatarText: customer.name.trim().isNotEmpty
                         ? customer.name.trim()[0].toUpperCase()
                         : '?',
-                    address: address,
+                    ownerDisplay: ownerDisplay,
+                    displayAddress: displayAddress,
                     phone: customer.phone,
                     onCall: phoneDigits.isEmpty
                         ? null
@@ -152,11 +222,11 @@ class CustomerDetailsScreen extends ConsumerWidget {
                               );
                             }
                           },
-                    onDirections: address.trim().isEmpty
+                    onDirections: rawAddress.isEmpty
                         ? null
                         : () async {
                             final uri = Uri.parse(
-                              'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}',
+                              'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(rawAddress)}',
                             );
                             final ok = await launchUrl(
                               uri,
@@ -180,7 +250,6 @@ class CustomerDetailsScreen extends ConsumerWidget {
                               );
                             }
                           },
-                    onNewOrder: () => context.push('/owner/orders/create'),
                   ),
                   const SizedBox(height: 14),
                   _KpiStrip(
@@ -219,19 +288,14 @@ class CustomerDetailsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 32),
                   _SectionCard(
-                    title: 'Contacts',
-                    child: _buildContactCard(customer, address, phoneDigits),
-                  ),
-                  const SizedBox(height: 32),
-                  _SectionCard(
                     title: 'Products & pricing',
                     action: TextButton.icon(
                       onPressed: () =>
                           context.push('/owner/customers/edit/$customerId'),
-                      icon: const Icon(Icons.add_rounded, size: 18),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
                       label: const Text(
-                        'Add product',
-                        style: TextStyle(fontWeight: FontWeight.w900),
+                        'Edit',
+                        style: TextStyle(fontWeight: FontWeight.w800),
                       ),
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.primary,
@@ -244,6 +308,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
                     ),
                     child: _buildConfigurationCard(
                       context,
+                      customerId,
                       customer,
                       catalogPriceById,
                     ),
@@ -265,173 +330,81 @@ class CustomerDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildContactCard(
-    Customer customer,
-    String address,
-    String phoneDigits,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          _buildContactTile(
-            Icons.person_pin_rounded,
-            'Owner or manager',
-            customer.ownerName ?? 'Not added',
-          ),
-          _buildContactTile(
-            Icons.phone_iphone_rounded,
-            'Phone',
-            customer.phone.trim().isEmpty ? 'Not available' : customer.phone,
-            onTap: phoneDigits.isEmpty
-                ? null
-                : () => launchUrl(Uri(scheme: 'tel', path: phoneDigits)),
-            trailing: const Icon(
-              Icons.call_rounded,
-              size: 16,
-              color: AppColors.success,
-            ),
-          ),
-          _buildContactTile(
-            Icons.map_rounded,
-            'Address',
-            address,
-            onTap: address.trim().isEmpty
-                ? null
-                : () => launchUrl(
-                    Uri.parse(
-                      'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}',
-                    ),
-                    mode: LaunchMode.externalApplication,
-                  ),
-            trailing: const Icon(
-              Icons.near_me_outlined,
-              size: 16,
-              color: AppColors.info,
-            ),
-            isLast: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContactTile(
-    IconData icon,
-    String label,
-    String value, {
-    VoidCallback? onTap,
-    Widget? trailing,
-    bool isLast = false,
-  }) {
-    return Column(
-      children: [
-        ListTile(
-          onTap: onTap,
-          dense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
-          leading: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundSecondary,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, size: 18, color: AppColors.primary),
-          ),
-          title: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textLight,
-            ),
-          ),
-          subtitle: Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: onTap != null ? AppColors.primary : AppColors.textPrimary,
-            ),
-          ),
-          trailing: trailing,
-        ),
-        if (!isLast)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Divider(height: 1, color: AppColors.divider),
-          ),
-      ],
-    );
-  }
-
   Widget _buildConfigurationCard(
     BuildContext context,
+    String customerId,
     Customer customer,
     Map<String, double> catalogPriceById,
   ) {
     final products = customer.products ?? [];
     if (products.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'No products yet',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primaryLighter.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: const Icon(
+                Icons.inventory_2_outlined,
+                size: 36,
+                color: AppColors.primary,
               ),
             ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () =>
-                        context.push('/owner/customers/edit/$customerId'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text(
-                      'Add product',
-                      style: TextStyle(fontWeight: FontWeight.w900),
-                    ),
+            const SizedBox(height: 20),
+            const Text(
+              'No products linked yet',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Choose what this customer orders and optional custom prices.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary.withValues(alpha: 0.95),
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () =>
+                    context.push('/owner/customers/edit/$customerId'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => context.push('/owner/food-items'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    icon: const Icon(Icons.inventory_2_rounded, size: 18),
-                    label: const Text(
-                      'Products',
-                      style: TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                  ),
+                icon: const Icon(Icons.edit_calendar_outlined, size: 20),
+                label: const Text(
+                  'Set up products',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                 ),
-              ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () => context.push('/owner/food-items'),
+              icon: const Icon(Icons.open_in_new_rounded, size: 18),
+              label: const Text(
+                'Open product catalog',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
@@ -441,83 +414,209 @@ class CustomerDetailsScreen extends ConsumerWidget {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 12),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       itemCount: products.length,
-      separatorBuilder: (context, index) =>
-          const Divider(height: 1, color: AppColors.divider),
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final p = products[index];
         final catalogPrice = catalogPriceById[p.id];
         final shownPrice = p.customPrice ?? catalogPrice;
-        final isContract = p.customPrice != null;
-        final tone = isContract ? AppColors.success : AppColors.textSecondary;
-        final priceLabel = isContract ? 'Their price' : 'List price';
+        final hasCustom = p.customPrice != null;
+        final nf = NumberFormat.decimalPattern();
 
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 6,
-          ),
-          leading: Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLighter.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.inventory_2_rounded,
-              size: 20,
-              color: AppColors.primary,
-            ),
-          ),
-          title: Text(
-            p.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 14,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.2,
-            ),
-          ),
-          subtitle: Text(
-            'Quantity: ${p.quantity} units',
-            style: const TextStyle(
-              color: AppColors.textLight,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                priceLabel.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textLight,
-                  letterSpacing: 0.6,
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () =>
+                context.push('/owner/customers/edit/$customerId'),
+            child: Ink(
+              decoration: BoxDecoration(
+                color: AppColors.backgroundSecondary.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLighter.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.inventory_2_rounded,
+                        size: 22,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            p.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: AppColors.textPrimary,
+                              height: 1.25,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${p.quantity} units each order',
+                            style: const TextStyle(
+                              color: AppColors.textLight,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (hasCustom &&
+                              catalogPrice != null &&
+                              p.customPrice != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              'List ${nf.format(catalogPrice)} → Your ${nf.format(p.customPrice!)}',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: hasCustom
+                                ? AppColors.successLighter.withValues(
+                                    alpha: 0.85,
+                                  )
+                                : AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: hasCustom
+                                  ? AppColors.success.withValues(alpha: 0.25)
+                                  : AppColors.border,
+                            ),
+                          ),
+                          child: Text(
+                            hasCustom ? 'Custom' : 'List',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: hasCustom
+                                  ? AppColors.success
+                                  : AppColors.textSecondary,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          shownPrice == null
+                              ? '—'
+                              : '₹${nf.format(shownPrice)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 17,
+                            color: hasCustom
+                                ? AppColors.success
+                                : AppColors.textPrimary,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Tap to edit',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                shownPrice == null
-                    ? '-'
-                    : '₹${NumberFormat.decimalPattern().format(shownPrice)}',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: tone,
-                  fontSize: 15,
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+class _MergedContactRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  final int valueMaxLines;
+
+  const _MergedContactRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onTap,
+    this.trailing,
+    this.valueMaxLines = 3,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.backgroundSecondary,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, size: 18, color: AppColors.primary),
+      ),
+      title: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textLight,
+        ),
+      ),
+      subtitle: Text(
+        value,
+        maxLines: valueMaxLines,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+          color: onTap != null ? AppColors.primary : AppColors.textPrimary,
+          height: 1.35,
+        ),
+      ),
+      trailing: trailing,
     );
   }
 }
@@ -526,21 +625,21 @@ class _CustomerHeroCard extends StatelessWidget {
   final String customerName;
   final String routeLabel;
   final String avatarText;
-  final String address;
+  final String ownerDisplay;
+  final String displayAddress;
   final String phone;
   final VoidCallback? onCall;
   final VoidCallback? onDirections;
-  final VoidCallback onNewOrder;
 
   const _CustomerHeroCard({
     required this.customerName,
     required this.routeLabel,
     required this.avatarText,
-    required this.address,
+    required this.ownerDisplay,
+    required this.displayAddress,
     required this.phone,
     required this.onCall,
     required this.onDirections,
-    required this.onNewOrder,
   });
 
   @override
@@ -627,117 +726,43 @@ class _CustomerHeroCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              const Icon(
-                Icons.near_me_outlined,
-                size: 16,
-                color: AppColors.textLight,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  address,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
+          const Padding(
+            padding: EdgeInsets.only(top: 16, bottom: 4),
+            child: Divider(height: 1, color: AppColors.divider),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(
-                Icons.phone_iphone_rounded,
-                size: 16,
-                color: AppColors.textLight,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  phone.trim().isEmpty ? 'Phone not available' : phone,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
+          _MergedContactRow(
+            icon: Icons.person_pin_rounded,
+            label: 'Owner or manager',
+            value: ownerDisplay,
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onCall,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.success,
-                    backgroundColor: AppColors.successLighter.withValues(
-                      alpha: 0.55,
-                    ),
-                    side: const BorderSide(color: Colors.transparent),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  icon: const Icon(Icons.call_rounded, size: 18),
-                  label: const Text(
-                    'Call',
-                    style: TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onDirections,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.info,
-                    backgroundColor: AppColors.infoLighter.withValues(
-                      alpha: 0.55,
-                    ),
-                    side: const BorderSide(color: Colors.transparent),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  icon: const Icon(Icons.near_me_rounded, size: 18),
-                  label: const Text(
-                    'Directions',
-                    style: TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onNewOrder,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
-                  label: const Text(
-                    'New Order',
-                    style: TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ),
-            ],
+          const Divider(height: 1, color: AppColors.divider),
+          _MergedContactRow(
+            icon: Icons.phone_iphone_rounded,
+            label: 'Phone',
+            value: phone.trim().isEmpty ? 'Not available' : phone.trim(),
+            onTap: onCall,
+            trailing: onCall != null
+                ? const Icon(
+                    Icons.call_rounded,
+                    size: 18,
+                    color: AppColors.success,
+                  )
+                : null,
+          ),
+          const Divider(height: 1, color: AppColors.divider),
+          _MergedContactRow(
+            icon: Icons.map_rounded,
+            label: 'Address',
+            value: displayAddress,
+            onTap: onDirections,
+            valueMaxLines: 4,
+            trailing: onDirections != null
+                ? const Icon(
+                    Icons.near_me_outlined,
+                    size: 18,
+                    color: AppColors.info,
+                  )
+                : null,
           ),
         ],
       ),

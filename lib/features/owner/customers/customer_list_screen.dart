@@ -44,11 +44,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     super.dispose();
   }
 
-  String _formatIndex(int index) {
-    final value = index + 1;
-    return value < 10 ? '0$value' : value.toString();
-  }
-
   Future<void> _makePhoneCall(String phoneNumber) async {
     final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunchUrl(launchUri)) {
@@ -113,15 +108,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
 
     filteredCustomers.sort((a, b) => a.name.compareTo(b.name));
 
-    double totalOutstanding = 0;
+    final bool noCustomersYet = customers.isEmpty;
     int totalOrdersCount = 0;
-    for (final customer in filteredCustomers) {
-      final customerOrders = ordersByCustomer[customer.id] ?? const [];
-      totalOrdersCount += customerOrders.length;
-      for (final o in customerOrders) {
-        if (o.paymentStatus != PaymentStatus.paid) {
-          totalOutstanding += (o.totalAmount - (o.amountPaid ?? 0));
-        }
+    if (!noCustomersYet) {
+      for (final customer in filteredCustomers) {
+        final customerOrders = ordersByCustomer[customer.id] ?? const [];
+        totalOrdersCount += customerOrders.length;
       }
     }
 
@@ -134,59 +126,58 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
             parent: BouncingScrollPhysics(),
           ),
           slivers: [
-            DeliveroSliverHeader(
-              title: 'Customers',
-              subtitle: '${customers.length} customers',
-              expandedHeight: 140,
-              floating: true,
-              pinned: true,
-              actions: [
-                PrimarySquareIconButton(
-                  icon: Icons.add_rounded,
-                  onPressed: () => context.push('/owner/customers/add'),
-                ),
-                const SizedBox(width: 16),
-              ],
-            ),
-            SliverToBoxAdapter(
-              child: _buildSearchAndFilter(
-                routes,
-                availableRouteIds,
-                partners: filteredCustomers.length,
-                outstanding: totalOutstanding,
-                orders: totalOrdersCount,
-                routesLoaded: routesLoaded,
+            if (!noCustomersYet) ...[
+              DeliveroSliverHeader(
+                title: 'Customers',
+                subtitle: '${customers.length} customers',
+                expandedHeight: 140,
+                floating: true,
+                pinned: true,
+                actions: [
+                  PrimarySquareIconButton(
+                    icon: Icons.add_rounded,
+                    onPressed: () => context.push('/owner/customers/add'),
+                  ),
+                  const SizedBox(width: 16),
+                ],
               ),
-            ),
+              SliverToBoxAdapter(
+                child: _buildSearchAndFilter(
+                  routes,
+                  availableRouteIds,
+                  partners: filteredCustomers.length,
+                  orders: totalOrdersCount,
+                  routesLoaded: routesLoaded,
+                ),
+              ),
+            ],
             if (!customersLoaded && customers.isEmpty)
               const SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (filteredCustomers.isEmpty)
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.6,
-                  child: _buildEmptyState(
-                    title: customers.isEmpty
-                        ? 'No customers yet'
-                        : 'Nothing matches your search',
-                    subtitle: customers.isEmpty
-                        ? 'Add a customer to start taking orders and assigning routes.'
-                        : 'Try a different search or pick another route.',
-                    icon: customers.isEmpty
-                        ? Icons.business_center_outlined
-                        : Icons.search_off_outlined,
-                    actionLabel: customers.isEmpty
-                        ? 'Add Customer'
-                        : 'Clear Search',
-                    onAction: customers.isEmpty
-                        ? () => context.push('/owner/customers/add')
-                        : () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                  ),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildEmptyState(
+                  title: customers.isEmpty
+                      ? 'No customers yet'
+                      : 'Nothing matches your search',
+                  subtitle: customers.isEmpty
+                      ? 'Add a customer to start taking orders and assigning routes.'
+                      : 'Try a different search or pick another route.',
+                  icon: customers.isEmpty
+                      ? Icons.business_center_outlined
+                      : Icons.search_off_outlined,
+                  actionLabel: customers.isEmpty
+                      ? 'Add Customer'
+                      : 'Clear Search',
+                  onAction: customers.isEmpty
+                      ? () => context.push('/owner/customers/add')
+                      : () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
                 ),
               )
             else
@@ -208,13 +199,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                     final customerOrders =
                         ordersByCustomer[customer.id] ?? const [];
 
-                    double outstanding = 0;
                     DateTime? lastOrderDate;
 
                     for (var o in customerOrders) {
-                      if (o.paymentStatus != PaymentStatus.paid) {
-                        outstanding += (o.totalAmount - (o.amountPaid ?? 0));
-                      }
                       if (lastOrderDate == null ||
                           o.orderDate.isAfter(lastOrderDate)) {
                         lastOrderDate = o.orderDate;
@@ -227,10 +214,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                     final totalOrders = customerOrders.length;
 
                     return _buildCustomerCard(
-                      _formatIndex(index),
                       customer,
                       routeName,
-                      outstanding,
                       lastOrderDate,
                       ltv,
                       totalOrders,
@@ -248,7 +233,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     List<DeliveryRoute> routes,
     List<String> availableRouteIds, {
     required int partners,
-    required double outstanding,
     required int orders,
     required bool routesLoaded,
   }) {
@@ -305,7 +289,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                   ),
                 ),
                 const SizedBox(height: 14),
-                _buildSummaryStrip(partners, outstanding, orders),
+                _buildSummaryStrip(partners, orders),
                 const SizedBox(height: 16),
                 const Text(
                   'Routes',
@@ -393,7 +377,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     );
   }
 
-  Widget _buildSummaryStrip(int partners, double outstanding, int orders) {
+  Widget _buildSummaryStrip(int partners, int orders) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -408,19 +392,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
               label: 'Customers',
               value: partners.toString(),
               color: AppColors.textPrimary,
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 34,
-            color: AppColors.divider,
-            margin: const EdgeInsets.symmetric(horizontal: 12),
-          ),
-          Expanded(
-            child: _buildSummaryMetric(
-              label: 'Outstanding',
-              value: '₹${NumberFormat.compact().format(outstanding)}',
-              color: AppColors.warning,
             ),
           ),
           Container(
@@ -476,10 +447,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
   }
 
   Widget _buildCustomerCard(
-    String indexLabel,
     Customer customer,
     String routeName,
-    double outstanding,
     DateTime? lastOrderDate,
     double ltv,
     int totalOrders,
@@ -584,86 +553,34 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                     top: BorderSide(color: AppColors.border),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Last order',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textSecondary,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          lastOrderDate != null
-                              ? DateFormat('MMM d').format(lastOrderDate)
-                              : 'No orders yet',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
+                    const Text(
+                      'Last order',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.8,
+                      ),
                     ),
-                    _buildOutstandingBadge(outstanding),
+                    const SizedBox(height: 3),
+                    Text(
+                      lastOrderDate != null
+                          ? DateFormat('MMM d').format(lastOrderDate)
+                          : 'No orders yet',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Container(
-                height: 3,
-                width: double.infinity,
-                color: outstanding > 0 ? AppColors.warning : AppColors.success,
-              ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOutstandingBadge(double outstanding) {
-    final hasDue = outstanding > 0.01;
-    if (!hasDue) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.success.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: AppColors.success.withValues(alpha: 0.18)),
-        ),
-        child: const Text(
-          'Cleared',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            color: AppColors.success,
-            letterSpacing: 0.4,
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.22)),
-      ),
-      child: Text(
-        '₹${NumberFormat.compact().format(outstanding)} due',
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          color: AppColors.warning,
-          letterSpacing: 0.4,
         ),
       ),
     );

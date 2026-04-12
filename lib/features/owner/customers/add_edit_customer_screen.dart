@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:collection/collection.dart';
@@ -25,7 +26,6 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   late TextEditingController _nameController;
   late TextEditingController _ownerNameController;
   late TextEditingController _phoneController;
-  late TextEditingController _addressController;
   String? _selectedRouteId;
   List<CustomerProduct> _selectedProducts = [];
   final Map<String, TextEditingController> _quantityControllers = {};
@@ -42,14 +42,12 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     _nameController = TextEditingController();
     _ownerNameController = TextEditingController();
     _phoneController = TextEditingController();
-    _addressController = TextEditingController();
   }
 
   void _populateFromCustomer(Customer customer) {
     _nameController.text = customer.name;
     _ownerNameController.text = customer.ownerName ?? '';
     _phoneController.text = customer.phone;
-    _addressController.text = customer.address;
 
     final routes = ref.read(routesProvider);
     final route = routes.firstWhereOrNull(
@@ -85,7 +83,6 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     _nameController.dispose();
     _ownerNameController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
     for (var c in _quantityControllers.values) {
       c.dispose();
     }
@@ -135,7 +132,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           : _ownerNameController.text.trim(),
       email: existingCustomerEmail,
       phone: _phoneController.text.trim(),
-      address: _addressController.text,
+      address: _isEditMode
+          ? (existingCustomer?.address ?? '')
+          : '',
       area: selectedRoute?.area ?? 'Central',
       isActive: existingCustomer?.isActive ?? true,
       discountPercentage: existingCustomer?.discountPercentage,
@@ -282,20 +281,22 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                       hint: '+91 00000 00000',
                       requiredField: false,
                     ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      'Address',
-                      _addressController,
-                      Icons.map_rounded,
-                      maxLines: 3,
-                      hint: 'Street, area, landmark…',
-                    ),
                     const SizedBox(height: 32),
                     _buildSectionHeader('Delivery route'),
                     const SizedBox(height: 16),
                     _buildRouteDropdown(routes),
                     const SizedBox(height: 32),
                     _buildSectionHeader('Products & prices'),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Select products, then set quantity and price if it differs from the list.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary.withValues(alpha: 0.95),
+                        height: 1.4,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     _buildProductList(foodItems),
                   ],
@@ -413,94 +414,414 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           _priceControllers[item.id] = TextEditingController();
         }
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? AppColors.primary.withValues(alpha: 0.03)
-                : AppColors.surface,
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Material(
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
-              width: isSelected ? 1.5 : 1,
-            ),
-          ),
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              leading: Checkbox(
-                value: isSelected,
-                activeColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
+            clipBehavior: Clip.antiAlias,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.border,
+                  width: isSelected ? 2 : 1,
                 ),
-                onChanged: (val) {
-                  setState(() {
-                    if (val == true) {
-                      _selectedProducts.add(
-                        CustomerProduct(
-                          id: item.id,
-                          name: item.name,
-                          quantity: 0,
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
-                      );
-                    } else {
-                      _selectedProducts.removeWhere((p) => p.id == item.id);
-                    }
-                  });
-                },
+                      ]
+                    : null,
               ),
-              title: Text(
-                item.name,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                ),
-              ),
-              subtitle: Text(
-                'List price: ₹${item.price}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textLight,
-                ),
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _quantityControllers[item.id],
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Quantity',
-                            hintText: 'Units per order',
-                            isDense: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        if (isSelected) {
+                          _selectedProducts.removeWhere((p) => p.id == item.id);
+                        } else {
+                          _selectedProducts.add(
+                            CustomerProduct(
+                              id: item.id,
+                              name: item.name,
+                              quantity: 0,
+                            ),
+                          );
+                        }
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 14, 14, 14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: isSelected,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              side: BorderSide(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textLight,
+                                width: 1.5,
+                              ),
+                              fillColor: WidgetStateProperty.resolveWith((s) {
+                                if (s.contains(WidgetState.selected)) {
+                                  return AppColors.primary;
+                                }
+                                return null;
+                              }),
+                              onChanged: (val) {
+                                setState(() {
+                                  if (val == true) {
+                                    _selectedProducts.add(
+                                      CustomerProduct(
+                                        id: item.id,
+                                        name: item.name,
+                                        quantity: 0,
+                                      ),
+                                    );
+                                  } else {
+                                    _selectedProducts.removeWhere(
+                                      (p) => p.id == item.id,
+                                    );
+                                  }
+                                });
+                              },
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: _priceControllers[item.id],
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Their price',
-                            hintText: 'Leave blank to use ₹${item.price}',
-                            isDense: true,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  style: TextStyle(
+                                    fontWeight: isSelected
+                                        ? FontWeight.w800
+                                        : FontWeight.w700,
+                                    fontSize: 15,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.textPrimary,
+                                    height: 1.25,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.backgroundSecondary,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    'List ₹${item.price}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                          if (!isSelected)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Icon(
+                                Icons.add_circle_outline_rounded,
+                                size: 22,
+                                color: AppColors.textLight.withValues(
+                                  alpha: 0.9,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                  if (isSelected) ...[
+                    const Divider(height: 1, color: AppColors.divider),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLighter.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'For this customer',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textLight,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Quantity each order',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Whole numbers only. List price for this item is ₹${item.price}.',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textSecondary,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _QtyStepButton(
+                                    icon: Icons.remove_rounded,
+                                    onPressed: () {
+                                      final c = _quantityControllers[item.id]!;
+                                      final q =
+                                          int.tryParse(c.text.trim()) ?? 0;
+                                      final next = (q - 1).clamp(0, 999999);
+                                      c.text = next.toString();
+                                      setState(() {});
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _quantityControllers[item.id],
+                                      keyboardType: TextInputType.number,
+                                      textInputAction: TextInputAction.next,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.5,
+                                      ),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                        LengthLimitingTextInputFormatter(6),
+                                      ],
+                                      decoration: InputDecoration(
+                                        hintText: '0',
+                                        suffixText: 'units',
+                                        suffixStyle: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        filled: true,
+                                        fillColor: AppColors.surface,
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 16,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          borderSide: const BorderSide(
+                                            color: AppColors.border,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          borderSide: const BorderSide(
+                                            color: AppColors.primary,
+                                            width: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _QtyStepButton(
+                                    icon: Icons.add_rounded,
+                                    onPressed: () {
+                                      final c = _quantityControllers[item.id]!;
+                                      final q =
+                                          int.tryParse(c.text.trim()) ?? 0;
+                                      final next = (q + 1).clamp(0, 999999);
+                                      c.text = next.toString();
+                                      setState(() {});
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 22),
+                              Text(
+                                'Custom price (optional)',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Leave empty to use ₹${item.price}. Use decimals if needed (e.g. 42.50).',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textSecondary,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _priceControllers[item.id],
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                textInputAction: TextInputAction.done,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9.]'),
+                                  ),
+                                  _DecimalPlacesInputFormatter(maxDecimalPlaces: 2),
+                                ],
+                                decoration: InputDecoration(
+                                  labelText: 'Amount in ₹',
+                                  floatingLabelBehavior:
+                                      FloatingLabelBehavior.auto,
+                                  hintText: '${item.price}',
+                                  prefixText: '₹ ',
+                                  prefixStyle: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  filled: true,
+                                  fillColor: AppColors.surface,
+                                  contentPadding:
+                                      const EdgeInsets.fromLTRB(
+                                    16,
+                                    16,
+                                    16,
+                                    16,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.border,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primary,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         );
       }).toList(),
     );
+  }
+}
+
+class _QtyStepButton extends StatelessWidget {
+  const _QtyStepButton({
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onPressed,
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Icon(icon, color: AppColors.primary, size: 26),
+        ),
+      ),
+    );
+  }
+}
+
+/// Keeps at most one decimal point and [maxDecimalPlaces] digits after it.
+class _DecimalPlacesInputFormatter extends TextInputFormatter {
+  _DecimalPlacesInputFormatter({this.maxDecimalPlaces = 2});
+
+  final int maxDecimalPlaces;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final t = newValue.text;
+    if (t.isEmpty) return newValue;
+    final parts = t.split('.');
+    if (parts.length > 2) return oldValue;
+    if (parts.length == 2 && parts[1].length > maxDecimalPlaces) {
+      return oldValue;
+    }
+    return newValue;
   }
 }
