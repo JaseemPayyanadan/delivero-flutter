@@ -140,12 +140,12 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
         elevation: 8,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text(
-          'NEW PRODUCT',
+          'New product',
           style: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1,
-            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+            fontSize: 14,
           ),
         ),
       ),
@@ -206,12 +206,12 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'UPDATED ${DateFormat('MMM d').format(item.updatedAt).toUpperCase()}',
+                        'Updated ${DateFormat('MMM d').format(item.updatedAt)}',
                         style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.textLight,
-                          letterSpacing: 0.8,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ],
@@ -282,7 +282,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Add products to start managing your catalog',
+            'Add what you sell so you can put it on orders',
             style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
           const SizedBox(height: 18),
@@ -298,11 +298,11 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
             ),
             icon: const Icon(Icons.add_rounded, size: 18),
             label: const Text(
-              'ADD PRODUCT',
+              'Add product',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1,
-                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+                fontSize: 13,
               ),
             ),
           ),
@@ -386,15 +386,15 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         content: Text(
-          'This will permanently remove "${item.name}" from your catalog.',
+          'This removes "${item.name}" from your list. You cannot undo this.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text(
-              'CANCEL',
+              'Keep it',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
               ),
             ),
@@ -402,9 +402,9 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
-              'DELETE',
+              'Delete',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: AppColors.error,
               ),
             ),
@@ -428,8 +428,8 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: Text(
-          isEdit ? 'Update Product' : 'Register Product',
-          style: const TextStyle(fontWeight: FontWeight.w900),
+          isEdit ? 'Edit product' : 'Add product',
+          style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -437,8 +437,8 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
             TextField(
               controller: nameController,
               decoration: const InputDecoration(
-                labelText: 'Commercial Name',
-                hintText: 'e.g. Premium Basmati Rice',
+                labelText: 'Name',
+                hintText: 'e.g. Premium basmati rice',
               ),
             ),
             const SizedBox(height: 20),
@@ -465,22 +465,22 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                 }
               },
               child: const Text(
-                'DELETE',
+                'Delete',
                 style: TextStyle(
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.error,
-                  letterSpacing: 1,
+                  letterSpacing: 0.2,
                 ),
               ),
             ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'CANCEL',
+              'Cancel',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
-                letterSpacing: 1,
+                letterSpacing: 0.2,
               ),
             ),
           ),
@@ -516,9 +516,9 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
               ),
             ),
             child: Text(
-              isEdit ? 'UPDATE' : 'REGISTER',
+              isEdit ? 'Save' : 'Add',
               style: const TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
             ),

@@ -560,7 +560,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                               ),
                               const SizedBox(width: 14),
                               _buildMetric(
-                                'ORDERS',
+                                'Orders',
                                 totalOrders.toString(),
                                 Icons.shopping_bag_outlined,
                               ),
@@ -603,7 +603,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                         Text(
                           lastOrderDate != null
                               ? DateFormat('MMM d').format(lastOrderDate)
-                              : 'FIRST CONTACT',
+                              : 'No orders yet',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,

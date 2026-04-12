@@ -87,7 +87,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text(
-                      'PACKAGING MANIFEST',
+                      'Pack list',
                       style: pw.TextStyle(
                         fontSize: 18,
                         fontWeight: pw.FontWeight.bold,
@@ -130,7 +130,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(10),
                       child: pw.Text(
-                        'ITEM',
+                        'Item',
                         style: pw.TextStyle(
                           fontSize: 10,
                           fontWeight: pw.FontWeight.bold,
@@ -141,7 +141,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(10),
                       child: pw.Text(
-                        'PACK BREAKDOWN',
+                        'Pack sizes',
                         style: pw.TextStyle(
                           fontSize: 10,
                           fontWeight: pw.FontWeight.bold,
@@ -670,7 +670,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 ),
                 const SizedBox(height: 14),
                 const Text(
-                  'LOGISTICS ROUTES',
+                  'Routes',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,

@@ -1038,7 +1038,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'MANIFEST TOTAL',
+                    'Order total',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,

@@ -82,7 +82,7 @@ class _AppLauncherScreenState extends State<AppLauncherScreen>
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'Enterprise Delivery Suite',
+                            'Delivery, simplified',
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontWeight: FontWeight.w700,
@@ -106,7 +106,7 @@ class _AppLauncherScreenState extends State<AppLauncherScreen>
                             duration: const Duration(milliseconds: 250),
                             opacity: _showHint ? 1 : 0,
                             child: const Text(
-                              'Initializing…',
+                              'Getting ready…',
                               style: TextStyle(
                                 color: AppColors.textLight,
                                 fontSize: 11,

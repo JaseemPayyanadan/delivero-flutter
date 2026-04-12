@@ -12,6 +12,11 @@ import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/driver.dart';
 
+String _humanizeWord(String raw) {
+  if (raw.isEmpty) return raw;
+  return raw[0].toUpperCase() + raw.substring(1);
+}
+
 class OrderDetailsScreen extends ConsumerWidget {
   final String orderId;
   const OrderDetailsScreen({super.key, required this.orderId});
@@ -41,7 +46,7 @@ class OrderDetailsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: DeliveroAppBar(
-        title: 'TXN: ${order.id.toUpperCase()}',
+        title: 'Order ${order.id.length > 8 ? order.id.substring(order.id.length - 8) : order.id}',
         centerTitle: true,
         actions: [
           IconButton(
@@ -62,16 +67,16 @@ class OrderDetailsScreen extends ConsumerWidget {
           children: [
             _buildStatusHeader(order),
             const SizedBox(height: 22),
-            _buildSectionTitle('FULFILLMENT MANIFEST'),
+            _buildSectionTitle('Delivery'),
             _buildFulfillmentCard(context, order, route, driver),
             const SizedBox(height: 22),
-            _buildSectionTitle('INVENTORY MANIFEST'),
+            _buildSectionTitle('Items'),
             _buildItemsSummary(order),
             const SizedBox(height: 22),
-            _buildSectionTitle('FINANCIAL SETTLEMENT'),
+            _buildSectionTitle('Payment'),
             _buildPaymentSection(context, ref, order),
             const SizedBox(height: 22),
-            _buildSectionTitle('OPERATIONAL STATUS'),
+            _buildSectionTitle('Status'),
             _buildUpdateStatus(context, ref, order),
           ],
         ),
@@ -123,12 +128,12 @@ class OrderDetailsScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'TRANSACTION VALUE',
+                      'Total',
                       style: TextStyle(
                         color: AppColors.textLight,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -150,7 +155,7 @@ class OrderDetailsScreen extends ConsumerWidget {
               const SizedBox(width: 12),
               Flexible(
                 child: _StatusBadge(
-                  label: order.status.name.toUpperCase(),
+                  label: _humanizeWord(order.status.name),
                   color: statusColor,
                 ),
               ),
@@ -164,7 +169,7 @@ class OrderDetailsScreen extends ConsumerWidget {
               _buildHeaderMeta(
                 Icons.calendar_today_rounded,
                 dateStr,
-                'PLACEMENT DATE',
+                'Date',
               ),
               Container(
                 width: 1,
@@ -175,7 +180,7 @@ class OrderDetailsScreen extends ConsumerWidget {
               _buildHeaderMeta(
                 Icons.access_time_rounded,
                 timeStr,
-                'ORDER TIME',
+                'Time',
               ),
             ],
           ),
@@ -380,8 +385,8 @@ class OrderDetailsScreen extends ConsumerWidget {
               Expanded(
                 child: _buildLogisticsItem(
                   Icons.alt_route_rounded,
-                  'LOGISTICS ROUTE',
-                  route?.name ?? order.assignedRoute ?? 'PENDING',
+                  'Route',
+                  route?.name ?? order.assignedRoute ?? 'Not set',
                   AppColors.primary,
                 ),
               ),
@@ -394,8 +399,8 @@ class OrderDetailsScreen extends ConsumerWidget {
               Expanded(
                 child: _buildLogisticsItem(
                   Icons.person_pin_circle_rounded,
-                  'FIELD AGENT',
-                  driver?.name ?? 'DISPATCH PENDING',
+                  'Driver',
+                  driver?.name ?? 'Not assigned',
                   AppColors.info,
                 ),
               ),
@@ -432,12 +437,12 @@ class OrderDetailsScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          value.toUpperCase(),
+          value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
@@ -542,18 +547,18 @@ class OrderDetailsScreen extends ConsumerWidget {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text(
-          'Update Payment',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          'Record a payment',
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'TOTAL DUE: ₹${order.totalAmount.toStringAsFixed(0)}',
+              'Order total: ₹${order.totalAmount.toStringAsFixed(0)}',
               style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textSecondary,
               ),
             ),
@@ -562,7 +567,7 @@ class OrderDetailsScreen extends ConsumerWidget {
               controller: controller,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Amount Received',
+                labelText: 'Amount collected',
                 prefixText: '₹ ',
                 filled: true,
                 fillColor: AppColors.backgroundSecondary,
@@ -577,8 +582,8 @@ class OrderDetailsScreen extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'CANCEL',
-              style: TextStyle(fontWeight: FontWeight.w900),
+              'Cancel',
+              style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
           ElevatedButton(
@@ -605,9 +610,9 @@ class OrderDetailsScreen extends ConsumerWidget {
               ),
             ),
             child: const Text(
-              'SAVE',
+              'Save',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
             ),
@@ -646,14 +651,14 @@ class OrderDetailsScreen extends ConsumerWidget {
             children: [
               const Expanded(
                 child: Text(
-                  'SETTLEMENT OVERVIEW',
+                  'Payment summary',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textLight,
-                    letterSpacing: 1.2,
+                    letterSpacing: 0.2,
                   ),
                 ),
               ),
@@ -682,12 +687,12 @@ class OrderDetailsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      paymentStatus.name.toUpperCase(),
+                      _humanizeWord(paymentStatus.name),
                       style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
                         color: paymentColor,
-                        letterSpacing: 0.8,
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ],
@@ -707,7 +712,7 @@ class OrderDetailsScreen extends ConsumerWidget {
               children: [
                 Expanded(
                   child: _AmountMetric(
-                    label: 'TOTAL',
+                    label: 'Total',
                     value: totalAmount,
                     color: AppColors.secondary,
                   ),
@@ -720,7 +725,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                 ),
                 Expanded(
                   child: _AmountMetric(
-                    label: 'PAID',
+                    label: 'Paid',
                     value: amountPaid,
                     color: paymentColor,
                   ),
@@ -733,7 +738,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                 ),
                 Expanded(
                   child: _AmountMetric(
-                    label: 'DUE',
+                    label: 'Due',
                     value: amountDue,
                     color: AppColors.error,
                   ),
@@ -759,12 +764,12 @@ class OrderDetailsScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'STATUS',
+                      'Payment status',
                       style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textLight,
-                        letterSpacing: 1,
+                        letterSpacing: 0.2,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -804,12 +809,12 @@ class OrderDetailsScreen extends ConsumerWidget {
                                 (s) => DropdownMenuItem(
                                   value: s,
                                   child: Text(
-                                    s.name.toUpperCase(),
+                                    _humanizeWord(s.name),
                                     style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
                                       color: _getPaymentStatusColor(s),
-                                      letterSpacing: 0.5,
+                                      letterSpacing: 0.2,
                                     ),
                                   ),
                                 ),
@@ -827,12 +832,12 @@ class OrderDetailsScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'METHOD',
+                      'Payment method',
                       style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textLight,
-                        letterSpacing: 1,
+                        letterSpacing: 0.2,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -879,12 +884,12 @@ class OrderDetailsScreen extends ConsumerWidget {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        m.name.toUpperCase(),
+                                        _humanizeWord(m.name),
                                         style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w900,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
                                           color: AppColors.textPrimary,
-                                          letterSpacing: 0.5,
+                                          letterSpacing: 0.2,
                                         ),
                                       ),
                                     ],
@@ -916,11 +921,11 @@ class OrderDetailsScreen extends ConsumerWidget {
               ),
               icon: const Icon(Icons.edit_document, size: 16),
               label: const Text(
-                'UPDATE AMOUNT',
+                'Update amount paid',
                 style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 11,
-                  letterSpacing: 1,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  letterSpacing: 0.2,
                 ),
               ),
             ),
@@ -947,7 +952,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                 ref,
                 order,
                 OrderStatus.pending,
-                'QUEUED',
+                'Waiting',
                 Icons.inventory_2_outlined,
                 Icons.inventory_2_rounded,
               ),
@@ -957,7 +962,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                 ref,
                 order,
                 OrderStatus.delivered,
-                'FULFILLED',
+                'Delivered',
                 Icons.task_alt_outlined,
                 Icons.task_alt_rounded,
               ),
@@ -985,12 +990,12 @@ class OrderDetailsScreen extends ConsumerWidget {
                   ),
                   SizedBox(width: 10),
                   Text(
-                    'TRANSACTION VOIDED',
+                    'This order was cancelled',
                     style: TextStyle(
                       color: AppColors.error,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1,
-                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -1024,11 +1029,11 @@ class OrderDetailsScreen extends ConsumerWidget {
                     ),
                     icon: const Icon(Icons.check_circle_rounded, size: 18),
                     label: const Text(
-                      'MARK DELIVERED',
+                      'Mark delivered',
                       style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
-                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                        fontSize: 12,
                       ),
                     ),
                   ),
@@ -1054,11 +1059,11 @@ class OrderDetailsScreen extends ConsumerWidget {
                     ),
                     icon: const Icon(Icons.block_flipped, size: 16),
                     label: const Text(
-                      'CANCEL',
+                      'Cancel order',
                       style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
-                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                        fontSize: 12,
                       ),
                     ),
                   ),
@@ -1080,11 +1085,11 @@ class OrderDetailsScreen extends ConsumerWidget {
               ),
               icon: const Icon(Icons.delete_outline_rounded, size: 18),
               label: const Text(
-                'DELETE ORDER',
+                'Delete order',
                 style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -1141,10 +1146,10 @@ class OrderDetailsScreen extends ConsumerWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
                 color: isCurrent ? AppColors.textPrimary : AppColors.textLight,
-                letterSpacing: 1,
+                letterSpacing: 0.2,
               ),
             ),
           ],
@@ -1179,7 +1184,7 @@ class OrderDetailsScreen extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Order status updated to ${newStatus.name.toUpperCase()}',
+          'Order is now ${_humanizeWord(newStatus.name)}',
         ),
         behavior: SnackBarBehavior.floating,
         backgroundColor: _getStatusColor(newStatus),
@@ -1194,19 +1199,19 @@ class OrderDetailsScreen extends ConsumerWidget {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text(
-          'Delete Transaction?',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          'Delete this order?',
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         content: const Text(
-          'This action will permanently remove this record from your ledger.',
+          'This removes the order from your list. You cannot undo it.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'CANCEL',
+              'Keep it',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
               ),
             ),
@@ -1218,10 +1223,10 @@ class OrderDetailsScreen extends ConsumerWidget {
               context.pop(); // Close details screen
             },
             child: const Text(
-              'DELETE RECORD',
+              'Delete',
               style: TextStyle(
                 color: AppColors.error,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),

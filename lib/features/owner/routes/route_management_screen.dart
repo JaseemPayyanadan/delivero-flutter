@@ -58,9 +58,9 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
         child: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
             DeliveroSliverHeader(
-              title: 'Logistics Control',
+              title: 'Routes & drivers',
               subtitle:
-                  '${routes.length} active routes • ${drivers.where((d) => d.isActive).length} on-field agents',
+                  '${routes.length} routes • ${drivers.where((d) => d.isActive).length} drivers on duty',
               expandedHeight: 140,
               floating: true,
               pinned: true,
@@ -110,8 +110,8 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
                       fontSize: 13,
                     ),
                     tabs: const [
-                      Tab(text: 'ROUTES'),
-                      Tab(text: 'FIELD AGENTS'),
+                      Tab(text: 'Routes'),
+                      Tab(text: 'Drivers'),
                     ],
                   ),
                 ),
@@ -152,7 +152,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: Text(
-          isEdit ? 'Update Route' : 'Establish New Route',
+          isEdit ? 'Edit route' : 'Add route',
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
         content: Column(
@@ -161,7 +161,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
             TextField(
               controller: nameController,
               decoration: const InputDecoration(
-                labelText: 'Route Identifier',
+                labelText: 'Route name',
                 hintText: 'e.g. Downtown Express',
               ),
             ),
@@ -169,7 +169,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
             TextField(
               controller: areaController,
               decoration: const InputDecoration(
-                labelText: 'Operational Area',
+                labelText: 'Area',
                 hintText: 'e.g. Central Business District',
               ),
             ),
@@ -179,11 +179,11 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'CANCEL',
+              'Cancel',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
-                letterSpacing: 1,
+                letterSpacing: 0.2,
               ),
             ),
           ),
@@ -220,9 +220,9 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
               ),
             ),
             child: Text(
-              isEdit ? 'UPDATE' : 'ESTABLISH',
+              isEdit ? 'Save' : 'Add route',
               style: const TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
             ),
@@ -251,8 +251,8 @@ class _RouteListTab extends ConsumerWidget {
     if (routes.isEmpty) {
       return _buildEmptyState(
         Icons.alt_route_rounded,
-        'No active logistics routes',
-        'Establish your first delivery path to start fulfilling orders.',
+        'No routes yet',
+        'Add a route so you can assign drivers and deliveries.',
       );
     }
 
@@ -264,7 +264,7 @@ class _RouteListTab extends ConsumerWidget {
         final assignedDriver = drivers.firstWhereOrNull(
           (d) => d.id == route.assignedDriver,
         );
-        final driverName = assignedDriver?.name ?? 'WAITING FOR ASSIGNMENT';
+        final driverName = assignedDriver?.name ?? 'No driver yet';
 
         return Container(
           margin: const EdgeInsets.only(bottom: 20),
@@ -390,7 +390,7 @@ class _RouteListTab extends ConsumerWidget {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
-        isActive ? 'ACTIVE' : 'INACTIVE',
+        isActive ? 'On' : 'Off',
         style: TextStyle(
           color: isActive ? AppColors.success : AppColors.textDisabled,
           fontSize: 9,
@@ -414,12 +414,12 @@ class _RouteListTab extends ConsumerWidget {
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       itemBuilder: (context) => [
-        _menuItem('assign', Icons.person_add_rounded, 'Assign Agent'),
-        _menuItem('edit', Icons.edit_rounded, 'Modify Route'),
+        _menuItem('assign', Icons.person_add_rounded, 'Assign driver'),
+        _menuItem('edit', Icons.edit_rounded, 'Edit route'),
         _menuItem(
           'delete',
           Icons.delete_outline_rounded,
-          'Decommission',
+          'Remove route',
           isDestructive: true,
         ),
       ],
@@ -445,13 +445,13 @@ class _RouteListTab extends ConsumerWidget {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: const Text(
-          'Select Field Agent',
+          'Choose a driver',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         content: availableDrivers.isEmpty
             ? const Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text('No unassigned agents available in the fleet.'),
+                child: Text('No free drivers right now. Add a driver first.'),
               )
             : SizedBox(
                 width: double.maxFinite,
@@ -529,9 +529,9 @@ class _RouteListTab extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'DISMISS',
+              'Close',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
               ),
             ),
@@ -553,20 +553,20 @@ class _RouteListTab extends ConsumerWidget {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: const Text(
-          'Modify Route',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          'Edit route',
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(labelText: 'Route Identifier'),
+              decoration: const InputDecoration(labelText: 'Route name'),
             ),
             const SizedBox(height: 20),
             TextField(
               controller: areaController,
-              decoration: const InputDecoration(labelText: 'Operational Area'),
+              decoration: const InputDecoration(labelText: 'Area'),
             ),
           ],
         ),
@@ -574,11 +574,11 @@ class _RouteListTab extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'CANCEL',
+              'Cancel',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
-                letterSpacing: 1,
+                letterSpacing: 0.2,
               ),
             ),
           ),
@@ -608,9 +608,9 @@ class _RouteListTab extends ConsumerWidget {
               ),
             ),
             child: const Text(
-              'UPDATE',
+              'Save',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
             ),
@@ -633,20 +633,20 @@ class _RouteListTab extends ConsumerWidget {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: const Text(
-          'Decommission Route',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          'Remove this route?',
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         content: Text(
-          'Delete "${route.name}" permanently? This will unassign its agent (if any).',
+          'Delete "${route.name}" for good? Any driver on this route will be unassigned.',
           style: const TextStyle(height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'CANCEL',
+              'Keep it',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
               ),
             ),
@@ -679,10 +679,10 @@ class _RouteListTab extends ConsumerWidget {
               Navigator.pop(context);
             },
             child: const Text(
-              'DELETE',
+              'Delete',
               style: TextStyle(
                 color: AppColors.error,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -768,14 +768,17 @@ class _RouteListTab extends ConsumerWidget {
               const SizedBox(height: 16),
               const Divider(height: 1, color: AppColors.divider),
               const SizedBox(height: 14),
-              _detailRow('Assigned Agent', driverName),
+              _detailRow('Driver', driverName),
               const SizedBox(height: 10),
               _detailRow(
                 'Capacity',
                 '${route.currentOrders}/${route.maxOrders} orders',
               ),
               const SizedBox(height: 10),
-              _detailRow('ETA', '${route.estimatedDeliveryTime} min'),
+              _detailRow(
+                'Est. delivery time',
+                '${route.estimatedDeliveryTime} min',
+              ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
@@ -850,8 +853,8 @@ class _DriverListTab extends ConsumerWidget {
     if (drivers.isEmpty) {
       return _buildEmptyState(
         Icons.person_off_rounded,
-        'No agents registered',
-        'Onboard field agents to begin route assignments and delivery operations.',
+        'No drivers yet',
+        'Add drivers here, then you can assign them to routes.',
       );
     }
 
@@ -956,18 +959,18 @@ class _DriverListTab extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(16),
               ),
               itemBuilder: (context) => [
-                _menuItem('edit', Icons.edit_rounded, 'Edit Agent'),
+                _menuItem('edit', Icons.edit_rounded, 'Edit driver'),
                 _menuItem(
                   'toggle',
                   driver.isActive
                       ? Icons.pause_circle_outline_rounded
                       : Icons.play_circle_outline_rounded,
-                  driver.isActive ? 'Mark Inactive' : 'Mark Active',
+                  driver.isActive ? 'Set unavailable' : 'Set available',
                 ),
                 _menuItem(
                   'delete',
                   Icons.delete_outline_rounded,
-                  'Delete Agent',
+                  'Delete driver',
                   isDestructive: true,
                 ),
               ],
@@ -1011,20 +1014,20 @@ class _DriverListTab extends ConsumerWidget {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: const Text(
-          'Delete Agent?',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          'Delete this driver?',
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         content: const Text(
-          'This will permanently remove the agent.',
+          'They will be removed from your team. You cannot undo this.',
           style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text(
-              'CANCEL',
+              'Keep them',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
               ),
             ),
@@ -1032,9 +1035,9 @@ class _DriverListTab extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
-              'DELETE',
+              'Delete',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: AppColors.error,
               ),
             ),
@@ -1140,8 +1143,8 @@ void _showAddEditDriverDialog(
       builder: (context, setState) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: Text(
-          isEdit ? 'Update Agent' : 'Onboard New Agent',
-          style: const TextStyle(fontWeight: FontWeight.w900),
+          isEdit ? 'Edit driver' : 'Add driver',
+          style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1164,15 +1167,15 @@ void _showAddEditDriverDialog(
             TextField(
               controller: nameController,
               decoration: const InputDecoration(
-                labelText: 'Full Legal Name',
-                hintText: 'e.g. Alexander Pierce',
+                labelText: 'Name',
+                hintText: 'e.g. Rahul Kumar',
               ),
             ),
             const SizedBox(height: 20),
             TextField(
               controller: phoneController,
               decoration: const InputDecoration(
-                labelText: 'Contact Number',
+                labelText: 'Phone',
                 hintText: '+91 00000 00000',
               ),
               keyboardType: TextInputType.phone,
@@ -1202,7 +1205,9 @@ void _showAddEditDriverDialog(
                           ),
                           const SizedBox(width: 10),
                           Text(
-                            v.name.toUpperCase(),
+                            v.name.isEmpty
+                                ? v.name
+                                : '${v.name[0].toUpperCase()}${v.name.substring(1)}',
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
@@ -1214,7 +1219,7 @@ void _showAddEditDriverDialog(
                   )
                   .toList(),
               onChanged: (val) => setState(() => selectedVehicle = val!),
-              decoration: const InputDecoration(labelText: 'Vehicle Type'),
+              decoration: const InputDecoration(labelText: 'Vehicle'),
             ),
           ],
         ),
@@ -1222,11 +1227,11 @@ void _showAddEditDriverDialog(
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'CANCEL',
+              'Cancel',
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
-                letterSpacing: 1,
+                letterSpacing: 0.2,
               ),
             ),
           ),
@@ -1260,9 +1265,9 @@ void _showAddEditDriverDialog(
               ),
             ),
             child: Text(
-              isEdit ? 'UPDATE' : 'ONBOARD',
+              isEdit ? 'Save' : 'Add driver',
               style: const TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
             ),

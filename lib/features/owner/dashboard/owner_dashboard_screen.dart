@@ -392,12 +392,12 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 onPressed: () => context.push('/owner/customers'),
                 icon: const Icon(Icons.add_rounded, color: Colors.white),
                 label: const Text(
-                  'ADD YOUR FIRST CUSTOMER',
+                  'Add your first customer',
                   style: TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1,
-                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                    fontSize: 14,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -738,10 +738,10 @@ class _ProductSaleChart extends StatelessWidget {
         ),
         child: const Center(
           child: Text(
-            'NO PRODUCT SALE DATA',
+            'No sales data yet',
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
               color: AppColors.textLight,
             ),
           ),
@@ -1059,12 +1059,12 @@ class _RecentOrdersList extends StatelessWidget {
         ),
         child: const Center(
           child: Text(
-            'NO RECENT ACTIVITY RECORDED',
+            'No recent orders',
             style: TextStyle(
               color: AppColors.textLight,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
             ),
           ),
         ),
@@ -1090,11 +1090,11 @@ class _RecentOrdersList extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
                 Text(
-                  'ACCESS FULL LEDGER',
+                  'View all orders',
                   style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                    letterSpacing: 1,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    letterSpacing: 0.2,
                     color: AppColors.textSecondary,
                   ),
                 ),

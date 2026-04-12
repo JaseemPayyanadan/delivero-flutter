@@ -188,7 +188,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Enterprise Logistics Management',
+                      'Sign in to manage deliveries and orders',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
