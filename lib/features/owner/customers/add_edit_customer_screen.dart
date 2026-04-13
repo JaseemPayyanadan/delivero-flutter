@@ -375,31 +375,160 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   }
 
   Widget _buildRouteDropdown(List<DeliveryRoute> routes) {
-    final dropdownValue = _routeDropdownValue(routes);
-    return DropdownButtonFormField<String>(
-      key: ValueKey(
-        '${routes.map((r) => r.id).join('|')}||${dropdownValue ?? ''}',
-      ),
-      initialValue: dropdownValue,
-      items: routes.map<DropdownMenuItem<String>>((route) {
-        return DropdownMenuItem<String>(
-          value: route.id,
-          child: Text(
-            route.name,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+    final selectedId = _routeDropdownValue(routes);
+    final selectedName = selectedId == null
+        ? null
+        : routes.firstWhereOrNull((r) => r.id == selectedId)?.name;
+
+    Future<void> openPicker(FormFieldState<String> field) async {
+      if (routes.isEmpty) return;
+      final picked = await showModalBottomSheet<String>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (context) {
+          return Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Choose a route',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          'Close',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: routes.length,
+                      separatorBuilder: (_, _) =>
+                          const Divider(height: 1, color: AppColors.divider),
+                      itemBuilder: (context, i) {
+                        final r = routes[i];
+                        final isSelected = r.id == field.value;
+                        return ListTile(
+                          onTap: () => Navigator.pop(context, r.id),
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 8),
+                          title: Text(
+                            r.name,
+                            style: TextStyle(
+                              fontWeight:
+                                  isSelected ? FontWeight.w800 : FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          subtitle: Text(
+                            r.area,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          trailing: isSelected
+                              ? const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: AppColors.primary,
+                                )
+                              : const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: AppColors.textLight,
+                                ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      if (picked == null) return;
+      setState(() => _selectedRouteId = picked);
+      field.didChange(picked);
+    }
+
+    return FormField<String>(
+      initialValue: selectedId,
+      validator: (value) => value == null ? 'Choose a route' : null,
+      builder: (field) {
+        final showError = field.hasError;
+        final displayText = selectedName ?? 'Tap to choose';
+
+        return InkWell(
+          onTap: routes.isEmpty ? null : () => openPicker(field),
+          borderRadius: BorderRadius.circular(14),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Route',
+              prefixIcon: const Icon(
+                Icons.alt_route_rounded,
+                color: AppColors.textLight,
+                size: 20,
+              ),
+              errorText: showError ? field.errorText : null,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    displayText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selectedName == null
+                          ? AppColors.textLight
+                          : AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.textLight,
+                ),
+              ],
+            ),
           ),
         );
-      }).toList(),
-      onChanged: (value) => setState(() => _selectedRouteId = value),
-      decoration: const InputDecoration(
-        labelText: 'Route',
-        prefixIcon: Icon(
-          Icons.alt_route_rounded,
-          color: AppColors.textLight,
-          size: 20,
-        ),
-      ),
-      validator: (value) => value == null ? 'Choose a route' : null,
+      },
     );
   }
 
