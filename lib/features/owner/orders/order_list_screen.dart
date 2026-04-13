@@ -1108,6 +1108,30 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             subtitle,
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
+          if (!hasAnyOrders) ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 220,
+              child: FilledButton.icon(
+                onPressed: () => context.push('/owner/orders/create'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text(
+                  'Create order',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

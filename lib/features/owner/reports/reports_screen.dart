@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 
@@ -178,6 +179,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     final allOrders = ref.watch(ordersProvider);
     final ordersLoaded = ref.watch(ordersLoadedProvider);
     final isLoading = !ordersLoaded && allOrders.isEmpty;
+    final bool noOrdersYet = ordersLoaded && allOrders.isEmpty;
     final start = DateTime(
       _selectedDateRange.start.year,
       _selectedDateRange.start.month,
@@ -202,6 +204,84 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     final fulfillmentRate = reports.totalOrders == 0
         ? 0.0
         : reports.completedOrders / reports.totalOrders;
+
+    if (isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (noOrdersYet) {
+      return Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                  child: const Icon(
+                    Icons.analytics_rounded,
+                    size: 64,
+                    color: AppColors.textLight,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'No insights yet',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Create an order to see sales, products, and customer rankings here.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: 220,
+                  child: FilledButton.icon(
+                    onPressed: () => context.push('/owner/orders/create'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text(
+                      'Create order',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
