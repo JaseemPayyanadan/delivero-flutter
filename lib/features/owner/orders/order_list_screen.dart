@@ -315,6 +315,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final routes = ref.watch(routesProvider);
     final routesLoaded = ref.watch(routesLoadedProvider);
     final reports = ref.watch(reportsProvider);
+    final bool noOrdersYet = orders.isEmpty;
 
     // Get unique route IDs from existing orders
     final availableRouteIds = orders
@@ -388,59 +389,59 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             parent: BouncingScrollPhysics(),
           ),
           slivers: [
-            DeliveroSliverHeader(
-              title: 'Orders',
-              subtitle: '${orders.length} transactions processed',
-              expandedHeight: 140,
-              floating: true,
-              pinned: true,
-              backgroundGradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.primary.withValues(alpha: 0.14),
-                  AppColors.secondary.withValues(alpha: 0.10),
-                  AppColors.backgroundPrimary,
+            if (!noOrdersYet) ...[
+              DeliveroSliverHeader(
+                title: 'Orders',
+                subtitle: '${orders.length} transactions processed',
+                expandedHeight: 140,
+                floating: true,
+                pinned: true,
+                backgroundGradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.14),
+                    AppColors.secondary.withValues(alpha: 0.10),
+                    AppColors.backgroundPrimary,
+                  ],
+                ),
+                actions: [
+                  PrimarySquareIconButton(
+                    icon: Icons.add_rounded,
+                    color: AppColors.secondary,
+                    onPressed: () => context.push('/owner/orders/create'),
+                  ),
+                  if (filteredOrders.isNotEmpty)
+                    IconButton(
+                      onPressed: () => _showPackagingSummary(filteredOrders),
+                      icon: const Icon(
+                        Icons.print_rounded,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  const SizedBox(width: 16),
                 ],
               ),
-              actions: [
-                PrimarySquareIconButton(
-                  icon: Icons.add_rounded,
-                  color: AppColors.secondary,
-                  onPressed: () => context.push('/owner/orders/create'),
-                ),
-                if (filteredOrders.isNotEmpty)
-                  IconButton(
-                    onPressed: () => _showPackagingSummary(filteredOrders),
-                    icon: const Icon(
-                      Icons.print_rounded,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                const SizedBox(width: 16),
-              ],
-            ),
-            SliverToBoxAdapter(
-              child: _buildQuickStats(reports, filteredOrders),
-            ),
-            SliverToBoxAdapter(
-              child: _buildFilters(
-                routes,
-                availableRouteIds,
-                routesLoaded: routesLoaded,
+              SliverToBoxAdapter(
+                child: _buildQuickStats(reports, filteredOrders),
               ),
-            ),
+              SliverToBoxAdapter(
+                child: _buildFilters(
+                  routes,
+                  availableRouteIds,
+                  routesLoaded: routesLoaded,
+                ),
+              ),
+            ],
             if (!ordersLoaded && orders.isEmpty)
               const SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (filteredOrders.isEmpty)
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.4,
-                  child: _buildEmptyState(),
-                ),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildEmptyState(hasAnyOrders: !noOrdersYet),
               )
             else
               SliverPadding(
@@ -1071,7 +1072,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     }
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({required bool hasAnyOrders}) {
+    final title =
+        hasAnyOrders ? 'No transactions found' : 'No orders yet';
+    final subtitle = hasAnyOrders
+        ? 'Try adjusting your filters or search terms'
+        : 'Create your first order to see it here.';
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1089,18 +1095,18 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'No transactions recorded',
-            style: TextStyle(
+          Text(
+            title,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
               color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Try adjusting your filters or search terms',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          Text(
+            subtitle,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
         ],
       ),
