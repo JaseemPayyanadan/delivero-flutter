@@ -46,7 +46,8 @@ class OrderDetailsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: DeliveroAppBar(
-        title: 'Order ${order.id.length > 8 ? order.id.substring(order.id.length - 8) : order.id}',
+        title:
+            'Order ${order.id.length > 8 ? order.id.substring(order.id.length - 8) : order.id}',
         centerTitle: true,
         actions: [
           IconButton(
@@ -166,22 +167,14 @@ class OrderDetailsScreen extends ConsumerWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              _buildHeaderMeta(
-                Icons.calendar_today_rounded,
-                dateStr,
-                'Date',
-              ),
+              _buildHeaderMeta(Icons.calendar_today_rounded, dateStr, 'Date'),
               Container(
                 width: 1,
                 height: 22,
                 color: AppColors.divider,
                 margin: const EdgeInsets.symmetric(horizontal: 16),
               ),
-              _buildHeaderMeta(
-                Icons.access_time_rounded,
-                timeStr,
-                'Time',
-              ),
+              _buildHeaderMeta(Icons.access_time_rounded, timeStr, 'Time'),
             ],
           ),
         ],
@@ -1183,9 +1176,7 @@ class OrderDetailsScreen extends ConsumerWidget {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'Order is now ${_humanizeWord(newStatus.name)}',
-        ),
+        content: Text('Order is now ${_humanizeWord(newStatus.name)}'),
         behavior: SnackBarBehavior.floating,
         backgroundColor: _getStatusColor(newStatus),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

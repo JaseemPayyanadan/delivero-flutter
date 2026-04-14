@@ -14,7 +14,9 @@ import '../core/services/firebase_service.dart';
 import '../core/services/factory_service.dart';
 
 CollectionReference<Map<String, dynamic>> _mapCollection(String path) {
-  return FirebaseService.firestore.collection(path).withConverter<Map<String, dynamic>>(
+  return FirebaseService.firestore
+      .collection(path)
+      .withConverter<Map<String, dynamic>>(
         fromFirestore: (snapshot, _) => snapshot.data() ?? <String, dynamic>{},
         toFirestore: (data, _) => data,
       );

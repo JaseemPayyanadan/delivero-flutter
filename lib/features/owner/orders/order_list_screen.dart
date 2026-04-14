@@ -1074,8 +1074,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   Widget _buildEmptyState({required bool hasAnyOrders}) {
-    final title =
-        hasAnyOrders ? 'No transactions found' : 'No orders yet';
+    final title = hasAnyOrders ? 'No transactions found' : 'No orders yet';
     final subtitle = hasAnyOrders
         ? 'Try adjusting your filters or search terms'
         : 'Create your first order to see it here.';
@@ -1107,7 +1106,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           const SizedBox(height: 8),
           Text(
             subtitle,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+            ),
           ),
           if (!hasAnyOrders) ...[
             const SizedBox(height: 20),

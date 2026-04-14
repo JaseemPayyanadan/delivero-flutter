@@ -54,7 +54,8 @@ class RouterNotifier extends ChangeNotifier {
     }
 
     // 3. Onboarding check (Only for Owners)
-    if (authState.user!.role == UserRole.owner && !startupState.hasSeenOnboarding) {
+    if (authState.user!.role == UserRole.owner &&
+        !startupState.hasSeenOnboarding) {
       return isAtOnboarding ? null : '/onboarding';
     }
 

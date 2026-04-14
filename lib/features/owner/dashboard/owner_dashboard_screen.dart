@@ -781,6 +781,7 @@ class _ProductSaleChart extends StatelessWidget {
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
+                reservedSize: 44,
                 getTitlesWidget: (value, meta) {
                   if (value < 0 || value >= displaySales.length) {
                     return const SizedBox();
@@ -788,14 +789,21 @@ class _ProductSaleChart extends StatelessWidget {
                   final name = displaySales[value.toInt()].name;
                   return Padding(
                     padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      name
-                          .substring(0, name.length > 3 ? 3 : name.length)
-                          .toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
+                    child: Transform.rotate(
+                      angle: -0.55, // ~-32deg for readability
+                      alignment: Alignment.topLeft,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 80),
+                        child: Text(
+                          name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textLight,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
                     ),
                   );
@@ -870,126 +878,6 @@ class _EmptyStateFeature extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SalesTrendChart extends StatelessWidget {
-  final List<DailySalesData> dailySales;
-
-  const _SalesTrendChart({required this.dailySales});
-
-  @override
-  Widget build(BuildContext context) {
-    if (dailySales.isEmpty) {
-      return const SizedBox();
-    }
-
-    return Container(
-      height: 260,
-      padding: const EdgeInsets.fromLTRB(16, 40, 24, 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 30,
-            offset: Offset(0, 15),
-          ),
-        ],
-      ),
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            getDrawingHorizontalLine: (value) =>
-                FlLine(color: AppColors.divider, strokeWidth: 1),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  if (value < 0 || value >= dailySales.length) {
-                    return const SizedBox();
-                  }
-                  final date = dailySales[value.toInt()].date;
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 12.0),
-                    child: Text(
-                      DateFormat('dd').format(date),
-                      style: const TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 44,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    '₹${NumberFormat.compact().format(value)}',
-                    style: const TextStyle(
-                      color: AppColors.textLight,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: dailySales.asMap().entries.map((e) {
-                return FlSpot(e.key.toDouble(), e.value.amount);
-              }).toList(),
-              isCurved: true,
-              color: AppColors.primary,
-              barWidth: 5,
-              isStrokeCapRound: true,
-              dotData: FlDotData(
-                show: true,
-                getDotPainter: (spot, percent, barData, index) =>
-                    FlDotCirclePainter(
-                      radius: 4,
-                      color: Colors.white,
-                      strokeWidth: 3,
-                      strokeColor: AppColors.primary,
-                    ),
-              ),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.15),
-                    AppColors.primary.withValues(alpha: 0),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -1082,8 +970,9 @@ class _SalesTrendBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final last =
-        dailySales.length > 7 ? dailySales.sublist(dailySales.length - 7) : dailySales;
+    final last = dailySales.length > 7
+        ? dailySales.sublist(dailySales.length - 7)
+        : dailySales;
     if (last.isEmpty) {
       return Container(
         height: 220,
@@ -1112,7 +1001,9 @@ class _SalesTrendBars extends StatelessWidget {
       );
     }
 
-    final maxValue = last.map((d) => d.amount).fold<double>(0, (a, b) => a > b ? a : b);
+    final maxValue = last
+        .map((d) => d.amount)
+        .fold<double>(0, (a, b) => a > b ? a : b);
     final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.25;
 
     return Container(
@@ -1143,9 +1034,15 @@ class _SalesTrendBars extends StatelessWidget {
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(enabled: false),
           titlesData: FlTitlesData(
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,

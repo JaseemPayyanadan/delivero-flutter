@@ -89,12 +89,11 @@ class DeliveroSliverHeader extends StatelessWidget {
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: titlePadding,
         centerTitle: centerTitle,
-        background:
-            backgroundGradient == null
-                ? null
-                : Container(
-                    decoration: BoxDecoration(gradient: backgroundGradient),
-                  ),
+        background: backgroundGradient == null
+            ? null
+            : Container(
+                decoration: BoxDecoration(gradient: backgroundGradient),
+              ),
         title: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

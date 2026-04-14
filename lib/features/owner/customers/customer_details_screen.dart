@@ -76,7 +76,9 @@ Future<void> _confirmAndDeleteCustomer(
           ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.error,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -147,8 +149,9 @@ class CustomerDetailsScreen extends ConsumerWidget {
     final displayRoute =
         route?.name ?? (customer.assignedRoute ?? 'Unassigned');
     final rawAddress = customer.address.trim();
-    final displayAddress =
-        rawAddress.isEmpty ? 'Address not available' : rawAddress;
+    final displayAddress = rawAddress.isEmpty
+        ? 'Address not available'
+        : rawAddress;
     final phoneDigits = customer.phone.trim().replaceAll(
       RegExp(r'[^0-9+]'),
       '',
@@ -455,8 +458,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(18),
-            onTap: () =>
-                context.push('/owner/customers/edit/$customerId'),
+            onTap: () => context.push('/owner/customers/edit/$customerId'),
             child: Ink(
               decoration: BoxDecoration(
                 color: AppColors.backgroundSecondary.withValues(alpha: 0.35),

@@ -17,9 +17,7 @@ class ReportsScreen extends ConsumerStatefulWidget {
   ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _ReportsScreenState extends ConsumerState<ReportsScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   DateTimeRange _selectedDateRange = DateTimeRange(
     start: DateTime.now().subtract(const Duration(days: 7)),
     end: DateTime.now(),
@@ -28,20 +26,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
   static const _kPresetLast7 = 'last7';
   static const _kPresetThisMonth = 'month';
   String _preset = _kPresetLast7;
-  static const double _kTabBarHeight = 58;
-  static const double _kHeaderHorizontalPadding = 24;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
 
   Future<void> _selectDateRange() async {
     final DateTimeRange? picked = await showDateRangePicker(
@@ -86,8 +70,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
       setState(() {
         _preset = preset;
         _selectedDateRange = DateTimeRange(
-          start:
-              DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6)),
+          start: DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 6)),
           end: DateTime(now.year, now.month, now.day),
         );
       });
@@ -107,7 +94,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
   void _toast(String message, {Color? color}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
         behavior: SnackBarBehavior.floating,
         backgroundColor: color ?? AppColors.textPrimary,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -343,466 +333,252 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            expandedHeight: 240.0,
-            floating: false,
-            pinned: true,
-            toolbarHeight: 0,
-            automaticallyImplyLeading: false,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
-            surfaceTintColor: Colors.transparent,
-            flexibleSpace: Stack(
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 100),
+          children: [
+            const Text(
+              'Performance Insights',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Analyze your delivery metrics and financial trends',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
               children: [
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          AppColors.primaryLighter.withValues(alpha: 0.35),
-                          AppColors.backgroundPrimary,
-                          AppColors.backgroundPrimary,
-                        ],
-                        stops: const [0.0, 0.65, 1.0],
-                      ),
-                    ),
+                Expanded(
+                  child: _PresetPill(
+                    label: 'Today',
+                    selected: _preset == _kPresetToday,
+                    onTap: () => _applyPreset(_kPresetToday),
                   ),
                 ),
-                Positioned(
-                  left: _kHeaderHorizontalPadding,
-                  right: _kHeaderHorizontalPadding,
-                  bottom: _kTabBarHeight + 18,
-                  child: SafeArea(
-                    top: false,
-                    bottom: false,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Insights',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.6,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _RangePill(
-                              text: rangeLabel,
-                              onTap: _selectDateRange,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Revenue, fulfillment, and customer performance',
-                          style: TextStyle(
-                            color: AppColors.textSecondary.withValues(
-                              alpha: 0.78,
-                            ),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          height: 70,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            children: [
-                              _KpiTile(
-                                title: 'Revenue',
-                                value:
-                                    '₹${NumberFormat.compact().format(reports.totalRevenue)}',
-                                icon: Icons.currency_rupee_rounded,
-                                tone: _KpiTone.primary,
-                              ),
-                              const SizedBox(width: 10),
-                              _KpiTile(
-                                title: 'Pending',
-                                value:
-                                    '₹${NumberFormat.compact().format(reports.totalPendingRevenue)}',
-                                icon: Icons.schedule_rounded,
-                                tone: _KpiTone.warning,
-                              ),
-                              const SizedBox(width: 10),
-                              _KpiTile(
-                                title: 'Orders',
-                                value: reports.totalOrders.toString(),
-                                icon: Icons.receipt_long_rounded,
-                                tone: _KpiTone.neutral,
-                              ),
-                              const SizedBox(width: 10),
-                              _KpiTile(
-                                title: 'Fulfillment',
-                                value: '${(fulfillmentRate * 100).round()}%',
-                                icon: Icons.check_circle_rounded,
-                                tone: _KpiTone.success,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PresetPill(
+                    label: 'Last 7 Days',
+                    selected: _preset == _kPresetLast7,
+                    onTap: () => _applyPreset(_kPresetLast7),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PresetPill(
+                    label: 'This Month',
+                    selected: _preset == _kPresetThisMonth,
+                    onTap: () => _applyPreset(_kPresetThisMonth),
                   ),
                 ),
               ],
             ),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(_kTabBarHeight),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Container(
-                  height: 52,
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(999),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _ExportChip(
+                  label: 'CSV',
+                  icon: Icons.table_chart_rounded,
+                  onTap: () =>
+                      _toast('CSV export coming soon', color: AppColors.info),
+                ),
+                const SizedBox(width: 10),
+                _ExportChip(
+                  label: 'PDF',
+                  icon: Icons.picture_as_pdf_rounded,
+                  onTap: () =>
+                      _toast('PDF export coming soon', color: AppColors.info),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _selectDateRange,
+                  icon: const Icon(Icons.date_range_rounded, size: 18),
+                  label: Text(
+                    rangeLabel,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: TabBar(
-                      controller: _tabController,
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      indicator: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(999),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _InsightStatCard(
+              icon: Icons.payments_rounded,
+              iconBg: AppColors.primaryLighter.withValues(alpha: 0.7),
+              title: 'Total sales',
+              value:
+                  '₹${NumberFormat.decimalPattern().format(reports.totalRevenue)}',
+            ),
+            const SizedBox(height: 12),
+            _InsightStatCard(
+              icon: Icons.account_balance_wallet_rounded,
+              iconBg: AppColors.warningLighter.withValues(alpha: 0.8),
+              title: 'Pending payments',
+              value:
+                  '₹${NumberFormat.decimalPattern().format(reports.totalPendingRevenue)}',
+            ),
+            const SizedBox(height: 12),
+            _InsightStatCard(
+              icon: Icons.check_circle_rounded,
+              iconBg: AppColors.successLighter.withValues(alpha: 0.8),
+              title: 'Order success rate',
+              value: successRateLabel,
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLighter.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Text(
+                  'Stable',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _ReportCard(
+              title: 'Sales Trend',
+              trailing: TextButton(
+                onPressed: () => _toast('Detailed view coming soon'),
+                child: const Text('Detailed View'),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: _SalesBarChart(dailySales: reports.dailySales),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _ReportCard(
+              title: 'Top Delivery Staff',
+              trailing: IconButton(
+                tooltip: 'Filter',
+                onPressed: () => _toast('Filter coming soon'),
+                icon: const Icon(Icons.tune_rounded),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: driversLoaded && topStaff.isEmpty
+                    ? const Text(
+                        'No staff performance data yet.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          for (final s in topStaff.take(3)) ...[
+                            _StaffRow(stat: s),
+                            if (s != topStaff.take(3).last)
+                              const Divider(
+                                height: 18,
+                                color: AppColors.divider,
+                              ),
+                          ],
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () => _toast('Coming soon'),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppColors.border),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              child: const Text(
+                                'View all staff performance',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                      labelColor: AppColors.textPrimary,
-                      unselectedLabelColor: AppColors.textSecondary,
-                      labelStyle: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 12,
-                        letterSpacing: 0.2,
-                      ),
-                      unselectedLabelStyle: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                      labelPadding: EdgeInsets.zero,
-                      indicatorPadding: const EdgeInsets.symmetric(
-                        horizontal: 2,
-                        vertical: 2,
-                      ),
-                      tabs: const [
-                        Tab(text: 'Overview'),
-                        Tab(text: 'Products'),
-                        Tab(text: 'Customers'),
-                      ],
-                    ),
-                  ),
-                ),
               ),
             ),
-          ),
-        ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            if (isLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              _RefinedSummaryTab(
-                reports: reports,
-                successRateLabel: successRateLabel,
-                preset: _preset,
-                onPresetToday: () => _applyPreset(_kPresetToday),
-                onPresetLast7: () => _applyPreset(_kPresetLast7),
-                onPresetMonth: () => _applyPreset(_kPresetThisMonth),
-                onExportCsv: () => _toast('CSV export coming soon', color: AppColors.info),
-                onExportPdf: () => _toast('PDF export coming soon', color: AppColors.info),
-                onDetailedSales: () => _toast('Detailed view coming soon'),
-                driversLoaded: driversLoaded,
-                staff: topStaff,
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppColors.shadowDeep,
+                    blurRadius: 24,
+                    offset: Offset(0, 14),
+                  ),
+                ],
               ),
-            if (isLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              _ProductsTab(productSales: reports.productSales),
-            if (isLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              _CustomersTab(customerRevenue: reports.customerRevenue),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Optimize Your Fleet',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Our AI suggests actions in 2 minutes for the upcoming weekend — just to maintain your 98% success rate.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      height: 1.4,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => _toast('Upgrade coming soon'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Upgrade logistics',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _RefinedSummaryTab extends StatelessWidget {
-  final ReportsData reports;
-  final String successRateLabel;
-  final String preset;
-  final VoidCallback onPresetToday;
-  final VoidCallback onPresetLast7;
-  final VoidCallback onPresetMonth;
-  final VoidCallback onExportCsv;
-  final VoidCallback onExportPdf;
-  final VoidCallback onDetailedSales;
-  final bool driversLoaded;
-  final List<_StaffStat> staff;
-
-  const _RefinedSummaryTab({
-    required this.reports,
-    required this.successRateLabel,
-    required this.preset,
-    required this.onPresetToday,
-    required this.onPresetLast7,
-    required this.onPresetMonth,
-    required this.onExportCsv,
-    required this.onExportPdf,
-    required this.onDetailedSales,
-    required this.driversLoaded,
-    required this.staff,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomPad = MediaQuery.of(context).viewPadding.bottom + 96;
-    final money = NumberFormat.decimalPattern();
-
-    if (reports.totalOrders == 0) {
-      return Padding(
-        padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
-        child: _buildEmptyState(),
-      );
-    }
-
-    return ListView(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomPad),
-      children: [
-        const Text(
-          'Performance Insights',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
-            letterSpacing: -0.8,
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Analyze your delivery metrics and financial trends',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
-            height: 1.35,
-          ),
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _PresetPill(
-                label: 'Today',
-                selected: preset == _ReportsScreenState._kPresetToday,
-                onTap: onPresetToday,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _PresetPill(
-                label: 'Last 7 Days',
-                selected: preset == _ReportsScreenState._kPresetLast7,
-                onTap: onPresetLast7,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _PresetPill(
-                label: 'This Month',
-                selected: preset == _ReportsScreenState._kPresetThisMonth,
-                onTap: onPresetMonth,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            _ExportChip(label: 'CSV', icon: Icons.table_chart_rounded, onTap: onExportCsv),
-            const SizedBox(width: 10),
-            _ExportChip(label: 'PDF', icon: Icons.picture_as_pdf_rounded, onTap: onExportPdf),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _InsightStatCard(
-          icon: Icons.payments_rounded,
-          iconBg: AppColors.primaryLighter.withValues(alpha: 0.7),
-          title: 'Total sales',
-          value: '₹${money.format(reports.totalRevenue)}',
-        ),
-        const SizedBox(height: 12),
-        _InsightStatCard(
-          icon: Icons.account_balance_wallet_rounded,
-          iconBg: AppColors.warningLighter.withValues(alpha: 0.8),
-          title: 'Pending payments',
-          value: '₹${money.format(reports.totalPendingRevenue)}',
-        ),
-        const SizedBox(height: 12),
-        _InsightStatCard(
-          icon: Icons.check_circle_rounded,
-          iconBg: AppColors.successLighter.withValues(alpha: 0.8),
-          title: 'Order success rate',
-          value: successRateLabel,
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLighter.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: const Text(
-              'Stable',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _ReportCard(
-          title: 'Sales Trend',
-          trailing: TextButton(
-            onPressed: onDetailedSales,
-            child: const Text('Detailed View'),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-            child: _SalesBarChart(dailySales: reports.dailySales),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _ReportCard(
-          title: 'Top Delivery Staff',
-          trailing: IconButton(
-            tooltip: 'Filter',
-            onPressed: () {},
-            icon: const Icon(Icons.tune_rounded),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-            child: driversLoaded && staff.isEmpty
-                ? const Text(
-                    'No staff performance data yet.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )
-                : Column(
-                    children: [
-                      for (final s in staff.take(3)) ...[
-                        _StaffRow(stat: s),
-                        if (s != staff.take(3).last)
-                          const Divider(height: 18, color: AppColors.divider),
-                      ],
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: () {},
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.border),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: const Text(
-                            'View all staff performance',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadowDeep,
-                blurRadius: 24,
-                offset: Offset(0, 14),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Optimize Your Fleet',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Our AI suggests actions in 2 minutes for the upcoming weekend — just to maintain your 98% success rate.',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  height: 1.4,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {},
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    'Upgrade logistics',
-                    style: TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -827,7 +603,9 @@ class _PresetPill extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.textPrimary : AppColors.surface,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: selected ? Colors.transparent : AppColors.border),
+          border: Border.all(
+            color: selected ? Colors.transparent : AppColors.border,
+          ),
         ),
         child: Center(
           child: Text(
@@ -955,6 +733,7 @@ class _InsightStatCard extends StatelessWidget {
               ],
             ),
           ),
+          // ignore: use_null_aware_elements
           if (trailing != null) trailing!,
         ],
       ),
@@ -977,10 +756,12 @@ class _SalesBarChart extends StatelessWidget {
         ),
       );
     }
-    final last =
-        dailySales.length > 7 ? dailySales.sublist(dailySales.length - 7) : dailySales;
-    final maxValue =
-        last.map((d) => d.amount).fold<double>(0, (a, b) => a > b ? a : b);
+    final last = dailySales.length > 7
+        ? dailySales.sublist(dailySales.length - 7)
+        : dailySales;
+    final maxValue = last
+        .map((d) => d.amount)
+        .fold<double>(0, (a, b) => a > b ? a : b);
     final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.25;
     final groups = <BarChartGroupData>[
       for (var i = 0; i < last.length; i++)
@@ -991,7 +772,9 @@ class _SalesBarChart extends StatelessWidget {
               toY: last[i].amount,
               width: 14,
               borderRadius: BorderRadius.circular(8),
-              color: AppColors.primaryLight.withValues(alpha: i == last.length - 3 ? 1 : 0.6),
+              color: AppColors.primaryLight.withValues(
+                alpha: i == last.length - 3 ? 1 : 0.6,
+              ),
             ),
           ],
         ),
@@ -1016,9 +799,15 @@ class _SalesBarChart extends StatelessWidget {
           ),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
@@ -1101,11 +890,11 @@ class _StaffRow extends StatelessWidget {
     final initials = stat.name.trim().isEmpty
         ? '?'
         : stat.name
-            .trim()
-            .split(RegExp(r'\s+'))
-            .take(2)
-            .map((p) => p[0].toUpperCase())
-            .join();
+              .trim()
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((p) => p[0].toUpperCase())
+              .join();
 
     return Row(
       children: [
@@ -1187,482 +976,11 @@ class _StaffRow extends StatelessWidget {
   }
 }
 
-class _SummaryTab extends StatelessWidget {
-  final ReportsData reports;
-  const _SummaryTab({required this.reports});
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomPad = MediaQuery.of(context).viewPadding.bottom + 96;
-    if (reports.totalOrders == 0) {
-      return Padding(
-        padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
-        child: _buildEmptyState(),
-      );
-    }
-
-    return ListView(
-      padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
-      children: [
-        _ReportCard(
-          title: 'Sales Trend',
-          child: _SalesTrendChart(dailySales: reports.dailySales),
-        ),
-        const SizedBox(height: 18),
-        _ReportCard(
-          title: 'Financial Liquidity',
-          child: Column(
-            children: [
-              _StatRow(
-                label: 'Gross Manifest Value',
-                value:
-                    '₹${NumberFormat.decimalPattern().format(reports.totalRevenue + reports.totalPendingRevenue)}',
-                color: AppColors.textPrimary,
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Divider(height: 1, color: AppColors.divider),
-              ),
-              _StatRow(
-                label: 'Settled Revenue',
-                value:
-                    '₹${NumberFormat.decimalPattern().format(reports.totalRevenue)}',
-                color: AppColors.success,
-              ),
-              const SizedBox(height: 12),
-              _StatRow(
-                label: 'Outstanding Receivables',
-                value:
-                    '₹${NumberFormat.decimalPattern().format(reports.totalPendingRevenue)}',
-                color: AppColors.error,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-        _ReportCard(
-          title: 'Fulfillment Efficiency',
-          child: Column(
-            children: [
-              _StatusDonutChart(statusCounts: reports.orderStatusBreakdown),
-              const SizedBox(height: 32),
-              Wrap(
-                spacing: 20,
-                runSpacing: 12,
-                alignment: WrapAlignment.center,
-                children: reports.orderStatusBreakdown.keys.map((status) {
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: _statusColor(status),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        status.toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-        _ReportCard(
-          title: 'Payment Mix',
-          child: _PaymentMix(breakdown: reports.paymentMethodBreakdown),
-        ),
-        const SizedBox(height: 40),
-      ],
-    );
-  }
-}
-
-class _ProductsTab extends StatelessWidget {
-  final Map<String, ProductSalesData> productSales;
-  const _ProductsTab({required this.productSales});
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomPad = MediaQuery.of(context).viewPadding.bottom + 96;
-    final sortedProducts = productSales.values.toList()
-      ..sort((a, b) => b.revenue.compareTo(a.revenue));
-
-    if (sortedProducts.isEmpty) return _buildEmptyState();
-
-    return ListView.builder(
-      padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
-      itemCount: sortedProducts.length,
-      itemBuilder: (context, index) {
-        final p = sortedProducts[index];
-        return _RankingTile(
-          rank: index + 1,
-          title: p.name,
-          subtitle: '${p.quantity} enterprise units distributed',
-          value: '₹${NumberFormat.compact().format(p.revenue)}',
-        );
-      },
-    );
-  }
-}
-
-class _CustomersTab extends StatelessWidget {
-  final Map<String, CustomerRevenueData> customerRevenue;
-  const _CustomersTab({required this.customerRevenue});
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomPad = MediaQuery.of(context).viewPadding.bottom + 96;
-    final sortedCustomers = customerRevenue.values.toList()
-      ..sort((a, b) => b.revenue.compareTo(a.revenue));
-
-    if (sortedCustomers.isEmpty) return _buildEmptyState();
-
-    return ListView.builder(
-      padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
-      itemCount: sortedCustomers.length,
-      itemBuilder: (context, index) {
-        final c = sortedCustomers[index];
-        return _RankingTile(
-          rank: index + 1,
-          title: c.name,
-          subtitle: '${c.orderCount} contractual transactions',
-          value: '₹${NumberFormat.compact().format(c.revenue)}',
-        );
-      },
-    );
-  }
-}
-
-class _SalesTrendChart extends StatelessWidget {
-  final List<DailySalesData> dailySales;
-  const _SalesTrendChart({required this.dailySales});
-
-  @override
-  Widget build(BuildContext context) {
-    if (dailySales.isEmpty) {
-      return const Text(
-        'No sales data available for this period.',
-        style: TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-    }
-
-    final maxValue = dailySales
-        .map((d) => d.amount)
-        .fold<double>(0, (a, b) => a > b ? a : b);
-    final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.2;
-    final spots = <FlSpot>[
-      for (var i = 0; i < dailySales.length; i++)
-        FlSpot(i.toDouble(), dailySales[i].amount),
-    ];
-
-    String fmtDay(int i) {
-      if (i < 0 || i >= dailySales.length) return '';
-      return DateFormat('MMM d').format(dailySales[i].date);
-    }
-
-    return SizedBox(
-      height: 220,
-      child: LineChart(
-        LineChartData(
-          minY: 0,
-          maxY: maxY,
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: maxY / 4,
-            getDrawingHorizontalLine: (value) =>
-                FlLine(color: AppColors.divider, strokeWidth: 1),
-          ),
-          borderData: FlBorderData(show: false),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 44,
-                interval: maxY / 4,
-                getTitlesWidget: (value, meta) {
-                  final label = NumberFormat.compact().format(value);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                interval: (dailySales.length - 1) <= 0
-                    ? 1
-                    : (dailySales.length - 1) / 2,
-                getTitlesWidget: (value, meta) {
-                  final i = value.round();
-                  final isEdge = i == 0 || i == dailySales.length - 1;
-                  final isMid =
-                      dailySales.length >= 3 &&
-                      i == ((dailySales.length - 1) / 2).round();
-                  if (!isEdge && !isMid) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      fmtDay(i),
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              color: AppColors.primary,
-              barWidth: 3,
-              dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.22),
-                    AppColors.primary.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusDonutChart extends StatelessWidget {
-  final Map<String, int> statusCounts;
-  const _StatusDonutChart({required this.statusCounts});
-
-  @override
-  Widget build(BuildContext context) {
-    if (statusCounts.isEmpty) {
-      return const SizedBox(
-        height: 200,
-        child: Center(
-          child: Text(
-            'No order status data.',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      );
-    }
-
-    final entries = statusCounts.entries.where((e) => e.value > 0).toList();
-    final total = entries.fold<int>(0, (a, e) => a + e.value);
-    if (total == 0) {
-      return const SizedBox(
-        height: 200,
-        child: Center(
-          child: Text(
-            'No order status data.',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: 200,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 6,
-          centerSpaceRadius: 56,
-          sections: entries.map((e) {
-            final color = _statusColor(e.key);
-            final pct = (e.value / total) * 100;
-            return PieChartSectionData(
-              value: e.value.toDouble(),
-              title: pct >= 12 ? '${pct.round()}%' : '',
-              color: color,
-              radius: 26,
-              titleStyle: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-}
-
-class _PaymentMix extends StatelessWidget {
-  final Map<String, double> breakdown;
-  const _PaymentMix({required this.breakdown});
-
-  @override
-  Widget build(BuildContext context) {
-    final entries = breakdown.entries.where((e) => e.value > 0).toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final total = entries
-        .fold<double>(0, (a, e) => a + e.value)
-        .clamp(0.0, double.infinity);
-
-    if (entries.isEmpty || total == 0) {
-      return const Text(
-        'No payment data available for this period.',
-        style: TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        for (final e in entries) ...[
-          _PaymentMixRow(
-            label: e.key.toUpperCase(),
-            amount: e.value,
-            fraction: e.value / total,
-            color: _paymentMethodColor(e.key),
-          ),
-          const SizedBox(height: 14),
-        ],
-      ],
-    );
-  }
-}
-
-Color _paymentMethodColor(String key) {
-  final k = key.toLowerCase();
-  if (k.contains('upi')) return AppColors.primary;
-  if (k.contains('cash')) return AppColors.success;
-  if (k.contains('card')) return AppColors.info;
-  if (k.contains('online')) return AppColors.accent;
-  return AppColors.textLight;
-}
-
-class _PaymentMixRow extends StatelessWidget {
-  final String label;
-  final double amount;
-  final double fraction;
-  final Color color;
-
-  const _PaymentMixRow({
-    required this.label,
-    required this.amount,
-    required this.fraction,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (fraction * 100).round();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              '₹${NumberFormat.compact().format(amount)}',
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w900,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              '$pct%',
-              style: const TextStyle(
-                color: AppColors.textLight,
-                fontWeight: FontWeight.w800,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: fraction.clamp(0.0, 1.0),
-            minHeight: 8,
-            backgroundColor: AppColors.backgroundSecondary,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _ReportCard extends StatelessWidget {
   final String title;
   final Widget child;
   final Widget? trailing;
-  const _ReportCard({
-    required this.title,
-    required this.child,
-    this.trailing,
-  });
+  const _ReportCard({required this.title, required this.child, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -1698,352 +1016,11 @@ class _ReportCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: 12),
-                trailing!,
-              ],
+              if (trailing != null) ...[const SizedBox(width: 12), trailing!],
             ],
           ),
           const SizedBox(height: 18),
           child,
-        ],
-      ),
-    );
-  }
-}
-
-class _StatRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  const _StatRow({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w900,
-            fontSize: 20,
-            letterSpacing: -0.5,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RankingTile extends StatelessWidget {
-  final int rank;
-  final String title;
-  final String subtitle;
-  final String value;
-
-  const _RankingTile({
-    required this.rank,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: rank <= 3
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : AppColors.backgroundSecondary,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Text(
-                '#$rank',
-                style: TextStyle(
-                  color: rank <= 3
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: AppColors.textLight,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-              fontSize: 18,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-Color _statusColor(String status) {
-  final s = status.toLowerCase();
-  if (s.contains('delivered')) return AppColors.success;
-  if (s.contains('pending')) return AppColors.warning;
-  if (s.contains('cancelled')) return AppColors.error;
-  return AppColors.info;
-}
-
-Widget _buildEmptyState() {
-  return Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: AppColors.backgroundSecondary,
-            borderRadius: BorderRadius.circular(40),
-          ),
-          child: const Icon(
-            Icons.analytics_rounded,
-            size: 64,
-            color: AppColors.textDisabled,
-          ),
-        ),
-        const SizedBox(height: 24),
-        const Text(
-          'Insufficient data for selected period',
-          style: TextStyle(
-            color: AppColors.textLight,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Try changing the date range to see results.',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-enum _KpiTone { primary, success, warning, neutral }
-
-class _RangePill extends StatelessWidget {
-  final String text;
-  final VoidCallback? onTap;
-  const _RangePill({required this.text, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final child = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: onTap == null
-            ? AppColors.surface
-            : AppColors.primaryLighter.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: onTap == null
-              ? AppColors.border
-              : AppColors.primary.withValues(alpha: 0.25),
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.date_range_rounded,
-            size: 16,
-            color: AppColors.textSecondary,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.1,
-            ),
-          ),
-          const SizedBox(width: 6),
-          const Icon(
-            Icons.unfold_more_rounded,
-            size: 14,
-            color: AppColors.textLight,
-          ),
-        ],
-      ),
-    );
-    if (onTap == null) return child;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: child,
-    );
-  }
-}
-
-class _KpiTile extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final _KpiTone tone;
-
-  const _KpiTile({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.tone,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final Color accent;
-    final Color tint;
-    switch (tone) {
-      case _KpiTone.primary:
-        accent = AppColors.primary;
-        tint = AppColors.primaryLighter;
-        break;
-      case _KpiTone.success:
-        accent = AppColors.success;
-        tint = AppColors.successLighter;
-        break;
-      case _KpiTone.warning:
-        accent = AppColors.warning;
-        tint = AppColors.warningLighter;
-        break;
-      case _KpiTone.neutral:
-        accent = AppColors.textPrimary;
-        tint = AppColors.backgroundSecondary;
-        break;
-    }
-
-    return Container(
-      width: 176,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 14,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: tint.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: accent, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textLight,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    maxLines: 1,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

@@ -10,4 +10,3 @@ import 'firebase_web_options_stub.dart'
 class FirebaseWebOptions {
   static FirebaseOptions? tryGetFromWindow() => FirebaseWebOptionsImpl.tryGet();
 }
-

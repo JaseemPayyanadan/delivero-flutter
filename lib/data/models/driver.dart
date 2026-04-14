@@ -36,7 +36,8 @@ class Driver {
       'name': name,
       'email': email,
       'phone': phone,
-      'vehicleType': vehicleType.name[0].toUpperCase() + vehicleType.name.substring(1),
+      'vehicleType':
+          vehicleType.name[0].toUpperCase() + vehicleType.name.substring(1),
       'licenseNumber': licenseNumber,
       'isActive': isActive,
       'currentRoute': currentRoute,

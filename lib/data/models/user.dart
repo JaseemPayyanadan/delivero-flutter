@@ -1,7 +1,4 @@
-enum UserRole {
-  owner,
-  delivery,
-}
+enum UserRole { owner, delivery }
 
 class User {
   final String id;

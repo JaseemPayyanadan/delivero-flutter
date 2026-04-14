@@ -117,9 +117,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: Column(
                       children: [
                         _buildSwitchTileRow(
-                          title: isDelivery
-                              ? 'On duty'
-                              : 'Open for business',
+                          title: isDelivery ? 'On duty' : 'Open for business',
                           description: isDelivery
                               ? 'Turn this off when you are not taking deliveries'
                               : 'Turn this off when you are closed',

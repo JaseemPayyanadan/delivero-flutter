@@ -32,19 +32,19 @@ class ReportsData {
   });
 
   factory ReportsData.empty() => ReportsData(
-        totalRevenue: 0,
-        totalPendingRevenue: 0,
-        totalOrders: 0,
-        completedOrders: 0,
-        pendingOrders: 0,
-        cancelledOrders: 0,
-        paymentMethodBreakdown: {},
-        orderStatusBreakdown: {},
-        dailySales: [],
-        averageOrderValue: 0,
-        productSales: {},
-        customerRevenue: {},
-      );
+    totalRevenue: 0,
+    totalPendingRevenue: 0,
+    totalOrders: 0,
+    completedOrders: 0,
+    pendingOrders: 0,
+    cancelledOrders: 0,
+    paymentMethodBreakdown: {},
+    orderStatusBreakdown: {},
+    dailySales: [],
+    averageOrderValue: 0,
+    productSales: {},
+    customerRevenue: {},
+  );
 }
 
 class ProductSalesData {
@@ -173,8 +173,11 @@ final reportsProvider = Provider<ReportsData>((ref) {
         count: existing.count + 1,
       );
     } else {
-      dailyMap[date] =
-          DailySalesData(date: date, amount: order.totalAmount, count: 1);
+      dailyMap[date] = DailySalesData(
+        date: date,
+        amount: order.totalAmount,
+        count: 1,
+      );
     }
   }
 

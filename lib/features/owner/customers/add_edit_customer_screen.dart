@@ -51,8 +51,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
     final routes = ref.read(routesProvider);
     final route = routes.firstWhereOrNull(
-      (r) =>
-          r.id == customer.assignedRoute || r.name == customer.assignedRoute,
+      (r) => r.id == customer.assignedRoute || r.name == customer.assignedRoute,
     );
     _selectedRouteId = route?.id ?? customer.assignedRoute;
 
@@ -118,8 +117,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     final factoryId = await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
     final existingCustomer = _isEditMode
         ? ref
-            .read(customersProvider)
-            .firstWhereOrNull((c) => c.id == widget.customerId)
+              .read(customersProvider)
+              .firstWhereOrNull((c) => c.id == widget.customerId)
         : null;
     final existingCustomerEmail = existingCustomer?.email ?? '';
 
@@ -132,9 +131,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           : _ownerNameController.text.trim(),
       email: existingCustomerEmail,
       phone: _phoneController.text.trim(),
-      address: _isEditMode
-          ? (existingCustomer?.address ?? '')
-          : '',
+      address: _isEditMode ? (existingCustomer?.address ?? '') : '',
       area: selectedRoute?.area ?? 'Central',
       isActive: existingCustomer?.isActive ?? true,
       discountPercentage: existingCustomer?.discountPercentage,
@@ -363,7 +360,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       keyboardType: keyboardType,
       maxLines: maxLines,
       validator: requiredField
-          ? (value) => (value == null || value.isEmpty) ? 'This field is required' : null
+          ? (value) => (value == null || value.isEmpty)
+                ? 'This field is required'
+                : null
           : null,
       decoration: InputDecoration(
         labelText: label,
@@ -442,13 +441,15 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                         final isSelected = r.id == field.value;
                         return ListTile(
                           onTap: () => Navigator.pop(context, r.id),
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                          ),
                           title: Text(
                             r.name,
                             style: TextStyle(
-                              fontWeight:
-                                  isSelected ? FontWeight.w800 : FontWeight.w700,
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w700,
                               color: AppColors.textPrimary,
                             ),
                           ),
@@ -690,7 +691,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: AppColors.primaryLighter.withValues(alpha: 0.35),
+                          color: AppColors.primaryLighter.withValues(
+                            alpha: 0.35,
+                          ),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Padding(
@@ -771,23 +774,26 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                                         fillColor: AppColors.surface,
                                         contentPadding:
                                             const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 16,
-                                        ),
+                                              horizontal: 12,
+                                              vertical: 16,
+                                            ),
                                         border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                         ),
                                         enabledBorder: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                           borderSide: const BorderSide(
                                             color: AppColors.border,
                                           ),
                                         ),
                                         focusedBorder: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                           borderSide: const BorderSide(
                                             color: AppColors.primary,
                                             width: 2,
@@ -836,8 +842,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                                 controller: _priceControllers[item.id],
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                      decimal: true,
+                                    ),
                                 textInputAction: TextInputAction.done,
                                 style: const TextStyle(
                                   fontSize: 17,
@@ -847,7 +853,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                                   FilteringTextInputFormatter.allow(
                                     RegExp(r'[0-9.]'),
                                   ),
-                                  _DecimalPlacesInputFormatter(maxDecimalPlaces: 2),
+                                  _DecimalPlacesInputFormatter(
+                                    maxDecimalPlaces: 2,
+                                  ),
                                 ],
                                 decoration: InputDecoration(
                                   labelText: 'Amount in ₹',
@@ -862,8 +870,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                                   ),
                                   filled: true,
                                   fillColor: AppColors.surface,
-                                  contentPadding:
-                                      const EdgeInsets.fromLTRB(
+                                  contentPadding: const EdgeInsets.fromLTRB(
                                     16,
                                     16,
                                     16,
@@ -904,10 +911,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 }
 
 class _QtyStepButton extends StatelessWidget {
-  const _QtyStepButton({
-    required this.icon,
-    required this.onPressed,
-  });
+  const _QtyStepButton({required this.icon, required this.onPressed});
 
   final IconData icon;
   final VoidCallback onPressed;
