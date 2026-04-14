@@ -1102,13 +1102,18 @@ class _SalesTrendBars extends StatelessWidget {
           ),
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
-            enabled: false,
+            enabled: true,
+            handleBuiltInTouches: true,
             touchTooltipData: BarTouchTooltipData(
               tooltipPadding: const EdgeInsets.symmetric(
                 horizontal: 10,
                 vertical: 8,
               ),
               tooltipBorderRadius: BorderRadius.circular(10),
+              tooltipMargin: 10,
+              maxContentWidth: 120,
+              fitInsideHorizontally: true,
+              fitInsideVertically: true,
               getTooltipColor: (_) =>
                   AppColors.textPrimary.withValues(alpha: 0.92),
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
@@ -1172,11 +1177,11 @@ class _SalesTrendBars extends StatelessWidget {
                 barRods: [
                   BarChartRodData(
                     toY: last[i].amount,
-                    width: 16,
+                    width: 14,
                     borderRadius: BorderRadius.circular(10),
                     color: i == highlightIndex
                         ? AppColors.primary
-                        : AppColors.primaryLighter.withValues(alpha: 0.9),
+                        : AppColors.backgroundSecondary.withValues(alpha: 0.9),
                   ),
                 ],
               ),

@@ -29,6 +29,14 @@ class OrderDetailsScreen extends ConsumerStatefulWidget {
 class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   PaymentStatus? _draftPaymentStatus;
   PaymentMethod? _draftPaymentMethod;
+  double? _draftAmountPaid;
+  final TextEditingController _partialAmountController = TextEditingController();
+
+  @override
+  void dispose() {
+    _partialAmountController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +68,13 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
 
     _draftPaymentStatus ??= order.paymentStatus ?? PaymentStatus.unpaid;
     _draftPaymentMethod ??= order.paymentMethod ?? PaymentMethod.cash;
+    _draftAmountPaid ??= order.amountPaid;
+    if ((_draftPaymentStatus ?? PaymentStatus.unpaid) == PaymentStatus.partial &&
+        _partialAmountController.text.trim().isEmpty) {
+      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
+      _partialAmountController.text =
+          seed == 0 ? '' : seed.toStringAsFixed(0);
+    }
 
     // Best-effort approximation for "Delivery Fee" row in the screenshot.
     final deliveryFee =
@@ -67,6 +82,19 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
           0.0,
           double.infinity,
         );
+
+    final effectivePaid = switch (paymentStatus) {
+      PaymentStatus.paid => order.totalAmount,
+      PaymentStatus.unpaid => 0.0,
+      PaymentStatus.partial => (order.amountPaid ?? 0.0).clamp(
+          0.0,
+          order.totalAmount,
+        ),
+    };
+    final balanceDue = (order.totalAmount - effectivePaid).clamp(
+      0.0,
+      order.totalAmount,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -78,11 +106,18 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (action) {
               switch (action) {
+                case _OrderMenuAction.edit:
+                  context.push('/owner/orders/edit/${order.id}');
+                  break;
                 case _OrderMenuAction.delete:
                   _handleDelete(context, ref, order);
               }
             },
             itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _OrderMenuAction.edit,
+                child: Text('Edit order'),
+              ),
               PopupMenuItem(
                 value: _OrderMenuAction.delete,
                 child: Text('Delete order'),
@@ -91,14 +126,6 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
           ),
           const SizedBox(width: 6),
         ],
-      ),
-      bottomNavigationBar: _BottomActions(
-        isDelivered: order.status == OrderStatus.delivered,
-        onMarkDelivered: () =>
-            _handleStatusChange(context, ref, order, OrderStatus.delivered),
-        onCallCustomer: () => _handleCallCustomer(context, order.customerPhone),
-        onCancelOrder: () =>
-            _handleStatusChange(context, ref, order, OrderStatus.cancelled),
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -191,6 +218,12 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                   _SummaryRow(label: 'Subtotal', value: order.subtotal),
                   const SizedBox(height: 10),
                   _SummaryRow(label: 'Delivery Fee', value: deliveryFee),
+                  if (paymentStatus == PaymentStatus.partial) ...[
+                    const SizedBox(height: 10),
+                    _SummaryRow(label: 'Paid Amount', value: effectivePaid),
+                    const SizedBox(height: 10),
+                    _SummaryRow(label: 'Balance Due', value: balanceDue),
+                  ],
                   const SizedBox(height: 14),
                   const Divider(height: 1, color: AppColors.divider),
                   const SizedBox(height: 14),
@@ -239,8 +272,15 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                                   PaymentStatus.partial,
                                 ],
                                 itemLabel: (v) => _humanizeWord(v.name),
-                                onChanged: (v) =>
-                                    setState(() => _draftPaymentStatus = v),
+                                onChanged: (v) => setState(() {
+                                  _draftPaymentStatus = v;
+                                  if (v != PaymentStatus.partial) {
+                                    _draftAmountPaid = null;
+                                    _partialAmountController.clear();
+                                  } else {
+                                    _draftAmountPaid = order.amountPaid;
+                                  }
+                                }),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -261,16 +301,104 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                             ),
                           ],
                         ),
+                        if ((_draftPaymentStatus ?? PaymentStatus.unpaid) ==
+                            PaymentStatus.partial) ...[
+                          const SizedBox(height: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'AMOUNT PAID',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.textLight,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _partialAmountController,
+                                keyboardType: const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: money0.format(order.totalAmount),
+                                  prefixIcon: const Icon(
+                                    Icons.currency_rupee_rounded,
+                                    size: 18,
+                                    color: AppColors.textLight,
+                                  ),
+                                  filled: true,
+                                  fillColor: AppColors.surface,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(18),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                onChanged: (val) {
+                                  final raw = val.trim().replaceAll(',', '');
+                                  final parsed = double.tryParse(raw);
+                                  setState(() => _draftAmountPaid = parsed);
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton.icon(
                             onPressed: () {
+                              final nextStatus =
+                                  _draftPaymentStatus ?? PaymentStatus.unpaid;
+                              final nextMethod =
+                                  _draftPaymentMethod ?? PaymentMethod.cash;
+                              double? amountPaid;
+
+                              if (nextStatus == PaymentStatus.unpaid) {
+                                amountPaid = null;
+                              } else if (nextStatus == PaymentStatus.paid) {
+                                amountPaid = order.totalAmount;
+                              } else {
+                                final parsed =
+                                    (_draftAmountPaid ??
+                                            double.tryParse(
+                                              _partialAmountController.text
+                                                  .trim()
+                                                  .replaceAll(',', ''),
+                                            )) ??
+                                        0.0;
+                                final clamped = parsed.clamp(0.0, order.totalAmount);
+                                if (clamped <= 0 || clamped >= order.totalAmount) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Enter an amount between ${money0.format(1)} and ${money0.format(order.totalAmount - 1)}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: AppColors.warning,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                amountPaid = clamped;
+                              }
+
                               final next = order.copyWith(
-                                paymentStatus:
-                                    _draftPaymentStatus ?? PaymentStatus.unpaid,
-                                paymentMethod:
-                                    _draftPaymentMethod ?? PaymentMethod.cash,
+                                paymentStatus: nextStatus,
+                                paymentMethod: nextMethod,
+                                amountPaid: amountPaid,
+                                paymentTime: nextStatus == PaymentStatus.unpaid
+                                    ? null
+                                    : DateTime.now(),
+                                updatedAt: DateTime.now(),
                               );
                               ref.read(ordersProvider.notifier).updateOrder(next);
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -309,7 +437,26 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 90), // breathing space above bottom actions
+            const SizedBox(height: 18),
+            _BottomActions(
+              isDelivered: order.status == OrderStatus.delivered,
+              onMarkDelivered: () => _handleStatusChange(
+                context,
+                ref,
+                order,
+                OrderStatus.delivered,
+              ),
+              onCallCustomer: () =>
+                  _handleCallCustomer(context, order.customerPhone),
+              onCancelOrder: () => _handleStatusChange(
+                context,
+                ref,
+                order,
+                OrderStatus.cancelled,
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(height: MediaQuery.paddingOf(context).bottom),
           ],
         ),
       ),
@@ -429,7 +576,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   }
 }
 
-enum _OrderMenuAction { delete }
+enum _OrderMenuAction { edit, delete }
 
 Color _getStatusColor(OrderStatus status) {
   switch (status) {

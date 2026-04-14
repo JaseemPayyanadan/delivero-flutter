@@ -14,7 +14,8 @@ import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
-  const CreateOrderScreen({super.key});
+  final String? orderId;
+  const CreateOrderScreen({super.key, this.orderId});
 
   @override
   ConsumerState<CreateOrderScreen> createState() => _CreateOrderScreenState();
@@ -30,6 +31,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   Map<String, int> _selectedItems = {}; // foodItemId -> quantity
   Map<String, double> _customUnitPrices = {}; // foodItemId -> unit price
   bool _isSubmitting = false;
+  bool _initializedFromOrder = false;
+  Order? _editingOrder;
+  final Map<String, TextEditingController> _qtyControllers = {};
 
   @override
   Widget build(BuildContext context) {
@@ -49,9 +53,36 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final canSubmit =
         !_isSubmitting && _selectedCustomer != null && hasSelectedUnits;
 
+    if (widget.orderId != null && !_initializedFromOrder) {
+      final existing = ref
+          .watch(ordersProvider)
+          .firstWhereOrNull((o) => o.id == widget.orderId);
+      if (existing != null) {
+        final customer =
+            customers.firstWhereOrNull((c) => c.id == existing.customerId);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _initializedFromOrder) return;
+          setState(() {
+            _editingOrder = existing;
+            _selectedCustomer = customer;
+            _orderType = existing.orderType;
+            _selectedItems = {
+              for (final i in existing.items) i.foodItemId: i.quantity,
+            };
+            _customUnitPrices = {
+              for (final i in existing.items) i.foodItemId: i.unitPrice,
+            };
+            _initializedFromOrder = true;
+          });
+        });
+      }
+    }
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      appBar: const DeliveroAppBar(title: 'Create Order'),
+      appBar: DeliveroAppBar(
+        title: widget.orderId == null ? 'Create Order' : 'Edit Order',
+      ),
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
@@ -62,10 +93,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      'Create Order',
-                      style: TextStyle(
+                      widget.orderId == null ? 'Create Order' : 'Edit Order',
+                      style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w900,
                         color: AppColors.textPrimary,
@@ -74,8 +105,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     ),
                     SizedBox(height: 6),
                     Text(
-                      'Configure your recurring delivery schedule',
-                      style: TextStyle(
+                      widget.orderId == null
+                          ? 'Configure your recurring delivery schedule'
+                          : 'Update items, pricing and schedule',
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
@@ -173,9 +206,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       color: Colors.white,
                     ),
                   )
-                : const Text(
-                    'Confirm & Schedule Delivery',
-                    style: TextStyle(
+                : Text(
+                    widget.orderId == null
+                        ? 'Confirm & Schedule Delivery'
+                        : 'Update Order',
+                    style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.2,
                       color: Colors.white,
@@ -196,6 +231,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   void dispose() {
     _customerSearchController?.dispose();
     _itemSearchController?.dispose();
+    for (final c in _qtyControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -587,24 +625,48 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return Column(
       children: [
         for (final (item, qty) in selected) ...[
-          _SelectedMenuItemCard(
-            name: item.name,
-            unitPrice: _effectiveUnitPrice(item),
-            qty: qty,
-            onDec: () {
-              if (qty <= 0) return;
-              setState(() {
-                final next = qty - 1;
-                if (next <= 0) {
+          () {
+            final controller = _qtyControllers.putIfAbsent(
+              item.id,
+              () => TextEditingController(text: qty.toString()),
+            );
+            if (controller.text != qty.toString()) {
+              controller.text = qty.toString();
+              controller.selection = TextSelection.fromPosition(
+                TextPosition(offset: controller.text.length),
+              );
+            }
+            return _SelectedMenuItemCard(
+              name: item.name,
+              unitPrice: _effectiveUnitPrice(item),
+              isCustom: _customUnitPrices.containsKey(item.id),
+              qty: qty,
+              qtyController: controller,
+              onQtyChanged: (nextQty) => setState(() {
+                final safe = nextQty.clamp(0, 999);
+                if (safe <= 0) {
                   _selectedItems.remove(item.id);
                   _customUnitPrices.remove(item.id);
                 } else {
-                  _selectedItems[item.id] = next;
+                  _selectedItems[item.id] = safe;
                 }
-              });
-            },
-            onInc: () => setState(() => _selectedItems[item.id] = qty + 1),
-          ),
+              }),
+              onCustomPrice: () => _showCustomPriceDialog(item),
+              onDec: () {
+                if (qty <= 0) return;
+                setState(() {
+                  final next = qty - 1;
+                  if (next <= 0) {
+                    _selectedItems.remove(item.id);
+                    _customUnitPrices.remove(item.id);
+                  } else {
+                    _selectedItems[item.id] = next;
+                  }
+                });
+              },
+              onInc: () => setState(() => _selectedItems[item.id] = qty + 1),
+            );
+          }(),
           const SizedBox(height: 12),
         ],
       ],
@@ -737,33 +799,56 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         .clamp(0, double.infinity)
         .toDouble();
 
-    final newOrder = Order(
-      id: const Uuid().v4(),
-      factoryId: _selectedCustomer!.factoryId,
-      orderType: _orderType,
-      customerId: _selectedCustomer!.id,
-      customerName: _selectedCustomer!.name,
-      customerEmail: _selectedCustomer!.email,
-      customerPhone: _selectedCustomer!.phone,
-      customerAddress: _selectedCustomer!.address,
-      items: items,
-      subtotal: subtotal,
-      discountAmount: discountAmount,
-      totalAmount: totalAmount,
-      status: OrderStatus.pending,
-      assignedRoute: _selectedCustomer!.assignedRoute,
-      assignedDriver: assignedDriver,
-      orderDate: DateTime.now(),
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
+    final now = DateTime.now();
+    final existing = _editingOrder;
+    final nextOrder = existing == null
+        ? Order(
+            id: const Uuid().v4(),
+            factoryId: _selectedCustomer!.factoryId,
+            orderType: _orderType,
+            customerId: _selectedCustomer!.id,
+            customerName: _selectedCustomer!.name,
+            customerEmail: _selectedCustomer!.email,
+            customerPhone: _selectedCustomer!.phone,
+            customerAddress: _selectedCustomer!.address,
+            items: items,
+            subtotal: subtotal,
+            discountAmount: discountAmount,
+            totalAmount: totalAmount,
+            status: OrderStatus.pending,
+            assignedRoute: _selectedCustomer!.assignedRoute,
+            assignedDriver: assignedDriver,
+            orderDate: now,
+            createdAt: now,
+            updatedAt: now,
+          )
+        : existing.copyWith(
+            factoryId: _selectedCustomer!.factoryId,
+            orderType: _orderType,
+            customerId: _selectedCustomer!.id,
+            customerName: _selectedCustomer!.name,
+            customerEmail: _selectedCustomer!.email,
+            customerPhone: _selectedCustomer!.phone,
+            customerAddress: _selectedCustomer!.address,
+            items: items,
+            subtotal: subtotal,
+            discountAmount: discountAmount,
+            totalAmount: totalAmount,
+            assignedRoute: _selectedCustomer!.assignedRoute,
+            assignedDriver: assignedDriver,
+            updatedAt: now,
+          );
 
-    ref.read(ordersProvider.notifier).addOrder(newOrder);
+    if (existing == null) {
+      ref.read(ordersProvider.notifier).addOrder(nextOrder);
+    } else {
+      ref.read(ordersProvider.notifier).updateOrder(nextOrder);
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text(
-          'Manifest authorized successfully',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        content: Text(
+          existing == null ? 'Order created successfully' : 'Order updated',
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.success,
@@ -968,14 +1053,22 @@ class _CustomerSuggestions extends StatelessWidget {
 class _SelectedMenuItemCard extends StatelessWidget {
   final String name;
   final double unitPrice;
+  final bool isCustom;
   final int qty;
+  final TextEditingController qtyController;
+  final ValueChanged<int> onQtyChanged;
+  final VoidCallback onCustomPrice;
   final VoidCallback onDec;
   final VoidCallback onInc;
 
   const _SelectedMenuItemCard({
     required this.name,
     required this.unitPrice,
+    required this.isCustom,
     required this.qty,
+    required this.qtyController,
+    required this.onQtyChanged,
+    required this.onCustomPrice,
     required this.onDec,
     required this.onInc,
   });
@@ -1011,19 +1104,72 @@ class _SelectedMenuItemCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '₹${NumberFormat.decimalPattern().format(unitPrice)}.00',
-                  style: const TextStyle(
-                    color: AppColors.textLight,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '₹${NumberFormat.decimalPattern().format(unitPrice)}.00',
+                      style: TextStyle(
+                        color: isCustom ? AppColors.primary : AppColors.textLight,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                      ),
+                    ),
+                    if (isCustom) ...[
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: onCustomPrice,
+                        borderRadius: BorderRadius.circular(999),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLighter.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Text(
+                            'Custom',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 11,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: onCustomPrice,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          padding: EdgeInsets.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'Add custom',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
           ),
           const SizedBox(width: 10),
-          _QtyStepper(qty: qty, onDec: onDec, onInc: onInc),
+          _QtyStepper(
+            qty: qty,
+            controller: qtyController,
+            onQtyChanged: onQtyChanged,
+            onDec: onDec,
+            onInc: onInc,
+          ),
         ],
       ),
     );
@@ -1032,10 +1178,14 @@ class _SelectedMenuItemCard extends StatelessWidget {
 
 class _QtyStepper extends StatelessWidget {
   final int qty;
+  final TextEditingController? controller;
+  final ValueChanged<int>? onQtyChanged;
   final VoidCallback onDec;
   final VoidCallback onInc;
   const _QtyStepper({
     required this.qty,
+    this.controller,
+    this.onQtyChanged,
     required this.onDec,
     required this.onInc,
   });
@@ -1059,15 +1209,38 @@ class _QtyStepper extends StatelessWidget {
             padding: EdgeInsets.zero,
           ),
           SizedBox(
-            width: 30,
-            child: Text(
-              qty.toString().padLeft(2, '0'),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            width: 42,
+            child: controller == null || onQtyChanged == null
+                ? Center(
+                    child: Text(
+                      qty.toString().padLeft(2, '0'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  )
+                : TextField(
+                    controller: controller,
+                    textAlign: TextAlign.center,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    onChanged: (val) {
+                      final raw = val.trim();
+                      if (raw.isEmpty) return;
+                      final parsed = int.tryParse(raw);
+                      if (parsed == null) return;
+                      onQtyChanged!(parsed);
+                    },
+                  ),
           ),
           IconButton(
             onPressed: onInc,
