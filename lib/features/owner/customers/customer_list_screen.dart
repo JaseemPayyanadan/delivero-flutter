@@ -450,16 +450,16 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
         : 'No orders yet';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Material(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => context.push('/owner/customers/${customer.id}'),
           child: Ink(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AppColors.border),
               boxShadow: const [
                 BoxShadow(
@@ -470,7 +470,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
               ],
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -478,13 +478,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 46,
-                        height: 46,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: AppColors.primaryLighter.withValues(
                             alpha: 0.6,
                           ),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: AppColors.primary.withValues(alpha: 0.12),
                           ),
@@ -495,13 +495,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                             style: const TextStyle(
                               color: AppColors.primary,
                               fontWeight: FontWeight.w900,
-                              fontSize: 16,
+                              fontSize: 14,
                               letterSpacing: 0.4,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,19 +512,19 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w900,
-                                fontSize: 17,
+                                fontSize: 16,
                                 color: AppColors.textPrimary,
                                 letterSpacing: -0.4,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 6),
                             Row(
                               children: [
                                 Flexible(
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 10,
-                                      vertical: 6,
+                                      vertical: 5,
                                     ),
                                     decoration: BoxDecoration(
                                       color: AppColors.backgroundSecondary,
@@ -538,7 +538,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 11,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.textSecondary,
                                       ),
@@ -557,67 +557,27 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(
-                        child: _InfoChip(
-                          icon: Icons.trending_up_rounded,
-                          label: 'LTV',
-                          value: ltvText,
-                          color: AppColors.primary,
-                        ),
+                      _MiniMeta(
+                        icon: Icons.trending_up_rounded,
+                        label: ltvText,
+                        color: AppColors.primary,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _InfoChip(
-                          icon: Icons.shopping_bag_outlined,
-                          label: 'Orders',
-                          value: totalOrders.toString(),
-                          color: AppColors.success,
-                        ),
+                      const SizedBox(width: 14),
+                      _MiniMeta(
+                        icon: Icons.shopping_bag_outlined,
+                        label: totalOrders.toString(),
+                        color: AppColors.success,
+                      ),
+                      const SizedBox(width: 14),
+                      _MiniMeta(
+                        icon: Icons.calendar_today_rounded,
+                        label: lastOrderText,
+                        color: AppColors.textSecondary,
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundPrimary,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.calendar_today_rounded,
-                          size: 16,
-                          color: AppColors.textLight,
-                        ),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'Last order',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          lastOrderText,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),
@@ -721,68 +681,35 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
   }
 }
 
-class _InfoChip extends StatelessWidget {
+class _MiniMeta extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String value;
   final Color color;
 
-  const _InfoChip({
+  const _MiniMeta({
     required this.icon,
     required this.label,
-    required this.value,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
+    return Flexible(
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textLight,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ],
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
         ],
