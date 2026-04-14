@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/auth_controller.dart';
@@ -11,6 +12,13 @@ import '../data/models/delivery_route.dart';
 import '../data/models/driver.dart';
 import '../core/services/firebase_service.dart';
 import '../core/services/factory_service.dart';
+
+CollectionReference<Map<String, dynamic>> _mapCollection(String path) {
+  return FirebaseService.firestore.collection(path).withConverter<Map<String, dynamic>>(
+        fromFirestore: (snapshot, _) => snapshot.data() ?? <String, dynamic>{},
+        toFirestore: (data, _) => data,
+      );
+}
 
 final appStartupProvider =
     NotifierProvider<AppStartupNotifier, AppStartupState>(
@@ -124,8 +132,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
     ref.read(ordersLoadedProvider.notifier).state = false;
 
     try {
-      _subscription = FirebaseService.firestore
-          .collection('orders')
+      _subscription = _mapCollection('orders')
           .where('factoryId', isEqualTo: factoryId)
           .snapshots()
           .listen(
@@ -210,8 +217,7 @@ class CustomersNotifier extends Notifier<List<Customer>> {
     ref.read(customersLoadedProvider.notifier).state = false;
 
     try {
-      _subscription = FirebaseService.firestore
-          .collection('customers')
+      _subscription = _mapCollection('customers')
           .where('factoryId', isEqualTo: factoryId)
           .snapshots()
           .listen(
@@ -298,8 +304,7 @@ class FoodItemsNotifier extends Notifier<List<FoodItem>> {
     ref.read(foodItemsLoadedProvider.notifier).state = false;
 
     try {
-      _subscription = FirebaseService.firestore
-          .collection('foodItems')
+      _subscription = _mapCollection('foodItems')
           .where('factoryId', isEqualTo: factoryId)
           .snapshots()
           .listen(
@@ -386,8 +391,7 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
     ref.read(routesLoadedProvider.notifier).state = false;
 
     try {
-      _subscription = FirebaseService.firestore
-          .collection('routes')
+      _subscription = _mapCollection('routes')
           .where('factoryId', isEqualTo: factoryId)
           .snapshots()
           .listen(
@@ -475,8 +479,7 @@ class DriversNotifier extends Notifier<List<Driver>> {
     ref.read(driversLoadedProvider.notifier).state = false;
 
     try {
-      _subscription = FirebaseService.firestore
-          .collection('drivers')
+      _subscription = _mapCollection('drivers')
           .where('factoryId', isEqualTo: factoryId)
           .snapshots()
           .listen(

@@ -3,7 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import 'firebase_web_options.dart';
+
 class FirebaseService {
+  static bool get isInitialized => Firebase.apps.isNotEmpty;
+
   static Future<void> init() async {
     // Check if already initialized
     if (Firebase.apps.isNotEmpty) {
@@ -14,7 +18,7 @@ class FirebaseService {
     }
 
     if (kIsWeb) {
-      final webOptions = FirebaseOptions(
+      var webOptions = FirebaseOptions(
         apiKey: const String.fromEnvironment('FIREBASE_WEB_API_KEY'),
         authDomain: const String.fromEnvironment('FIREBASE_WEB_AUTH_DOMAIN'),
         projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
@@ -31,10 +35,18 @@ class FirebaseService {
       if (webOptions.apiKey.isEmpty ||
           webOptions.projectId.isEmpty ||
           webOptions.appId.isEmpty) {
-        if (kDebugMode) {
-          print('[Firebase] Skipped (missing web config)');
+        final fromWindow = FirebaseWebOptions.tryGetFromWindow();
+        if (fromWindow != null) {
+          webOptions = fromWindow;
+        } else {
+          if (kDebugMode) {
+            print(
+              '[Firebase] Web not configured. Provide --dart-define FIREBASE_WEB_* '
+              'or set window.firebaseConfig in web/index.html',
+            );
+          }
+          return;
         }
-        return;
       }
 
       await Firebase.initializeApp(options: webOptions);

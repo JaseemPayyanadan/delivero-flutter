@@ -53,6 +53,24 @@
 <body>
     <div id="loading">Loading…</div>
 
+  <!--
+    Firebase web config:
+    - Option 1 (recommended): build with --dart-define FIREBASE_WEB_* values.
+    - Option 2: set window.firebaseConfig below (use your Firebase console web app config).
+    If neither is set, the web app will load but Firebase data will be empty.
+  -->
+  <script>
+    window.firebaseConfig = {
+      apiKey: "AIzaSyBtd6op8KUKyAhyHor_3kM4sOvYwkBIe4M",
+      authDomain: "delivero-48322.firebaseapp.com",
+      projectId: "delivero-48322",
+      storageBucket: "delivero-48322.firebasestorage.app",
+      messagingSenderId: "246967732090",
+      appId: "1:246967732090:web:7ad49c8e94ee32584e38c3",
+      measurementId: "G-TG2E932BCK"
+    };
+  </script>
+
   <script>
     function removeLoading() {
       var el = document.getElementById('loading');
