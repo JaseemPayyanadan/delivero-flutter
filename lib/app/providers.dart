@@ -134,21 +134,23 @@ class OrdersNotifier extends Notifier<List<Order>> {
     ref.read(ordersLoadedProvider.notifier).state = false;
 
     try {
-      _subscription = _mapCollection('orders')
-          .where('factoryId', isEqualTo: factoryId)
-          .snapshots()
-          .listen(
-            (snapshot) {
-              state = snapshot.docs
-                  .map((doc) => Order.fromJson({...doc.data(), 'id': doc.id}))
-                  .toList();
-              ref.read(ordersLoadedProvider.notifier).state = true;
-            },
-            onError: (Object e, StackTrace st) {
-              debugPrint('[Firestore] Error fetching orders: $e');
-              ref.read(ordersLoadedProvider.notifier).state = true;
-            },
-          );
+      _subscription = _mapCollection('orders').snapshots().listen(
+        (snapshot) {
+          state = snapshot.docs
+              .where((doc) {
+                final data = doc.data();
+                final fid = (data['factoryId'] ?? data['factory_id'])?.toString();
+                return fid == factoryId;
+              })
+              .map((doc) => Order.fromJson({...doc.data(), 'id': doc.id}))
+              .toList();
+          ref.read(ordersLoadedProvider.notifier).state = true;
+        },
+        onError: (Object e, StackTrace st) {
+          debugPrint('[Firestore] Error fetching orders: $e');
+          ref.read(ordersLoadedProvider.notifier).state = true;
+        },
+      );
     } catch (e) {
       debugPrint('[Firestore] Error fetching orders: $e');
       ref.read(ordersLoadedProvider.notifier).state = true;

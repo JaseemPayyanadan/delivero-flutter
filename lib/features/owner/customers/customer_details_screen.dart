@@ -12,6 +12,54 @@ import '../../../data/models/customer.dart';
 import '../../../data/models/food_item.dart';
 import '../../../data/models/order.dart';
 
+double? _estimatePerDelivery(
+  List<CustomerProduct> items,
+  Map<String, double> catalogPriceById,
+) {
+  if (items.isEmpty) return null;
+  double total = 0;
+  for (final p in items) {
+    final unit = p.customPrice ?? catalogPriceById[p.id];
+    if (unit == null) continue;
+    total += unit * p.quantity;
+  }
+  return total <= 0 ? null : total;
+}
+
+String _inferScheduleLabel(List<Order> orders) {
+  if (orders.isEmpty) return '—';
+  final last = orders.take(10).toList();
+  final counts = <int, int>{};
+  for (final o in last) {
+    counts[o.orderDate.weekday] = (counts[o.orderDate.weekday] ?? 0) + 1;
+  }
+  if (counts.isEmpty) return '—';
+  final top = counts.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  final days = top.take(3).map((e) => _weekdayShort(e.key)).toList();
+  return days.join(', ');
+}
+
+String _weekdayShort(int weekday) {
+  switch (weekday) {
+    case DateTime.monday:
+      return 'Mon';
+    case DateTime.tuesday:
+      return 'Tue';
+    case DateTime.wednesday:
+      return 'Wed';
+    case DateTime.thursday:
+      return 'Thu';
+    case DateTime.friday:
+      return 'Fri';
+    case DateTime.saturday:
+      return 'Sat';
+    case DateTime.sunday:
+      return 'Sun';
+  }
+  return '—';
+}
+
 Future<void> _confirmAndDeleteCustomer(
   BuildContext context,
   WidgetRef ref,
@@ -160,206 +208,242 @@ class CustomerDetailsScreen extends ConsumerWidget {
         ? customer.ownerName!.trim()
         : 'Not added';
 
+    final recurringItems = (customer.products ?? const <CustomerProduct>[])
+        .where((p) => p.quantity > 0)
+        .toList();
+    final estimatedPerDelivery = _estimatePerDelivery(
+      recurringItems,
+      catalogPriceById,
+    );
+    final scheduleLabel = _inferScheduleLabel(customerOrders);
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          DeliveroSliverHeader(
-            title: customer.name,
-            subtitle: displayRoute,
-            expandedHeight: 140,
-            floating: false,
-            pinned: true,
-            actions: [
-              IconButton(
-                tooltip: 'Edit customer',
-                onPressed: () =>
-                    context.push('/owner/customers/edit/$customerId'),
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.edit_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                ),
+      appBar: AppBar(
+        backgroundColor: AppColors.backgroundPrimary,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: () => context.pop(),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        ),
+        centerTitle: true,
+        title: const Text(
+          'Customer Profile',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w900,
+            fontSize: 16,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => context.push('/owner/customers/edit/$customerId'),
+            child: const Text(
+              'Edit',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.primary,
               ),
-              IconButton(
-                tooltip: 'Delete customer',
-                onPressed: () => _confirmAndDeleteCustomer(
+            ),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            onSelected: (value) {
+              if (value == 'delete') {
+                _confirmAndDeleteCustomer(
                   context,
                   ref,
                   customer.id,
                   customer.name,
-                ),
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.delete_outline_rounded,
-                    color: AppColors.error,
-                    size: 20,
-                  ),
-                ),
+                );
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'delete',
+                child: Text('Delete customer'),
               ),
-              const SizedBox(width: 16),
             ],
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+          children: [
+            const SizedBox(height: 10),
+            Center(
+              child: Container(
+                width: 74,
+                height: 74,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppColors.shadow,
+                      blurRadius: 18,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: Colors.white,
+                  size: 34,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Center(
+              child: Text(
+                customer.name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 24,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Center(
+              child: Text(
+                customer.phone.trim().isEmpty ? '—' : customer.phone.trim(),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Center(
+              child: _StatusPill(active: customer.isActive),
+            ),
+            const SizedBox(height: 18),
+            _ProfileCard(
+              icon: Icons.autorenew_rounded,
+              iconBg: AppColors.warningLighter.withValues(alpha: 0.75),
+              title: 'Recurring Order',
+              child: recurringItems.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.only(top: 6),
+                      child: Text(
+                        'No recurring items set yet.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        for (final item in recurringItems.take(3)) ...[
+                          _RecurringItemRow(
+                            name: item.name,
+                            quantity: item.quantity,
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _MetaPair(
+                                label: 'Frequency',
+                                value: scheduleLabel == '—'
+                                    ? 'Weekly'
+                                    : 'Weekly ($scheduleLabel)',
+                              ),
+                            ),
+                            Expanded(
+                              child: _MetaPair(
+                                label: 'Estimated total',
+                                value: estimatedPerDelivery == null
+                                    ? '—'
+                                    : '₹${NumberFormat.compact().format(estimatedPerDelivery)} /deliv.',
+                                alignEnd: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+            ),
+            const SizedBox(height: 16),
+            _ProfileCard(
+              icon: Icons.location_on_rounded,
+              iconBg: AppColors.infoLighter.withValues(alpha: 0.75),
+              title: 'Delivery Info',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _CustomerHeroCard(
-                    customerName: customer.name,
-                    routeLabel: displayRoute,
-                    avatarText: customer.name.trim().isNotEmpty
-                        ? customer.name.trim()[0].toUpperCase()
-                        : '?',
-                    ownerDisplay: ownerDisplay,
-                    displayAddress: displayAddress,
-                    phone: customer.phone,
-                    onCall: phoneDigits.isEmpty
-                        ? null
-                        : () async {
-                            final ok = await launchUrl(
-                              Uri(scheme: 'tel', path: phoneDigits),
-                            );
-                            if (!ok && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text(
-                                    'Unable to start call',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: AppColors.error,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                    onDirections: rawAddress.isEmpty
-                        ? null
-                        : () async {
-                            final uri = Uri.parse(
-                              'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(rawAddress)}',
-                            );
-                            final ok = await launchUrl(
-                              uri,
-                              mode: LaunchMode.externalApplication,
-                            );
-                            if (!ok && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text(
-                                    'Unable to open maps',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: AppColors.error,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                  ),
+                  _MetaPair(label: 'Address', value: displayAddress),
                   const SizedBox(height: 14),
-                  _KpiStrip(
-                    items: [
-                      _KpiItem(
-                        label: 'Lifetime Value',
-                        value:
-                            '₹${NumberFormat.compact().format(totalRevenue)}',
-                        icon: Icons.trending_up_rounded,
-                        color: AppColors.success,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _MetaPair(label: 'Route', value: displayRoute),
                       ),
-                      _KpiItem(
-                        label: 'Outstanding',
-                        value:
-                            '₹${NumberFormat.compact().format(pendingRevenue)}',
-                        icon: Icons.account_balance_wallet_rounded,
-                        color: pendingRevenue > 0
-                            ? AppColors.error
-                            : AppColors.success,
-                      ),
-                      _KpiItem(
-                        label: 'Orders',
-                        value: customerOrders.length.toString(),
-                        icon: Icons.receipt_long_rounded,
-                        color: AppColors.primary,
-                      ),
-                      _KpiItem(
-                        label: 'Last Order',
-                        value: lastOrderDate == null
-                            ? '—'
-                            : DateFormat('MMM d').format(lastOrderDate),
-                        icon: Icons.calendar_today_rounded,
-                        color: AppColors.info,
+                      Expanded(
+                        child: _MetaPair(
+                          label: 'Schedule',
+                          value: scheduleLabel,
+                          alignEnd: true,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 32),
-                  _SectionCard(
-                    title: 'Products & pricing',
-                    action: TextButton.icon(
-                      onPressed: () =>
-                          context.push('/owner/customers/edit/$customerId'),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text(
-                        'Edit',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 10,
-                        ),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                    child: _buildConfigurationCard(
-                      context,
-                      customerId,
-                      customer,
-                      catalogPriceById,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  _SectionCard(
-                    title: 'Recent Orders',
-                    child: _RecentOrdersList(
-                      orders: customerOrders.take(6).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
+                  if (ownerDisplay != 'Not added') ...[
+                    const SizedBox(height: 14),
+                    _MetaPair(label: 'Owner', value: ownerDisplay),
+                  ],
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            _ProfileCard(
+              icon: Icons.account_balance_wallet_rounded,
+              iconBg: AppColors.successLighter.withValues(alpha: 0.75),
+              title: 'Financial Overview',
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _FinancialTile(
+                      label: 'Payment status',
+                      child: _PaymentPill(paid: pendingRevenue <= 0),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _FinancialTile(
+                      label: 'Outstanding',
+                      child: Text(
+                        '₹${NumberFormat.decimalPattern().format(pendingRevenue)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // Legacy UI sections remain below for future reuse.
   Widget _buildConfigurationCard(
     BuildContext context,
     String customerId,
@@ -794,6 +878,265 @@ class _CustomerHeroCard extends StatelessWidget {
                 : null,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final bool active;
+  const _StatusPill({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = active
+        ? AppColors.successLighter.withValues(alpha: 0.7)
+        : AppColors.backgroundSecondary;
+    final fg = active ? AppColors.success : AppColors.textSecondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            active ? 'ACTIVE' : 'INACTIVE',
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              color: fg,
+              fontSize: 11,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconBg;
+  final String title;
+  final Widget child;
+  const _ProfileCard({
+    required this.icon,
+    required this.iconBg,
+    required this.title,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: AppColors.textPrimary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _RecurringItemRow extends StatelessWidget {
+  final String name;
+  final int quantity;
+  const _RecurringItemRow({required this.name, required this.quantity});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.restaurant_rounded,
+            size: 18,
+            color: AppColors.textLight,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLighter.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              'x$quantity',
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaPair extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool alignEnd;
+  const _MetaPair({
+    required this.label,
+    required this.value,
+    this.alignEnd = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 10,
+            letterSpacing: 1.0,
+            color: AppColors.textLight,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+            height: 1.25,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FinancialTile extends StatelessWidget {
+  final String label;
+  final Widget child;
+  const _FinancialTile({required this.label, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 10,
+              letterSpacing: 1.0,
+              color: AppColors.textLight,
+            ),
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentPill extends StatelessWidget {
+  final bool paid;
+  const _PaymentPill({required this.paid});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = paid
+        ? AppColors.successLighter.withValues(alpha: 0.85)
+        : AppColors.warningLighter.withValues(alpha: 0.85);
+    final fg = paid ? AppColors.success : AppColors.warning;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        paid ? 'PAID' : 'PENDING',
+        style: TextStyle(
+          color: fg,
+          fontWeight: FontWeight.w900,
+          fontSize: 11,
+          letterSpacing: 0.8,
+        ),
       ),
     );
   }
