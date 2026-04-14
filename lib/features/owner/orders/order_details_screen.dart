@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // ignore_for_file: use_null_aware_elements
@@ -17,15 +18,28 @@ String _humanizeWord(String raw) {
   return raw[0].toUpperCase() + raw.substring(1);
 }
 
-class OrderDetailsScreen extends ConsumerWidget {
+class OrderDetailsScreen extends ConsumerStatefulWidget {
   final String orderId;
   const OrderDetailsScreen({super.key, required this.orderId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
+}
+
+class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
+  PaymentStatus? _draftPaymentStatus;
+  PaymentMethod? _draftPaymentMethod;
+
+  @override
+  Widget build(BuildContext context) {
+    final money0 = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 0,
+    );
     final order = ref
         .watch(ordersProvider)
-        .firstWhereOrNull((o) => o.id == orderId);
+        .firstWhereOrNull((o) => o.id == widget.orderId);
     final routes = ref.watch(routesProvider);
 
     if (order == null) {
@@ -39,9 +53,13 @@ class OrderDetailsScreen extends ConsumerWidget {
       (r) => r.id == order.assignedRoute || r.name == order.assignedRoute,
     );
 
-    final statusColor = _getStatusColor(order.status);
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentStatusColor(paymentStatus);
+    final statusBg = _getStatusBg(order.status);
+    final statusFg = _getStatusFg(order.status);
+
+    _draftPaymentStatus ??= order.paymentStatus ?? PaymentStatus.unpaid;
+    _draftPaymentMethod ??= order.paymentMethod ?? PaymentMethod.cash;
 
     // Best-effort approximation for "Delivery Fee" row in the screenshot.
     final deliveryFee =
@@ -84,7 +102,7 @@ class OrderDetailsScreen extends ConsumerWidget {
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -96,7 +114,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Order #-${order.id}',
+                        'Order ${_displayOrderId(order.id)}',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -119,10 +137,10 @@ class OrderDetailsScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                _StatusBadge(
+                _StatusPill(
                   label: _humanizeWord(order.status.name),
-                  color: statusColor,
-                  compact: false,
+                  bg: statusBg,
+                  fg: statusFg,
                 ),
               ],
             ),
@@ -149,9 +167,20 @@ class OrderDetailsScreen extends ConsumerWidget {
             _SectionHeader(
               title: 'Payment Summary',
               trailingWidget: _PillBadge(
-                label: _humanizeWord(paymentStatus.name),
-                background: paymentColor.withValues(alpha: 0.12),
+                label: _humanizeWord(paymentStatus.name).toUpperCase(),
+                background: paymentColor == AppColors.error
+                    ? AppColors.errorLighter.withValues(alpha: 0.85)
+                    : paymentColor.withValues(alpha: 0.12),
                 foreground: paymentColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Manage your transaction details',
+              style: TextStyle(
+                color: AppColors.textLight,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 10),
@@ -179,7 +208,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        '₹${order.totalAmount.toStringAsFixed(0)}',
+                        money0.format(order.totalAmount),
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
@@ -189,6 +218,94 @@ class OrderDetailsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _LabeledDropdown<PaymentStatus>(
+                                label: 'STATUS',
+                                value: _draftPaymentStatus ?? PaymentStatus.unpaid,
+                                items: const [
+                                  PaymentStatus.unpaid,
+                                  PaymentStatus.paid,
+                                  PaymentStatus.partial,
+                                ],
+                                itemLabel: (v) => _humanizeWord(v.name),
+                                onChanged: (v) =>
+                                    setState(() => _draftPaymentStatus = v),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _LabeledDropdown<PaymentMethod>(
+                                label: 'METHOD',
+                                value: _draftPaymentMethod ?? PaymentMethod.cash,
+                                items: const [
+                                  PaymentMethod.cash,
+                                  PaymentMethod.upi,
+                                  PaymentMethod.card,
+                                  PaymentMethod.online,
+                                ],
+                                itemLabel: (v) => _humanizeWord(v.name),
+                                onChanged: (v) =>
+                                    setState(() => _draftPaymentMethod = v),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              final next = order.copyWith(
+                                paymentStatus:
+                                    _draftPaymentStatus ?? PaymentStatus.unpaid,
+                                paymentMethod:
+                                    _draftPaymentMethod ?? PaymentMethod.cash,
+                              );
+                              ref.read(ordersProvider.notifier).updateOrder(next);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text(
+                                    'Payment status updated',
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: AppColors.success,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              );
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.surface,
+                              foregroundColor: AppColors.textPrimary,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
+                            icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                            label: const Text(
+                              'Update Payment Status',
+                              style: TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -197,6 +314,17 @@ class OrderDetailsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  static String _displayOrderId(String rawId) {
+    final id = rawId.trim();
+    if (id.isEmpty) return '#ORD-—';
+    final upper = id.toUpperCase();
+    if (upper.startsWith('ORD-') || upper.startsWith('#ORD-')) {
+      return upper.startsWith('#') ? upper : '#$upper';
+    }
+    final short = upper.length > 4 ? upper.substring(0, 4) : upper;
+    return '#ORD-$short';
   }
 
   Future<void> _handleCallCustomer(BuildContext context, String phone) async {
@@ -316,6 +444,32 @@ Color _getStatusColor(OrderStatus status) {
   }
 }
 
+Color _getStatusBg(OrderStatus status) {
+  switch (status) {
+    case OrderStatus.pending:
+      return const Color(0xFFFFE7B2);
+    case OrderStatus.delivered:
+      return AppColors.backgroundTertiary.withValues(alpha: 0.8);
+    case OrderStatus.cancelled:
+      return AppColors.errorLighter.withValues(alpha: 0.85);
+    default:
+      return AppColors.infoLighter.withValues(alpha: 0.85);
+  }
+}
+
+Color _getStatusFg(OrderStatus status) {
+  switch (status) {
+    case OrderStatus.pending:
+      return const Color(0xFFB45309);
+    case OrderStatus.delivered:
+      return AppColors.textSecondary;
+    case OrderStatus.cancelled:
+      return AppColors.error;
+    default:
+      return AppColors.info;
+  }
+}
+
 Color _getPaymentStatusColor(PaymentStatus status) {
   switch (status) {
     case PaymentStatus.paid:
@@ -399,36 +553,26 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
+class _StatusPill extends StatelessWidget {
   final String label;
-  final Color color;
-  final bool compact;
+  final Color bg;
+  final Color fg;
 
-  const _StatusBadge({
-    required this.label,
-    required this.color,
-    this.compact = true,
-  });
+  const _StatusPill({required this.label, required this.bg, required this.fg});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 10 : 14,
-        vertical: compact ? 6 : 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
         label.toUpperCase(),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: color,
-          fontSize: compact ? 9 : 10,
+          color: fg,
+          fontSize: 10,
           fontWeight: FontWeight.w900,
           letterSpacing: 0.8,
         ),
@@ -559,16 +703,18 @@ class _CustomerOverviewCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _PillBadge(
-            label: routeLabel,
-            leading: const Icon(
-              Icons.near_me_rounded,
-              size: 16,
-              color: AppColors.primary,
+          Center(
+            child: _PillBadge(
+              label: routeLabel,
+              leading: const Icon(
+                Icons.near_me_rounded,
+                size: 16,
+                color: AppColors.primary,
+              ),
+              background: AppColors.backgroundSecondary,
+              foreground: AppColors.textPrimary,
+              border: null,
             ),
-            background: AppColors.backgroundSecondary,
-            foreground: AppColors.textPrimary,
-            border: AppColors.border,
           ),
         ],
       ),
@@ -583,6 +729,11 @@ class _OrderItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final money0 = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 0,
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -634,7 +785,7 @@ class _OrderItemRow extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Text(
-            '₹${item.totalPrice.toStringAsFixed(0)}',
+            money0.format(item.totalPrice),
             style: const TextStyle(
               fontWeight: FontWeight.w900,
               color: AppColors.textPrimary,
@@ -656,6 +807,11 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final money0 = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 0,
+    );
     return Row(
       children: [
         Expanded(
@@ -669,11 +825,82 @@ class _SummaryRow extends StatelessWidget {
           ),
         ),
         Text(
-          '₹${value.toStringAsFixed(0)}',
+          money0.format(value),
           style: const TextStyle(
             fontWeight: FontWeight.w900,
             color: AppColors.textPrimary,
             fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LabeledDropdown<T> extends StatelessWidget {
+  final String label;
+  final T value;
+  final List<T> items;
+  final String Function(T) itemLabel;
+  final ValueChanged<T> onChanged;
+
+  const _LabeledDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.itemLabel,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textLight,
+            letterSpacing: 1.0,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              value: value,
+              isExpanded: true,
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.textLight,
+              ),
+              items: items
+                  .map(
+                    (v) => DropdownMenuItem<T>(
+                      value: v,
+                      child: Text(
+                        itemLabel(v),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (next) {
+                if (next == null) return;
+                onChanged(next);
+              },
+            ),
           ),
         ),
       ],
@@ -711,9 +938,9 @@ class _BottomActions extends StatelessWidget {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(22),
                   ),
                   disabledBackgroundColor: AppColors.border,
                   disabledForegroundColor: AppColors.textLight,
@@ -734,10 +961,9 @@ class _BottomActions extends StatelessWidget {
                   backgroundColor: AppColors.backgroundSecondary,
                   foregroundColor: AppColors.textPrimary,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    side: const BorderSide(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(22),
                   ),
                 ),
                 icon: const Icon(Icons.call_rounded, size: 18),

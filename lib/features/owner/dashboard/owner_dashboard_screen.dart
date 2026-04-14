@@ -732,7 +732,7 @@ class _ProductSaleChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sortedSales = productSales.values.toList()
-      ..sort((a, b) => b.quantity.compareTo(a.quantity));
+      ..sort((a, b) => b.revenue.compareTo(a.revenue));
     final displaySales = sortedSales.take(5).toList();
 
     if (displaySales.isEmpty) {
@@ -756,6 +756,17 @@ class _ProductSaleChart extends StatelessWidget {
       );
     }
 
+    final totalRevenue = sortedSales.fold<double>(0, (sum, e) => sum + e.revenue);
+    final topRevenue = displaySales.first.revenue;
+    final maxY = (topRevenue <= 0 ? 1.0 : topRevenue) * 1.25;
+    const barPalette = <Color>[
+      AppColors.primary,
+      AppColors.info,
+      AppColors.success,
+      AppColors.warning,
+      AppColors.secondary,
+    ];
+
     return Container(
       height: 240,
       padding: const EdgeInsets.all(24),
@@ -774,14 +785,73 @@ class _ProductSaleChart extends StatelessWidget {
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
-          maxY: displaySales.first.quantity.toDouble() * 1.2,
-          barTouchData: BarTouchData(enabled: true),
+          maxY: maxY,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: maxY / 4,
+            getDrawingHorizontalLine: (_) =>
+                FlLine(color: AppColors.divider, strokeWidth: 1),
+          ),
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              tooltipBorderRadius: BorderRadius.circular(12),
+              tooltipMargin: 10,
+              maxContentWidth: 220,
+              fitInsideHorizontally: true,
+              fitInsideVertically: true,
+              getTooltipColor: (_) =>
+                  AppColors.textPrimary.withValues(alpha: 0.92),
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                if (groupIndex < 0 || groupIndex >= displaySales.length) {
+                  return null;
+                }
+                final item = displaySales[groupIndex];
+                final pct = totalRevenue <= 0 ? 0.0 : (item.revenue / totalRevenue);
+                final revenueStr = '₹${NumberFormat.compact().format(item.revenue)}';
+                return BarTooltipItem(
+                  '${item.name}\n',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                    height: 1.2,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: '$revenueStr  •  ${(pct * 100).toStringAsFixed(1)}%\n',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                        height: 1.3,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'Qty: ${item.quantity}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
           titlesData: FlTitlesData(
             show: true,
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 44,
+                reservedSize: 46,
                 getTitlesWidget: (value, meta) {
                   if (value < 0 || value >= displaySales.length) {
                     return const SizedBox();
@@ -790,7 +860,7 @@ class _ProductSaleChart extends StatelessWidget {
                   return Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Transform.rotate(
-                      angle: -0.55, // ~-32deg for readability
+                      angle: -0.42, // ~-24deg for readability
                       alignment: Alignment.topLeft,
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 80),
@@ -813,14 +883,21 @@ class _ProductSaleChart extends StatelessWidget {
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 28,
+                reservedSize: 44,
                 getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(
-                      color: AppColors.textLight,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
+                  final label = value == 0
+                      ? '0'
+                      : '₹${NumberFormat.compact().format(value)}';
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   );
                 },
@@ -833,19 +910,23 @@ class _ProductSaleChart extends StatelessWidget {
               sideTitles: SideTitles(showTitles: false),
             ),
           ),
-          gridData: const FlGridData(show: false),
           borderData: FlBorderData(show: false),
           barGroups: displaySales.asMap().entries.map((e) {
+            final color = barPalette[e.key % barPalette.length];
             return BarChartGroupData(
               x: e.key,
               barRods: [
                 BarChartRodData(
-                  toY: e.value.quantity.toDouble(),
-                  color: AppColors.primary,
-                  width: 16,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(6),
-                    topRight: Radius.circular(6),
+                  toY: e.value.revenue,
+                  width: 18,
+                  borderRadius: BorderRadius.circular(10),
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      color.withValues(alpha: 0.55),
+                      color,
+                    ],
                   ),
                 ),
               ],
