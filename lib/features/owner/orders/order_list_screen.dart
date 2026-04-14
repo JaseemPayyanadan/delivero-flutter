@@ -8,10 +8,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../../../app/providers.dart';
-import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
-import '../../../core/widgets/primary_square_icon_button.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 
@@ -314,7 +312,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final ordersLoaded = ref.watch(ordersLoadedProvider);
     final routes = ref.watch(routesProvider);
     final routesLoaded = ref.watch(routesLoadedProvider);
-    final reports = ref.watch(reportsProvider);
     final bool noOrdersYet = orders.isEmpty;
 
     // Get unique route IDs from existing orders
@@ -707,22 +704,41 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.border),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+              Material(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(18),
+                child: InkWell(
+                  onTap: () {},
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.tune_rounded,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Filters',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                ),
-                icon: const Icon(Icons.tune_rounded, size: 18),
-                label: const Text(
-                  'Filters',
-                  style: TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
             ],
@@ -793,8 +809,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : Colors.transparent,
+            color: isSelected ? AppColors.primary : AppColors.backgroundSecondary,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? Colors.transparent : AppColors.border,
+            ),
           ),
           child: Text(
             label,
