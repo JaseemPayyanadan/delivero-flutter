@@ -26,7 +26,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedRouteId;
-  final Set<String> _collapsedRouteSections = {};
 
   @override
   void dispose() {
@@ -383,6 +382,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
+      floatingActionButton: noOrdersYet
+          ? null
+          : FloatingActionButton(
+              onPressed: () => context.push('/owner/orders/create'),
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.add_rounded, color: Colors.white),
+            ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
         child: CustomScrollView(
@@ -393,8 +399,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             if (!noOrdersYet) ...[
               DeliveroSliverHeader(
                 title: 'Orders',
-                subtitle: '${orders.length} transactions processed',
-                expandedHeight: 140,
+                subtitle: '',
+                expandedHeight: 110,
                 floating: true,
                 pinned: true,
                 backgroundGradient: LinearGradient(
@@ -407,25 +413,25 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   ],
                 ),
                 actions: [
-                  PrimarySquareIconButton(
-                    icon: Icons.add_rounded,
-                    color: AppColors.secondary,
-                    onPressed: () => context.push('/owner/orders/create'),
-                  ),
-                  if (filteredOrders.isNotEmpty)
-                    IconButton(
-                      tooltip: 'Print pack list',
-                      onPressed: () => _showPackagingSummary(filteredOrders),
-                      icon: const Icon(
-                        Icons.print_rounded,
+                  IconButton(
+                    tooltip: 'Notifications',
+                    onPressed: () {},
+                    icon: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Icon(
+                        Icons.notifications_none_rounded,
                         color: AppColors.textPrimary,
                       ),
                     ),
+                  ),
                   const SizedBox(width: 16),
                 ],
-              ),
-              SliverToBoxAdapter(
-                child: _buildQuickStats(reports, filteredOrders),
               ),
               SliverToBoxAdapter(
                 child: _buildFilters(
@@ -487,42 +493,20 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final widgets = <Widget>[];
     for (final key in sortedKeys) {
       final orders = groups[key]!;
-      final pendingCount =
-          orders.where((o) => o.status == OrderStatus.pending).length;
-      final delayedCount = orders.where(_isDelayedOrder).length;
-      final isCollapsed = _collapsedRouteSections.contains(key);
+      final count = orders.length;
 
       widgets.add(
         _RouteSectionHeader(
           title: key,
-          pendingCount: pendingCount,
-          delayedCount: delayedCount,
-          collapsed: isCollapsed,
-          onTap: () => setState(() {
-            if (isCollapsed) {
-              _collapsedRouteSections.remove(key);
-            } else {
-              _collapsedRouteSections.add(key);
-            }
-          }),
+          count: count,
         ),
       );
-      if (!isCollapsed) {
-        for (final o in orders) {
-          widgets.add(_buildOrderCard(o));
-        }
+      for (final o in orders) {
+        widgets.add(_buildOrderCard(o));
       }
       widgets.add(const SizedBox(height: 10));
     }
     return widgets;
-  }
-
-  bool _isDelayedOrder(Order o) {
-    if (o.status == OrderStatus.delivered || o.status == OrderStatus.cancelled) {
-      return false;
-    }
-    final age = DateTime.now().difference(o.orderDate);
-    return age.inMinutes >= 90;
   }
 
   Widget _buildQuickStats(ReportsData reports, List<Order> filteredOrders) {
@@ -688,28 +672,14 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.border),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadow,
-                  blurRadius: 16,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
                   controller: _searchController,
                   onChanged: (val) => setState(() => _searchQuery = val),
                   decoration: InputDecoration(
-                    hintText: 'Search by ID or Customer...',
+                    hintText: 'Search order ID or customer',
                     prefixIcon: const Icon(
                       Icons.search_rounded,
                       color: AppColors.textLight,
@@ -724,29 +694,41 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           )
                         : null,
                     filled: true,
-                    fillColor: AppColors.backgroundSecondary,
+                    fillColor: AppColors.surface,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(18),
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
+                      horizontal: 16,
+                      vertical: 14,
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Routes',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textLight,
-                    letterSpacing: 1.5,
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: () {},
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.border),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
                   ),
                 ),
-                const SizedBox(height: 12),
-                SingleChildScrollView(
+                icon: const Icon(Icons.tune_rounded, size: 18),
+                label: const Text(
+                  'Filters',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   child: Row(
@@ -783,9 +765,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -896,24 +875,23 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusBg,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        statusText.toUpperCase(),
-                        style: TextStyle(
-                          color: statusFg,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 10,
-                          letterSpacing: 0.7,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        _Pill(
+                          label: statusText.toUpperCase(),
+                          bg: statusBg,
+                          fg: statusFg,
                         ),
-                      ),
+                        const SizedBox(height: 6),
+                        _Pill(
+                          label: paymentLabel,
+                          bg: isPaid
+                              ? AppColors.successLighter.withValues(alpha: 0.85)
+                              : AppColors.error.withValues(alpha: 0.10),
+                          fg: paymentFg,
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -968,60 +946,32 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
+                const Divider(height: 1, color: AppColors.divider),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'TOTAL AMOUNT',
+                          'Total Amount',
                           style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 10,
-                            letterSpacing: 0.9,
-                            color: AppColors.textLight,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '₹${NumberFormat.decimalPattern().format(order.totalAmount)}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.2,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
                     ),
                     const Spacer(),
-                    Row(
-                      children: [
-                        Icon(
-                          isPaid ? Icons.verified_rounded : Icons.cancel_rounded,
-                          size: 16,
-                          color: paymentFg,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          paymentLabel,
-                          style: TextStyle(
-                            color: paymentFg,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 11,
-                            letterSpacing: 0.7,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'View Details',
-                          style: TextStyle(
-                            color: AppColors.primary.withValues(alpha: 0.95),
-                            fontWeight: FontWeight.w900,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      '₹${NumberFormat.decimalPattern().format(order.totalAmount)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                   ],
                 ),
@@ -1031,7 +981,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         ),
       ),
     );
-  }
+}
 
   String _displayOrderId(String rawId) {
     final id = rawId.trim();
@@ -1187,6 +1137,33 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 }
 
+class _Pill extends StatelessWidget {
+  final String label;
+  final Color bg;
+  final Color fg;
+  const _Pill({required this.label, required this.bg, required this.fg});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontWeight: FontWeight.w900,
+          fontSize: 10,
+          letterSpacing: 0.7,
+        ),
+      ),
+    );
+  }
+}
+
 class _InlineMeta extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1239,72 +1216,43 @@ class _MetaDivider extends StatelessWidget {
 
 class _RouteSectionHeader extends StatelessWidget {
   final String title;
-  final int pendingCount;
-  final int delayedCount;
-  final bool collapsed;
-  final VoidCallback onTap;
+  final int count;
   const _RouteSectionHeader({
     required this.title,
-    required this.pendingCount,
-    required this.delayedCount,
-    required this.collapsed,
-    required this.onTap,
+    required this.count,
   });
 
   @override
   Widget build(BuildContext context) {
-    final sub = <String>[
-      if (pendingCount > 0) '$pendingCount PENDING',
-      if (delayedCount > 0) '$delayedCount DELAYED',
-      if (pendingCount == 0 && delayedCount == 0) 'ALL ON TRACK',
-    ].join(' • ');
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 6, 2, 10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      sub,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 11,
+                  color: AppColors.textLight,
+                  letterSpacing: 1.4,
                 ),
               ),
-              const SizedBox(width: 10),
-              Icon(
-                collapsed
-                    ? Icons.keyboard_arrow_down_rounded
-                    : Icons.keyboard_arrow_up_rounded,
-                color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              '$count ${count == 1 ? 'Order' : 'Orders'}',
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 11,
+                color: AppColors.primary,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
