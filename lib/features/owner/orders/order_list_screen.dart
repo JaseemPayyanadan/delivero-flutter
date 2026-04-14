@@ -7,6 +7,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+// ignore_for_file: unused_element
+
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
@@ -470,7 +472,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     String routeLabelFor(Order order) {
       final raw = order.assignedRoute?.trim();
       if (raw == null || raw.isEmpty) return 'Unassigned';
-      final route = routes.firstWhereOrNull((r) => r.id == raw || r.name == raw);
+      final route = routes.firstWhereOrNull(
+        (r) => r.id == raw || r.name == raw,
+      );
       return route?.name ?? raw;
     }
 
@@ -492,171 +496,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       final orders = groups[key]!;
       final count = orders.length;
 
-      widgets.add(
-        _RouteSectionHeader(
-          title: key,
-          count: count,
-        ),
-      );
+      widgets.add(_RouteSectionHeader(title: key, count: count));
       for (final o in orders) {
         widgets.add(_buildOrderCard(o));
       }
       widgets.add(const SizedBox(height: 10));
     }
     return widgets;
-  }
-
-  Widget _buildQuickStats(ReportsData reports, List<Order> filteredOrders) {
-    final pendingCount = filteredOrders
-        .where((o) => o.status == OrderStatus.pending)
-        .length;
-    final deliveredCount = filteredOrders
-        .where((o) => o.status == OrderStatus.delivered)
-        .length;
-    final totalValue = filteredOrders.fold<double>(
-      0,
-      (sum, o) => sum + o.totalAmount,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Revenue',
-                  '₹${NumberFormat.compact().format(totalValue)}',
-                  AppColors.primary,
-                  Icons.currency_rupee_rounded,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Orders Today',
-                  filteredOrders
-                      .where((o) {
-                        final d = o.orderDate;
-                        final now = DateTime.now();
-                        return d.year == now.year &&
-                            d.month == now.month &&
-                            d.day == now.day;
-                      })
-                      .length
-                      .toString(),
-                  AppColors.secondary,
-                  Icons.today_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Pending',
-                  pendingCount.toString(),
-                  AppColors.warning,
-                  Icons.schedule_rounded,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Fulfilled',
-                  deliveredCount.toString(),
-                  AppColors.success,
-                  Icons.check_circle_rounded,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    String label,
-    String value,
-    Color color,
-    IconData icon,
-  ) {
-    final Color tint;
-    if (color == AppColors.primary) {
-      tint = AppColors.primaryLighter;
-    } else if (color == AppColors.success) {
-      tint = AppColors.successLighter;
-    } else if (color == AppColors.warning) {
-      tint = AppColors.warningLighter;
-    } else {
-      tint = AppColors.backgroundSecondary;
-    }
-
-    return Container(
-      height: 86,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 16,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: tint.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, size: 20, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textLight,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.6,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildFilters(
@@ -745,42 +591,36 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           ),
           const SizedBox(height: 12),
           SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: [
-                      _buildRouteChip(
-                        null,
-                        'All Routes',
-                        routesLoaded: routesLoaded,
-                      ),
-                      if (!routesLoaded && routes.isEmpty)
-                        _buildRouteChip(
-                          'loading',
-                          'Loading…',
-                          routesLoaded: routesLoaded,
-                        ),
-                      ...availableRouteIds
-                          .sortedBy(
-                            (id) =>
-                                routes
-                                    .firstWhereOrNull((r) => r.id == id)
-                                    ?.name ??
-                                '',
-                          )
-                          .map((routeId) {
-                            final route = routes.firstWhereOrNull(
-                              (r) => r.id == routeId,
-                            );
-                            return _buildRouteChip(
-                              routeId,
-                              route?.name ?? 'Unknown Route',
-                              routesLoaded: routesLoaded,
-                            );
-                          }),
-                    ],
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: [
+                _buildRouteChip(null, 'All Routes', routesLoaded: routesLoaded),
+                if (!routesLoaded && routes.isEmpty)
+                  _buildRouteChip(
+                    'loading',
+                    'Loading…',
+                    routesLoaded: routesLoaded,
                   ),
-                ),
+                ...availableRouteIds
+                    .sortedBy(
+                      (id) =>
+                          routes.firstWhereOrNull((r) => r.id == id)?.name ??
+                          '',
+                    )
+                    .map((routeId) {
+                      final route = routes.firstWhereOrNull(
+                        (r) => r.id == routeId,
+                      );
+                      return _buildRouteChip(
+                        routeId,
+                        route?.name ?? 'Unknown Route',
+                        routesLoaded: routesLoaded,
+                      );
+                    }),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -809,7 +649,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : AppColors.backgroundSecondary,
+            color: isSelected
+                ? AppColors.primary
+                : AppColors.backgroundSecondary,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected ? Colors.transparent : AppColors.border,
@@ -1000,7 +842,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         ),
       ),
     );
-}
+  }
 
   String _displayOrderId(String rawId) {
     final id = rawId.trim();
@@ -1236,10 +1078,7 @@ class _MetaDivider extends StatelessWidget {
 class _RouteSectionHeader extends StatelessWidget {
   final String title;
   final int count;
-  const _RouteSectionHeader({
-    required this.title,
-    required this.count,
-  });
+  const _RouteSectionHeader({required this.title, required this.count});
 
   @override
   Widget build(BuildContext context) {

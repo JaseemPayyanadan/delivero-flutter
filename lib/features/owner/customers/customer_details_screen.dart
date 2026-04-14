@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
+
+// ignore_for_file: unused_element, unused_element_parameter
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
@@ -181,14 +182,9 @@ class CustomerDetailsScreen extends ConsumerWidget {
         .where((o) => o.customerId == customer.id)
         .toList();
     customerOrders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
-    final totalRevenue = customerOrders.fold(
-      0.0,
-      (sum, o) => sum + o.totalAmount,
-    );
     final pendingRevenue = customerOrders
         .where((o) => o.paymentStatus != PaymentStatus.paid)
         .fold(0.0, (sum, o) => sum + (o.totalAmount - (o.amountPaid ?? 0)));
-    final lastOrderDate = customerOrders.firstOrNull?.orderDate;
 
     final Map<String, double> catalogPriceById = {
       for (final FoodItem item in foodItems) item.id: item.price,
@@ -200,10 +196,6 @@ class CustomerDetailsScreen extends ConsumerWidget {
     final displayAddress = rawAddress.isEmpty
         ? 'Address not available'
         : rawAddress;
-    final phoneDigits = customer.phone.trim().replaceAll(
-      RegExp(r'[^0-9+]'),
-      '',
-    );
     final ownerDisplay = customer.ownerName?.trim().isNotEmpty == true
         ? customer.ownerName!.trim()
         : 'Not added';
@@ -261,10 +253,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
               }
             },
             itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: 'delete',
-                child: Text('Delete customer'),
-              ),
+              PopupMenuItem(value: 'delete', child: Text('Delete customer')),
             ],
           ),
           const SizedBox(width: 8),
@@ -322,9 +311,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Center(
-              child: _StatusPill(active: customer.isActive),
-            ),
+            Center(child: _StatusPill(active: customer.isActive)),
             const SizedBox(height: 18),
             _ProfileCard(
               icon: Icons.autorenew_rounded,
@@ -1052,8 +1039,9 @@ class _MetaPair extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(
           label.toUpperCase(),

@@ -139,7 +139,8 @@ class OrdersNotifier extends Notifier<List<Order>> {
           state = snapshot.docs
               .where((doc) {
                 final data = doc.data();
-                final fid = (data['factoryId'] ?? data['factory_id'])?.toString();
+                final fid = (data['factoryId'] ?? data['factory_id'])
+                    ?.toString();
                 return fid == factoryId;
               })
               .map((doc) => Order.fromJson({...doc.data(), 'id': doc.id}))

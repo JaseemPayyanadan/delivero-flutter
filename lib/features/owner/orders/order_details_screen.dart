@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// ignore_for_file: use_null_aware_elements
+
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
@@ -42,8 +44,11 @@ class OrderDetailsScreen extends ConsumerWidget {
     final paymentColor = _getPaymentStatusColor(paymentStatus);
 
     // Best-effort approximation for "Delivery Fee" row in the screenshot.
-    final deliveryFee = (order.totalAmount - order.subtotal + order.discountAmount)
-        .clamp(0.0, double.infinity);
+    final deliveryFee =
+        (order.totalAmount - order.subtotal + order.discountAmount).clamp(
+          0.0,
+          double.infinity,
+        );
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -71,19 +76,11 @@ class OrderDetailsScreen extends ConsumerWidget {
       ),
       bottomNavigationBar: _BottomActions(
         isDelivered: order.status == OrderStatus.delivered,
-        onMarkDelivered: () => _handleStatusChange(
-          context,
-          ref,
-          order,
-          OrderStatus.delivered,
-        ),
+        onMarkDelivered: () =>
+            _handleStatusChange(context, ref, order, OrderStatus.delivered),
         onCallCustomer: () => _handleCallCustomer(context, order.customerPhone),
-        onCancelOrder: () => _handleStatusChange(
-          context,
-          ref,
-          order,
-          OrderStatus.cancelled,
-        ),
+        onCancelOrder: () =>
+            _handleStatusChange(context, ref, order, OrderStatus.cancelled),
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -214,7 +211,9 @@ class OrderDetailsScreen extends ConsumerWidget {
           ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.warning,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -230,7 +229,9 @@ class OrderDetailsScreen extends ConsumerWidget {
           ),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.error,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -463,10 +464,7 @@ class _PillBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (leading != null) ...[
-            leading!,
-            const SizedBox(width: 8),
-          ],
+          if (leading != null) ...[leading!, const SizedBox(width: 8)],
           Flexible(
             child: Text(
               label,
@@ -754,7 +752,10 @@ class _BottomActions extends StatelessWidget {
               onPressed: onCancelOrder,
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.error,
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 10,
+                ),
                 textStyle: const TextStyle(fontWeight: FontWeight.w900),
               ),
               icon: const Icon(Icons.close_rounded, size: 18),

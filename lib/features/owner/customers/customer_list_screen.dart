@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:collection/collection.dart';
-import 'package:intl/intl.dart';
 import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
-import '../../../core/widgets/primary_square_icon_button.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/order.dart';
+
+// ignore_for_file: unnecessary_underscores, unused_element_parameter, unused_local_variable
 
 class CustomerListScreen extends ConsumerStatefulWidget {
   const CustomerListScreen({super.key});
@@ -72,9 +72,10 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     String routeNameForCustomer(Customer c) {
       final r = routeForCustomer(c);
       if (!routesLoaded && routes.isEmpty) return 'Loading route…';
-      return r?.name ?? (c.assignedRoute?.trim().isNotEmpty == true
-          ? c.assignedRoute!.trim()
-          : 'Unassigned');
+      return r?.name ??
+          (c.assignedRoute?.trim().isNotEmpty == true
+              ? c.assignedRoute!.trim()
+              : 'Unassigned');
     }
 
     String? routeIdForCustomer(Customer c) {
@@ -82,16 +83,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       return r?.id;
     }
 
-    final availableRouteIds = customers
-        .map(routeIdForCustomer)
-        .whereType<String>()
-        .toSet()
-        .toList()
-      ..sort((a, b) {
-        final an = routesById[a]?.name ?? '';
-        final bn = routesById[b]?.name ?? '';
-        return an.compareTo(bn);
-      });
+    final availableRouteIds =
+        customers.map(routeIdForCustomer).whereType<String>().toSet().toList()
+          ..sort((a, b) {
+            final an = routesById[a]?.name ?? '';
+            final bn = routesById[b]?.name ?? '';
+            return an.compareTo(bn);
+          });
 
     final filteredCustomers = customers.where((customer) {
       final matchesSearch =
@@ -136,7 +134,10 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
           IconButton(
             tooltip: 'Search',
             onPressed: () => _openSearchSheet(context),
-            icon: const Icon(Icons.search_rounded, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.search_rounded,
+              color: AppColors.textPrimary,
+            ),
           ),
           IconButton(
             tooltip: 'Filter',
@@ -147,10 +148,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
               routesLoaded: routesLoaded,
               routes: routes,
             ),
-            icon: const Icon(
-              Icons.tune_rounded,
-              color: AppColors.textPrimary,
-            ),
+            icon: const Icon(Icons.tune_rounded, color: AppColors.textPrimary),
           ),
         ],
       ),
@@ -199,7 +197,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                   icon: customers.isEmpty
                       ? Icons.business_center_outlined
                       : Icons.search_off_outlined,
-                  actionLabel: customers.isEmpty ? 'Add Customer' : 'Clear Search',
+                  actionLabel: customers.isEmpty
+                      ? 'Add Customer'
+                      : 'Clear Search',
                   onAction: customers.isEmpty
                       ? () => context.push('/owner/customers/add')
                       : () {
@@ -208,13 +208,14 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                         },
                 ),
               )
-            else ..._buildGroupedCustomerSlivers(
-              context,
-              filteredCustomers: filteredCustomers,
-              routeNameForCustomer: routeNameForCustomer,
-              ordersByCustomer: ordersByCustomer,
-              reports: reports,
-            ),
+            else
+              ..._buildGroupedCustomerSlivers(
+                context,
+                filteredCustomers: filteredCustomers,
+                routeNameForCustomer: routeNameForCustomer,
+                ordersByCustomer: ordersByCustomer,
+                reports: reports,
+              ),
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
@@ -287,10 +288,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: _GroupHeader(
-              title: key,
-              count: items.length,
-            ),
+            child: _GroupHeader(title: key, count: items.length),
           ),
         ),
       );
@@ -307,11 +305,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
 
               final latest = customerOrders.isEmpty
                   ? null
-                  : (customerOrders..sort((a, b) => b.orderDate.compareTo(a.orderDate))).first;
+                  : (customerOrders
+                          ..sort((a, b) => b.orderDate.compareTo(a.orderDate)))
+                        .first;
 
-              final scheduleLabel = customerOrders.any(
-                        (o) => o.orderType == OrderType.daily,
-                      )
+              final scheduleLabel =
+                  customerOrders.any((o) => o.orderType == OrderType.daily)
                   ? 'Daily'
                   : _scheduleLabelForCustomer(customer);
 
@@ -465,9 +464,7 @@ class _GroupHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        const Expanded(
-          child: Divider(height: 1, color: AppColors.divider),
-        ),
+        const Expanded(child: Divider(height: 1, color: AppColors.divider)),
       ],
     );
   }
@@ -494,8 +491,16 @@ class _CustomerListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final payment = _PaymentPill.from(paymentStatus);
     final activePill = isActive
-        ? const _Pill(label: 'ACTIVE', fg: AppColors.success, bg: AppColors.successLighter)
-        : const _Pill(label: 'INACTIVE', fg: AppColors.textSecondary, bg: AppColors.backgroundSecondary);
+        ? const _Pill(
+            label: 'ACTIVE',
+            fg: AppColors.success,
+            bg: AppColors.successLighter,
+          )
+        : const _Pill(
+            label: 'INACTIVE',
+            fg: AppColors.textSecondary,
+            bg: AppColors.backgroundSecondary,
+          );
 
     return Material(
       color: AppColors.surface,
@@ -603,10 +608,18 @@ class _PaymentPill {
   factory _PaymentPill.from(PaymentStatus? status) {
     return switch (status) {
       PaymentStatus.paid => const _PaymentPill._(
-        _Pill(label: 'PAID', fg: AppColors.success, bg: AppColors.successLighter),
+        _Pill(
+          label: 'PAID',
+          fg: AppColors.success,
+          bg: AppColors.successLighter,
+        ),
       ),
       PaymentStatus.partial => const _PaymentPill._(
-        _Pill(label: 'PARTIAL', fg: AppColors.warning, bg: AppColors.warningLighter),
+        _Pill(
+          label: 'PARTIAL',
+          fg: AppColors.warning,
+          bg: AppColors.warningLighter,
+        ),
       ),
       PaymentStatus.unpaid => const _PaymentPill._(
         _Pill(label: 'UNPAID', fg: AppColors.error, bg: AppColors.errorLighter),
@@ -927,8 +940,14 @@ class _RouteFilterSheet extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
               trailing: selectedRouteId == null
-                  ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
-                  : const Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
+                  ? const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.primary,
+                    )
+                  : const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textLight,
+                    ),
             ),
             const Divider(height: 1, color: AppColors.divider),
             if (!routesLoaded && routes.isEmpty)
@@ -968,7 +987,9 @@ class _RouteFilterSheet extends StatelessWidget {
                       title: Text(
                         name,
                         style: TextStyle(
-                          fontWeight: selected ? FontWeight.w900 : FontWeight.w800,
+                          fontWeight: selected
+                              ? FontWeight.w900
+                              : FontWeight.w800,
                           color: AppColors.textPrimary,
                         ),
                       ),
