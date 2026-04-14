@@ -54,37 +54,46 @@ class OwnerDashboardScreen extends ConsumerWidget {
             foodItemsLoaded &&
             routesLoaded);
 
+    final hour = now.hour;
+    final greeting = switch (hour) {
+      >= 5 && < 12 => 'Good Morning',
+      >= 12 && < 17 => 'Good Afternoon',
+      >= 17 && < 22 => 'Good Evening',
+      _ => 'Hello',
+    };
+    final displayName = (user?.name.trim().isNotEmpty ?? false)
+        ? user!.name.trim()
+        : 'Owner';
+    final locationText = (user?.address?.trim().isNotEmpty ?? false)
+        ? user!.address!.trim()
+        : 'Austin, United States';
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: isEmpty ? 190.0 : 332.0,
+            expandedHeight: isEmpty ? 180.0 : 310.0,
             floating: false,
             pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
+            backgroundColor: AppColors.primary,
             elevation: 0,
             surfaceTintColor: Colors.transparent,
             toolbarHeight: 0,
             automaticallyImplyLeading: false,
             systemOverlayStyle: AppTheme.systemOverlayStyle.copyWith(
-              statusBarColor: AppColors.primaryLighter.withValues(alpha: 0.35),
+              statusBarColor: AppColors.primary,
             ),
             flexibleSpace: Stack(
               children: [
                 Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          AppColors.primaryLighter.withValues(alpha: 0.35),
-                          AppColors.backgroundPrimary,
-                          AppColors.backgroundPrimary,
-                        ],
-                        stops: const [0.0, 0.65, 1.0],
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(28),
+                        bottomRight: Radius.circular(28),
                       ),
                     ),
                   ),
@@ -104,15 +113,14 @@ class OwnerDashboardScreen extends ConsumerWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                'Hello, ${user?.name ?? 'Owner'}',
+                                '$greeting $displayName 👋',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: AppColors.textSecondary.withValues(
-                                    alpha: 0.9,
-                                  ),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.2,
                                 ),
                               ),
                             ),
@@ -141,16 +149,21 @@ class OwnerDashboardScreen extends ConsumerWidget {
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            const Expanded(
+                            Icon(
+                              Icons.location_on_outlined,
+                              size: 16,
+                              color: Colors.white.withValues(alpha: 0.92),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
                               child: Text(
-                                'Dashboard',
+                                locationText,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -1,
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
@@ -163,8 +176,8 @@ class OwnerDashboardScreen extends ConsumerWidget {
                           dateStr,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textLight,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -428,21 +441,14 @@ class _HeaderPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
       ),
       child: Text(
         text,
         style: const TextStyle(
-          color: AppColors.textSecondary,
+          color: Colors.white,
           fontSize: 10,
           fontWeight: FontWeight.w900,
           letterSpacing: 0.8,
@@ -467,18 +473,11 @@ class _HeaderIconButton extends StatelessWidget {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: Colors.white.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 10,
-              offset: Offset(0, 6),
-            ),
-          ],
+          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
         ),
-        child: Icon(icon, color: AppColors.textPrimary, size: 22),
+        child: Icon(icon, color: Colors.white, size: 22),
       ),
     );
   }
