@@ -105,8 +105,8 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
                     label: 'Home',
                   ),
                   NavigationDestination(
-                    icon: Icon(CupertinoIcons.doc_text),
-                    selectedIcon: Icon(CupertinoIcons.doc_text_fill),
+                    icon: Icon(CupertinoIcons.bag),
+                    selectedIcon: Icon(CupertinoIcons.bag_fill),
                     label: 'Order',
                   ),
                   NavigationDestination(
