@@ -54,16 +54,10 @@ class OwnerDashboardScreen extends ConsumerWidget {
             foodItemsLoaded &&
             routesLoaded);
 
-    final hour = now.hour;
-    final greeting = switch (hour) {
-      >= 5 && < 12 => 'Good Morning',
-      >= 12 && < 17 => 'Good Afternoon',
-      >= 17 && < 22 => 'Good Evening',
-      _ => 'Hello',
-    };
     final displayName = (user?.name.trim().isNotEmpty ?? false)
         ? user!.name.trim()
         : 'Owner';
+    final greeting = 'Hello, $displayName (Owner)';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -115,7 +109,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                '$greeting, $displayName',
+                                greeting,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -576,8 +570,8 @@ class _KpiCard extends StatelessWidget {
     }
 
     return Container(
-      height: 86,
-      padding: const EdgeInsets.all(12),
+      height: 104,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
@@ -590,7 +584,8 @@ class _KpiCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 40,
@@ -601,36 +596,28 @@ class _KpiCard extends StatelessWidget {
             ),
             child: Icon(icon, color: accent, size: 20),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textLight,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.6,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 12),
+          Text(
+            title.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textLight,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.0,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.7,
             ),
           ),
         ],
@@ -1086,6 +1073,7 @@ class _SalesTrendBars extends StatelessWidget {
         .map((d) => d.amount)
         .fold<double>(0, (a, b) => a > b ? a : b);
     final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.25;
+    final highlightIndex = _pickHighlightIndex(last);
 
     return Container(
       height: 240,
@@ -1113,7 +1101,32 @@ class _SalesTrendBars extends StatelessWidget {
                 FlLine(color: AppColors.divider, strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
-          barTouchData: BarTouchData(enabled: false),
+          barTouchData: BarTouchData(
+            enabled: false,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
+              tooltipBorderRadius: BorderRadius.circular(10),
+              getTooltipColor: (_) =>
+                  AppColors.textPrimary.withValues(alpha: 0.92),
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                if (groupIndex != highlightIndex) return null;
+                final val = rod.toY;
+                final label = '₹${NumberFormat.compact().format(val)}';
+                return BarTooltipItem(
+                  label,
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                    letterSpacing: 0.2,
+                  ),
+                );
+              },
+            ),
+          ),
           titlesData: FlTitlesData(
             topTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
@@ -1131,14 +1144,18 @@ class _SalesTrendBars extends StatelessWidget {
                 getTitlesWidget: (value, meta) {
                   final i = value.toInt();
                   if (i < 0 || i >= last.length) return const SizedBox.shrink();
+                  final isHighlight = i == highlightIndex;
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       DateFormat('EEE').format(last[i].date).toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.textLight,
+                      style: TextStyle(
+                        color: isHighlight
+                            ? AppColors.textPrimary
+                            : AppColors.textLight,
                         fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                        fontWeight:
+                            isHighlight ? FontWeight.w900 : FontWeight.w800,
                       ),
                     ),
                   );
@@ -1150,14 +1167,16 @@ class _SalesTrendBars extends StatelessWidget {
             for (var i = 0; i < last.length; i++)
               BarChartGroupData(
                 x: i,
+                showingTooltipIndicators:
+                    i == highlightIndex ? const [0] : const [],
                 barRods: [
                   BarChartRodData(
                     toY: last[i].amount,
-                    width: 14,
-                    borderRadius: BorderRadius.circular(8),
-                    color: AppColors.primaryLight.withValues(
-                      alpha: i == last.length - 3 ? 1 : 0.6,
-                    ),
+                    width: 16,
+                    borderRadius: BorderRadius.circular(10),
+                    color: i == highlightIndex
+                        ? AppColors.primary
+                        : AppColors.primaryLighter.withValues(alpha: 0.9),
                   ),
                 ],
               ),
@@ -1165,6 +1184,22 @@ class _SalesTrendBars extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  int _pickHighlightIndex(List<DailySalesData> last) {
+    final thuIndex = last.indexWhere((d) => d.date.weekday == DateTime.thursday);
+    if (thuIndex != -1) return thuIndex;
+    if (last.isEmpty) return 0;
+    var maxIdx = 0;
+    var maxVal = last.first.amount;
+    for (var i = 1; i < last.length; i++) {
+      final v = last[i].amount;
+      if (v > maxVal) {
+        maxVal = v;
+        maxIdx = i;
+      }
+    }
+    return maxIdx;
   }
 }
 
