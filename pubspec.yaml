@@ -58,6 +58,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -69,6 +70,24 @@ flutter:
   assets:
     - assets/images/
     - assets/images/icons/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "app-icon.png"
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "app-icon.png"
+    background_color: "#FF4C3E"
+    theme_color: "#FF4C3E"
+  windows:
+    generate: true
+    image_path: "app-icon.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "app-icon.png"
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a
