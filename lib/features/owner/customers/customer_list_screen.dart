@@ -558,20 +558,20 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
                     children: [
                       _MiniMeta(
                         icon: Icons.trending_up_rounded,
                         label: ltvText,
                         color: AppColors.primary,
                       ),
-                      const SizedBox(width: 14),
                       _MiniMeta(
                         icon: Icons.shopping_bag_outlined,
                         label: totalOrders.toString(),
                         color: AppColors.success,
                       ),
-                      const SizedBox(width: 14),
                       _MiniMeta(
                         icon: Icons.calendar_today_rounded,
                         label: lastOrderText,
@@ -694,7 +694,8 @@ class _MiniMeta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Flexible(
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 150),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

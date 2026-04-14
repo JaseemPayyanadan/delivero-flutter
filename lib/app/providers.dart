@@ -248,7 +248,7 @@ class CustomersNotifier extends Notifier<List<Customer>> {
       .collection('customers')
       .doc(customer.id)
       .set(customer.toJson());
-  void deleteCustomer(String id) =>
+  Future<void> deleteCustomer(String id) =>
       FirebaseService.firestore.collection('customers').doc(id).delete();
 
   Future<void> refresh() async {

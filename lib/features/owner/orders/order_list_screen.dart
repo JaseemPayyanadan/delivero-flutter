@@ -413,6 +413,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   ),
                   if (filteredOrders.isNotEmpty)
                     IconButton(
+                      tooltip: 'Print pack list',
                       onPressed: () => _showPackagingSummary(filteredOrders),
                       icon: const Icon(
                         Icons.print_rounded,

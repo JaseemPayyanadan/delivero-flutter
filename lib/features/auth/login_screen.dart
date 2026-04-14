@@ -342,7 +342,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       strokeWidth: 2.5,
                                     ),
                                   )
-                                : const Text('Access Dashboard'),
+                                : const Text('Login'),
                           ),
                         ],
                       ),

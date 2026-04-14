@@ -54,8 +54,33 @@ Future<void> _confirmAndDeleteCustomer(
     ),
   );
   if (confirmed != true || !context.mounted) return;
-  ref.read(customersProvider.notifier).deleteCustomer(customerId);
-  if (context.mounted) context.pop();
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const Center(child: CircularProgressIndicator()),
+  );
+  try {
+    await ref.read(customersProvider.notifier).deleteCustomer(customerId);
+    if (context.mounted) {
+      Navigator.pop(context); // close loader
+      context.pop(); // back
+    }
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.pop(context); // close loader
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Could not delete customer. Try again.',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.error,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
 }
 
 class CustomerDetailsScreen extends ConsumerWidget {
@@ -145,6 +170,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
             pinned: true,
             actions: [
               IconButton(
+                tooltip: 'Edit customer',
                 onPressed: () =>
                     context.push('/owner/customers/edit/$customerId'),
                 icon: Container(
@@ -161,6 +187,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
                 ),
               ),
               IconButton(
+                tooltip: 'Delete customer',
                 onPressed: () => _confirmAndDeleteCustomer(
                   context,
                   ref,
