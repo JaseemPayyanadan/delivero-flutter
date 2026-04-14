@@ -35,6 +35,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   Order? _editingOrder;
   final Map<String, TextEditingController> _qtyControllers = {};
 
+  void _removeQtyController(String id) {
+    final c = _qtyControllers.remove(id);
+    c?.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final customers = ref.watch(customersProvider);
@@ -622,6 +627,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       );
     }
 
+    final selectedIds = selected.map((e) => e.$1.id).toSet();
+    final staleIds = _qtyControllers.keys.where((k) => !selectedIds.contains(k));
+    for (final id in staleIds.toList()) {
+      _removeQtyController(id);
+    }
+
     return Column(
       children: [
         for (final (item, qty) in selected) ...[
@@ -647,6 +658,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 if (safe <= 0) {
                   _selectedItems.remove(item.id);
                   _customUnitPrices.remove(item.id);
+                  _removeQtyController(item.id);
                 } else {
                   _selectedItems[item.id] = safe;
                 }
@@ -659,6 +671,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   if (next <= 0) {
                     _selectedItems.remove(item.id);
                     _customUnitPrices.remove(item.id);
+                    _removeQtyController(item.id);
                   } else {
                     _selectedItems[item.id] = next;
                   }
@@ -1233,6 +1246,13 @@ class _QtyStepper extends StatelessWidget {
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(vertical: 8),
                     ),
+                    onEditingComplete: () {
+                      final raw = controller!.text.trim();
+                      if (raw.isEmpty) {
+                        onQtyChanged!(0);
+                      }
+                      FocusScope.of(context).unfocus();
+                    },
                     onChanged: (val) {
                       final raw = val.trim();
                       if (raw.isEmpty) return;

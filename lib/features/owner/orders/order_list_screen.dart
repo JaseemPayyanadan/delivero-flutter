@@ -653,162 +653,185 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        OrderStatus? status = _selectedStatus;
-        PaymentStatus? payment = _selectedPaymentStatus;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            OrderStatus? status = _selectedStatus;
+            PaymentStatus? payment = _selectedPaymentStatus;
 
-        Widget chip<T>(T? value, T? selected, String label) {
-          final isSelected = value == selected;
-          return ChoiceChip(
-            selected: isSelected,
-            label: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                color: isSelected ? Colors.white : AppColors.textPrimary,
+            Widget chip<T>(T? value, T? selected, String label) {
+              final isSelected = value == selected;
+              return ChoiceChip(
+                selected: isSelected,
+                label: Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+                selectedColor: AppColors.primary,
+                backgroundColor: AppColors.backgroundSecondary,
+                onSelected: (_) => setModalState(() {
+                  if (T == OrderStatus) {
+                    status = isSelected ? null : value as OrderStatus?;
+                  } else if (T == PaymentStatus) {
+                    payment = isSelected ? null : value as PaymentStatus?;
+                  }
+                }),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              );
+            }
+
+            return SafeArea(
+              top: false,
+              child: Container(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  12,
+                  16,
+                  16 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Filters',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Status',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        chip<OrderStatus>(OrderStatus.pending, status, 'Pending'),
+                        chip<OrderStatus>(
+                          OrderStatus.confirmed,
+                          status,
+                          'Out for delivery',
+                        ),
+                        chip<OrderStatus>(
+                          OrderStatus.preparing,
+                          status,
+                          'Preparing',
+                        ),
+                        chip<OrderStatus>(OrderStatus.ready, status, 'Ready'),
+                        chip<OrderStatus>(
+                          OrderStatus.delivered,
+                          status,
+                          'Delivered',
+                        ),
+                        chip<OrderStatus>(
+                          OrderStatus.cancelled,
+                          status,
+                          'Cancelled',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Payment',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        chip<PaymentStatus>(PaymentStatus.paid, payment, 'Paid'),
+                        chip<PaymentStatus>(
+                          PaymentStatus.partial,
+                          payment,
+                          'Partial',
+                        ),
+                        chip<PaymentStatus>(
+                          PaymentStatus.unpaid,
+                          payment,
+                          'Unpaid',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(
+                              context,
+                              (status: null, payment: null),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.border),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: const Text(
+                              'Clear',
+                              style: TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () => Navigator.pop(
+                              context,
+                              (status: status, payment: payment),
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: const Text(
+                              'Apply',
+                              style: TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            selectedColor: AppColors.primary,
-            backgroundColor: AppColors.backgroundSecondary,
-            onSelected: (_) {
-              if (T == OrderStatus) {
-                status = isSelected ? null : value as OrderStatus?;
-              } else if (T == PaymentStatus) {
-                payment = isSelected ? null : value as PaymentStatus?;
-              }
-              (context as Element).markNeedsBuild();
-            },
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          );
-        }
-
-        return SafeArea(
-          top: false,
-          child: Container(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              12,
-              16,
-              16 + MediaQuery.viewInsetsOf(context).bottom,
-            ),
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Filters',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Status',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    chip<OrderStatus>(OrderStatus.pending, status, 'Pending'),
-                    chip<OrderStatus>(
-                      OrderStatus.confirmed,
-                      status,
-                      'Out for delivery',
-                    ),
-                    chip<OrderStatus>(OrderStatus.preparing, status, 'Preparing'),
-                    chip<OrderStatus>(OrderStatus.ready, status, 'Ready'),
-                    chip<OrderStatus>(OrderStatus.delivered, status, 'Delivered'),
-                    chip<OrderStatus>(OrderStatus.cancelled, status, 'Cancelled'),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'Payment',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    chip<PaymentStatus>(PaymentStatus.paid, payment, 'Paid'),
-                    chip<PaymentStatus>(PaymentStatus.partial, payment, 'Partial'),
-                    chip<PaymentStatus>(PaymentStatus.unpaid, payment, 'Unpaid'),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(
-                          context,
-                          (status: null, payment: null),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.border),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: const Text(
-                          'Clear',
-                          style: TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () => Navigator.pop(
-                          context,
-                          (status: status, payment: payment),
-                        ),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: const Text(
-                          'Apply',
-                          style: TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -1225,33 +1248,40 @@ class _OrdersSearchSheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              onChanged: onChanged,
-              decoration: InputDecoration(
-                hintText: 'Order ID or customer…',
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: AppColors.textSecondary,
-                ),
-                suffixIcon: initialQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 20),
-                        onPressed: onClear,
-                      )
-                    : null,
-                filled: true,
-                fillColor: AppColors.backgroundSecondary,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 14,
-                ),
-              ),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) {
+                final hasText = value.text.trim().isNotEmpty;
+                return TextField(
+                  controller: controller,
+                  autofocus: true,
+                  onChanged: onChanged,
+                  onSubmitted: (_) => Navigator.pop(context),
+                  decoration: InputDecoration(
+                    hintText: 'Order ID or customer…',
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.textSecondary,
+                    ),
+                    suffixIcon: hasText
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 20),
+                            onPressed: onClear,
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AppColors.backgroundSecondary,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
