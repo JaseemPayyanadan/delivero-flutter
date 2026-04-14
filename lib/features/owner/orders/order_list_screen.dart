@@ -11,7 +11,6 @@ import 'package:printing/printing.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 
@@ -26,6 +25,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedRouteId;
+  final _rupee = NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: '₹',
+    decimalDigits: 2,
+  );
 
   @override
   void dispose() {
@@ -345,18 +349,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             _searchQuery.toLowerCase(),
           ) ||
           order.id.toLowerCase().contains(_searchQuery.toLowerCase());
-
-      // Handle both ID and name for assignedRoute
-      final route = routes.firstWhereOrNull(
-        (r) => r.id == order.assignedRoute || r.name == order.assignedRoute,
-      );
-      final selectedRouteId = routesLoaded ? _selectedRouteId : null;
-      final matchesRoute =
-          selectedRouteId == null ||
-          order.assignedRoute == selectedRouteId ||
-          route?.id == selectedRouteId;
-
-      return matchesSearch && matchesRoute;
+      return matchesSearch;
     }).toList();
 
     filteredOrders.sort((a, b) {
@@ -379,88 +372,43 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       return b.orderDate.compareTo(a.orderDate);
     });
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      floatingActionButton: noOrdersYet
-          ? null
-          : FloatingActionButton(
-              onPressed: () => context.push('/owner/orders/create'),
-              backgroundColor: AppColors.primary,
-              child: const Icon(Icons.add_rounded, color: Colors.white),
-            ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          slivers: [
-            if (!noOrdersYet) ...[
-              DeliveroSliverHeader(
-                title: 'Orders',
-                subtitle: '',
-                expandedHeight: 110,
-                floating: true,
-                pinned: true,
-                backgroundGradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.14),
-                    AppColors.secondary.withValues(alpha: 0.10),
-                    AppColors.backgroundPrimary,
-                  ],
-                ),
-                actions: [
-                  IconButton(
-                    tooltip: 'Notifications',
-                    onPressed: () {},
-                    icon: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(
-                        Icons.notifications_none_rounded,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                ],
-              ),
-              SliverToBoxAdapter(
-                child: _buildFilters(
-                  routes,
-                  availableRouteIds,
-                  routesLoaded: routesLoaded,
-                ),
-              ),
-            ],
-            if (!ordersLoaded && orders.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (filteredOrders.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: _buildEmptyState(hasAnyOrders: !noOrdersYet),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 80),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate(
-                    _buildGroupedOrderWidgets(filteredOrders, routes),
-                  ),
-                ),
-              ),
-          ],
+    return RefreshIndicator(
+      onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
         ),
+        slivers: [
+          if (!noOrdersYet) ...[
+            const SliverToBoxAdapter(child: _OrdersTopBar()),
+            SliverToBoxAdapter(
+              child: _buildFilters(
+                routes,
+                availableRouteIds,
+                routesLoaded: routesLoaded,
+              ),
+            ),
+          ],
+          if (!ordersLoaded && orders.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (filteredOrders.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _buildEmptyState(hasAnyOrders: !noOrdersYet),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 110),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate(
+                  _buildGroupedOrderWidgets(filteredOrders, routes),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -511,7 +459,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     required bool routesLoaded,
   }) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -537,9 +485,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           )
                         : null,
                     filled: true,
-                    fillColor: AppColors.surface,
+                    fillColor: AppColors.backgroundSecondary,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(22),
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
@@ -551,20 +499,19 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               ),
               const SizedBox(width: 12),
               Material(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(18),
+                color: AppColors.backgroundSecondary,
+                borderRadius: BorderRadius.circular(22),
                 child: InkWell(
                   onTap: () {},
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(22),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 14,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppColors.border),
+                      color: AppColors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(22),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -572,7 +519,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         Icon(
                           Icons.tune_rounded,
                           size: 18,
-                          color: AppColors.primary,
+                          color: AppColors.textSecondary,
                         ),
                         SizedBox(width: 8),
                         Text(
@@ -589,13 +536,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             child: Row(
               children: [
-                _buildRouteChip(null, 'All Routes', routesLoaded: routesLoaded),
                 if (!routesLoaded && routes.isEmpty)
                   _buildRouteChip(
                     'loading',
@@ -632,8 +578,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     required bool routesLoaded,
   }) {
     final isLoading = routeId == 'loading';
-    final selectedRouteId = routesLoaded ? _selectedRouteId : null;
-    final isSelected = !isLoading && selectedRouteId == routeId;
+    final isSelected = !isLoading && _selectedRouteId == routeId;
     return Padding(
       padding: const EdgeInsets.only(right: 12),
       child: InkWell(
@@ -644,18 +589,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   _selectedRouteId = isSelected ? null : routeId;
                 });
               },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected
-                ? AppColors.primary
-                : AppColors.backgroundSecondary,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? Colors.transparent : AppColors.border,
-            ),
+            color: isSelected ? AppColors.primary : AppColors.backgroundSecondary,
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Text(
             label,
@@ -687,33 +627,41 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final isPaid = paymentStatus == PaymentStatus.paid;
     final paymentLabel = isPaid ? 'PAID' : 'UNPAID';
     final paymentFg = isPaid ? AppColors.success : AppColors.error;
+    final paymentBg = isPaid
+        ? AppColors.successLighter.withValues(alpha: 0.85)
+        : AppColors.errorLighter.withValues(alpha: 0.85);
 
     final displayId = _displayOrderId(order.id);
 
     final itemsPreview = order.items
         .take(3)
         .map((i) => '${i.quantity}x ${i.foodItemName}')
-        .toList();
+        .join(', ');
+
+    final leading = switch (order.status) {
+      OrderStatus.delivered => Icons.location_on_rounded,
+      OrderStatus.confirmed => Icons.lunch_dining_rounded,
+      _ => Icons.restaurant_rounded,
+    };
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 16,
+            blurRadius: 22,
             offset: Offset(0, 8),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         child: InkWell(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(24),
           onTap: () => context.push('/owner/orders/${order.id}'),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -747,9 +695,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         const SizedBox(height: 6),
                         _Pill(
                           label: paymentLabel,
-                          bg: isPaid
-                              ? AppColors.successLighter.withValues(alpha: 0.85)
-                              : AppColors.error.withValues(alpha: 0.10),
+                          bg: paymentBg,
                           fg: paymentFg,
                         ),
                       ],
@@ -773,11 +719,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryLighter.withValues(alpha: 0.5),
+                        color: AppColors.primaryLighter.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        Icons.restaurant_rounded,
+                      child: Icon(
+                        leading,
                         size: 18,
                         color: AppColors.primary,
                       ),
@@ -787,20 +733,17 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          for (final line in itemsPreview)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                line,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                ),
-                              ),
+                          Text(
+                            itemsPreview,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                              height: 1.35,
                             ),
+                          ),
                         ],
                       ),
                     ),
@@ -826,7 +769,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                     ),
                     const Spacer(),
                     Text(
-                      '₹${NumberFormat.decimalPattern().format(order.totalAmount)}',
+                      _rupee.format(order.totalAmount),
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 16,
@@ -875,7 +818,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   Color _statusChipBg(OrderStatus status) {
     switch (status) {
       case OrderStatus.pending:
-        return AppColors.warningLighter.withValues(alpha: 0.85);
+        return AppColors.successLighter.withValues(alpha: 0.85);
       case OrderStatus.confirmed:
         return AppColors.infoLighter.withValues(alpha: 0.85);
       case OrderStatus.preparing:
@@ -883,7 +826,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       case OrderStatus.ready:
         return AppColors.primaryLighter.withValues(alpha: 0.75);
       case OrderStatus.delivered:
-        return AppColors.successLighter.withValues(alpha: 0.85);
+        return AppColors.backgroundTertiary.withValues(alpha: 0.8);
       case OrderStatus.cancelled:
         return AppColors.error.withValues(alpha: 0.12);
     }
@@ -892,7 +835,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   Color _statusChipFg(OrderStatus status) {
     switch (status) {
       case OrderStatus.pending:
-        return AppColors.warning;
+        return AppColors.success;
       case OrderStatus.confirmed:
         return AppColors.info;
       case OrderStatus.preparing:
@@ -900,7 +843,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       case OrderStatus.ready:
         return AppColors.primary;
       case OrderStatus.delivered:
-        return AppColors.success;
+        return AppColors.textSecondary;
       case OrderStatus.cancelled:
         return AppColors.error;
     }
@@ -1112,6 +1055,60 @@ class _RouteSectionHeader extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _OrdersTopBar extends StatelessWidget {
+  const _OrdersTopBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.paddingOf(context).top;
+    return Container(
+      color: AppColors.backgroundPrimary,
+      padding: EdgeInsets.fromLTRB(20, top + 18, 20, 10),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Orders',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.8,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          InkWell(
+            onTap: () {},
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppColors.shadow,
+                    blurRadius: 16,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.notifications_none_rounded,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

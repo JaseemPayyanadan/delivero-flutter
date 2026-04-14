@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../app/providers.dart';
 import 'dashboard/owner_dashboard_screen.dart';
 import 'customers/customer_list_screen.dart';
 import 'orders/order_list_screen.dart';
@@ -28,9 +30,21 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
 
   @override
   Widget build(BuildContext context) {
+    final orders = ref.watch(ordersProvider);
+    final showOrderFab = _selectedIndex == 1 && orders.isNotEmpty;
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       body: IndexedStack(index: _selectedIndex, children: _screens),
+      floatingActionButton: !showOrderFab
+          ? null
+          : FloatingActionButton(
+              onPressed: () => context.push('/owner/orders/create'),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 10,
+              child: const Icon(Icons.add_rounded, size: 26),
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
@@ -51,7 +65,10 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
               height: 72,
               backgroundColor: Colors.white,
               surfaceTintColor: Colors.transparent,
-              indicatorColor: Colors.transparent,
+              indicatorColor: AppColors.primaryLighter,
+              indicatorShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               overlayColor: WidgetStateProperty.all(Colors.transparent),
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               labelTextStyle: WidgetStateProperty.resolveWith((states) {
