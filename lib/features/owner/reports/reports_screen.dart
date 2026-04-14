@@ -8,6 +8,7 @@ import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/order.dart';
+import '../../../data/models/driver.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -23,6 +24,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     start: DateTime.now().subtract(const Duration(days: 7)),
     end: DateTime.now(),
   );
+  static const _kPresetToday = 'today';
+  static const _kPresetLast7 = 'last7';
+  static const _kPresetThisMonth = 'month';
+  String _preset = _kPresetLast7;
   static const double _kTabBarHeight = 58;
   static const double _kHeaderHorizontalPadding = 24;
 
@@ -58,8 +63,56 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
       },
     );
     if (picked != null) {
-      setState(() => _selectedDateRange = picked);
+      setState(() {
+        _preset = 'custom';
+        _selectedDateRange = picked;
+      });
     }
+  }
+
+  void _applyPreset(String preset) {
+    final now = DateTime.now();
+    if (preset == _kPresetToday) {
+      setState(() {
+        _preset = preset;
+        _selectedDateRange = DateTimeRange(
+          start: DateTime(now.year, now.month, now.day),
+          end: DateTime(now.year, now.month, now.day),
+        );
+      });
+      return;
+    }
+    if (preset == _kPresetLast7) {
+      setState(() {
+        _preset = preset;
+        _selectedDateRange = DateTimeRange(
+          start:
+              DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6)),
+          end: DateTime(now.year, now.month, now.day),
+        );
+      });
+      return;
+    }
+    if (preset == _kPresetThisMonth) {
+      setState(() {
+        _preset = preset;
+        _selectedDateRange = DateTimeRange(
+          start: DateTime(now.year, now.month, 1),
+          end: DateTime(now.year, now.month, now.day),
+        );
+      });
+    }
+  }
+
+  void _toast(String message, {Color? color}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w700)),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: color ?? AppColors.textPrimary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   ReportsData _computeReports(List<Order> orders) {
@@ -178,6 +231,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
   Widget build(BuildContext context) {
     final allOrders = ref.watch(ordersProvider);
     final ordersLoaded = ref.watch(ordersLoadedProvider);
+    final drivers = ref.watch(driversProvider);
+    final driversLoaded = ref.watch(driversLoadedProvider);
     final isLoading = !ordersLoaded && allOrders.isEmpty;
     final bool noOrdersYet = ordersLoaded && allOrders.isEmpty;
     final start = DateTime(
@@ -204,6 +259,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     final fulfillmentRate = reports.totalOrders == 0
         ? 0.0
         : reports.completedOrders / reports.totalOrders;
+    final successRateLabel =
+        '${(fulfillmentRate * 100).clamp(0, 100).toStringAsFixed(1)}%';
+    final topStaff = _computeTopStaff(inRange, drivers);
 
     if (isLoading) {
       return const Scaffold(
@@ -465,7 +523,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
             if (isLoading)
               const Center(child: CircularProgressIndicator())
             else
-              _SummaryTab(reports: reports),
+              _RefinedSummaryTab(
+                reports: reports,
+                successRateLabel: successRateLabel,
+                preset: _preset,
+                onPresetToday: () => _applyPreset(_kPresetToday),
+                onPresetLast7: () => _applyPreset(_kPresetLast7),
+                onPresetMonth: () => _applyPreset(_kPresetThisMonth),
+                onExportCsv: () => _toast('CSV export coming soon', color: AppColors.info),
+                onExportPdf: () => _toast('PDF export coming soon', color: AppColors.info),
+                onDetailedSales: () => _toast('Detailed view coming soon'),
+                driversLoaded: driversLoaded,
+                staff: topStaff,
+              ),
             if (isLoading)
               const Center(child: CircularProgressIndicator())
             else
@@ -477,6 +547,642 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+class _RefinedSummaryTab extends StatelessWidget {
+  final ReportsData reports;
+  final String successRateLabel;
+  final String preset;
+  final VoidCallback onPresetToday;
+  final VoidCallback onPresetLast7;
+  final VoidCallback onPresetMonth;
+  final VoidCallback onExportCsv;
+  final VoidCallback onExportPdf;
+  final VoidCallback onDetailedSales;
+  final bool driversLoaded;
+  final List<_StaffStat> staff;
+
+  const _RefinedSummaryTab({
+    required this.reports,
+    required this.successRateLabel,
+    required this.preset,
+    required this.onPresetToday,
+    required this.onPresetLast7,
+    required this.onPresetMonth,
+    required this.onExportCsv,
+    required this.onExportPdf,
+    required this.onDetailedSales,
+    required this.driversLoaded,
+    required this.staff,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).viewPadding.bottom + 96;
+    final money = NumberFormat.decimalPattern();
+
+    if (reports.totalOrders == 0) {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(24, 16, 24, bottomPad),
+        child: _buildEmptyState(),
+      );
+    }
+
+    return ListView(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomPad),
+      children: [
+        const Text(
+          'Performance Insights',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.8,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Analyze your delivery metrics and financial trends',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _PresetPill(
+                label: 'Today',
+                selected: preset == _ReportsScreenState._kPresetToday,
+                onTap: onPresetToday,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _PresetPill(
+                label: 'Last 7 Days',
+                selected: preset == _ReportsScreenState._kPresetLast7,
+                onTap: onPresetLast7,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _PresetPill(
+                label: 'This Month',
+                selected: preset == _ReportsScreenState._kPresetThisMonth,
+                onTap: onPresetMonth,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _ExportChip(label: 'CSV', icon: Icons.table_chart_rounded, onTap: onExportCsv),
+            const SizedBox(width: 10),
+            _ExportChip(label: 'PDF', icon: Icons.picture_as_pdf_rounded, onTap: onExportPdf),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _InsightStatCard(
+          icon: Icons.payments_rounded,
+          iconBg: AppColors.primaryLighter.withValues(alpha: 0.7),
+          title: 'Total sales',
+          value: '₹${money.format(reports.totalRevenue)}',
+        ),
+        const SizedBox(height: 12),
+        _InsightStatCard(
+          icon: Icons.account_balance_wallet_rounded,
+          iconBg: AppColors.warningLighter.withValues(alpha: 0.8),
+          title: 'Pending payments',
+          value: '₹${money.format(reports.totalPendingRevenue)}',
+        ),
+        const SizedBox(height: 12),
+        _InsightStatCard(
+          icon: Icons.check_circle_rounded,
+          iconBg: AppColors.successLighter.withValues(alpha: 0.8),
+          title: 'Order success rate',
+          value: successRateLabel,
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLighter.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Text(
+              'Stable',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _ReportCard(
+          title: 'Sales Trend',
+          trailing: TextButton(
+            onPressed: onDetailedSales,
+            child: const Text('Detailed View'),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: _SalesBarChart(dailySales: reports.dailySales),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _ReportCard(
+          title: 'Top Delivery Staff',
+          trailing: IconButton(
+            tooltip: 'Filter',
+            onPressed: () {},
+            icon: const Icon(Icons.tune_rounded),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: driversLoaded && staff.isEmpty
+                ? const Text(
+                    'No staff performance data yet.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                : Column(
+                    children: [
+                      for (final s in staff.take(3)) ...[
+                        _StaffRow(stat: s),
+                        if (s != staff.take(3).last)
+                          const Divider(height: 18, color: AppColors.divider),
+                      ],
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () {},
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.border),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Text(
+                            'View all staff performance',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadowDeep,
+                blurRadius: 24,
+                offset: Offset(0, 14),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Optimize Your Fleet',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Our AI suggests actions in 2 minutes for the upcoming weekend — just to maintain your 98% success rate.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  height: 1.4,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {},
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Upgrade logistics',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PresetPill extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _PresetPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.textPrimary : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: selected ? Colors.transparent : AppColors.border),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: selected ? Colors.white : AppColors.textSecondary,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExportChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  const _ExportChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: AppColors.textSecondary),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InsightStatCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconBg;
+  final String title;
+  final String value;
+  final Widget? trailing;
+  const _InsightStatCard({
+    required this.icon,
+    required this.iconBg,
+    required this.title,
+    required this.value,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: AppColors.textPrimary, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textLight,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) trailing!,
+        ],
+      ),
+    );
+  }
+}
+
+class _SalesBarChart extends StatelessWidget {
+  final List<DailySalesData> dailySales;
+  const _SalesBarChart({required this.dailySales});
+
+  @override
+  Widget build(BuildContext context) {
+    if (dailySales.isEmpty) {
+      return const Text(
+        'No sales data for this period.',
+        style: TextStyle(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+    final last =
+        dailySales.length > 7 ? dailySales.sublist(dailySales.length - 7) : dailySales;
+    final maxValue =
+        last.map((d) => d.amount).fold<double>(0, (a, b) => a > b ? a : b);
+    final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.25;
+    final groups = <BarChartGroupData>[
+      for (var i = 0; i < last.length; i++)
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: last[i].amount,
+              width: 14,
+              borderRadius: BorderRadius.circular(8),
+              color: AppColors.primaryLight.withValues(alpha: i == last.length - 3 ? 1 : 0.6),
+            ),
+          ],
+        ),
+    ];
+
+    String fmtDay(int i) {
+      if (i < 0 || i >= last.length) return '';
+      return DateFormat('EEE').format(last[i].date).toUpperCase();
+    }
+
+    return SizedBox(
+      height: 220,
+      child: BarChart(
+        BarChartData(
+          maxY: maxY,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: maxY / 4,
+            getDrawingHorizontalLine: (_) =>
+                FlLine(color: AppColors.divider, strokeWidth: 1),
+          ),
+          borderData: FlBorderData(show: false),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                getTitlesWidget: (value, meta) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      fmtDay(value.toInt()),
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          barTouchData: BarTouchData(enabled: false),
+          barGroups: groups,
+        ),
+      ),
+    );
+  }
+}
+
+class _StaffStat {
+  final String name;
+  final int total;
+  final int delivered;
+  const _StaffStat({
+    required this.name,
+    required this.total,
+    required this.delivered,
+  });
+
+  double get successRate => total == 0 ? 0 : delivered / total;
+}
+
+List<_StaffStat> _computeTopStaff(List<Order> orders, List<Driver> drivers) {
+  final driverNameById = {for (final d in drivers) d.id: d.name};
+  final byId = <String, _StaffStat>{};
+
+  for (final o in orders) {
+    final id = o.assignedDriver;
+    if (id == null || id.trim().isEmpty) continue;
+    final key = id.trim();
+    final current = byId[key];
+    final delivered = o.status == OrderStatus.delivered ? 1 : 0;
+    if (current == null) {
+      byId[key] = _StaffStat(
+        name: driverNameById[key] ?? 'Driver',
+        total: 1,
+        delivered: delivered,
+      );
+    } else {
+      byId[key] = _StaffStat(
+        name: current.name,
+        total: current.total + 1,
+        delivered: current.delivered + delivered,
+      );
+    }
+  }
+
+  final list = byId.values.toList()
+    ..sort((a, b) => b.successRate.compareTo(a.successRate));
+  return list;
+}
+
+class _StaffRow extends StatelessWidget {
+  final _StaffStat stat;
+  const _StaffRow({required this.stat});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = '${(stat.successRate * 100).clamp(0, 100).toStringAsFixed(1)}%';
+    final subtitle = '${stat.delivered}/${stat.total} delivered';
+    final initials = stat.name.trim().isEmpty
+        ? '?'
+        : stat.name
+            .trim()
+            .split(RegExp(r'\s+'))
+            .take(2)
+            .map((p) => p[0].toUpperCase())
+            .join();
+
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: AppColors.backgroundSecondary,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Center(
+            child: Text(
+              initials,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                stat.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              pct,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.successLighter.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Text(
+                'Success',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                  color: AppColors.success,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -951,7 +1657,12 @@ class _PaymentMixRow extends StatelessWidget {
 class _ReportCard extends StatelessWidget {
   final String title;
   final Widget child;
-  const _ReportCard({required this.title, required this.child});
+  final Widget? trailing;
+  const _ReportCard({
+    required this.title,
+    required this.child,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -972,16 +1683,28 @@ class _ReportCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textLight,
-              letterSpacing: 1.2,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textLight,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 12),
+                trailing!,
+              ],
+            ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
           child,
         ],
       ),

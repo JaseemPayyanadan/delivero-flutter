@@ -64,9 +64,6 @@ class OwnerDashboardScreen extends ConsumerWidget {
     final displayName = (user?.name.trim().isNotEmpty ?? false)
         ? user!.name.trim()
         : 'Owner';
-    final locationText = (user?.address?.trim().isNotEmpty ?? false)
-        ? user!.address!.trim()
-        : 'Austin, United States';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -74,26 +71,31 @@ class OwnerDashboardScreen extends ConsumerWidget {
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: isEmpty ? 180.0 : 310.0,
+            expandedHeight: isEmpty ? 170.0 : 280.0,
             floating: false,
             pinned: true,
-            backgroundColor: AppColors.primary,
+            backgroundColor: AppColors.backgroundPrimary,
             elevation: 0,
             surfaceTintColor: Colors.transparent,
             toolbarHeight: 0,
             automaticallyImplyLeading: false,
             systemOverlayStyle: AppTheme.systemOverlayStyle.copyWith(
-              statusBarColor: AppColors.primary,
+              statusBarColor: AppColors.primaryLighter.withValues(alpha: 0.35),
             ),
             flexibleSpace: Stack(
               children: [
                 Positioned.fill(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(28),
-                        bottomRight: Radius.circular(28),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppColors.primaryLighter.withValues(alpha: 0.42),
+                          AppColors.backgroundPrimary,
+                          AppColors.backgroundPrimary,
+                        ],
+                        stops: const [0.0, 0.62, 1.0],
                       ),
                     ),
                   ),
@@ -113,14 +115,15 @@ class OwnerDashboardScreen extends ConsumerWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                '$greeting $displayName 👋',
+                                '$greeting, $displayName',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.95),
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.2,
+                                  color: AppColors.textSecondary.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
@@ -146,24 +149,19 @@ class OwnerDashboardScreen extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 16,
-                              color: Colors.white.withValues(alpha: 0.92),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
+                            const Expanded(
                               child: Text(
-                                locationText,
+                                'Dashboard',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.92),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                  fontSize: 30,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -1.0,
                                 ),
                               ),
                             ),
@@ -171,15 +169,17 @@ class OwnerDashboardScreen extends ConsumerWidget {
                             _HeaderPill(text: shortDateStr.toUpperCase()),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Text(
                           dateStr,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary.withValues(
+                              alpha: 0.8,
+                            ),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         if (!isEmpty) ...[
@@ -269,15 +269,17 @@ class OwnerDashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
                     _DashboardSection(
-                      title: 'Recent Orders',
-                      subtitle: 'Latest transactions across all accounts',
-                      child: _RecentOrdersList(orders: orders),
+                      title: 'Sales Revenue',
+                      trailingText: 'This Week',
+                      child: _SalesTrendBars(dailySales: reports.dailySales),
                     ),
                     const SizedBox(height: 28),
                     _DashboardSection(
-                      title: 'Revenue Velocity',
-                      subtitle: 'Daily revenue trend',
-                      child: _SalesTrendChart(dailySales: reports.dailySales),
+                      title: 'Recent Orders',
+                      subtitle: 'Latest transactions across all accounts',
+                      trailingText: 'View all',
+                      onTrailingTap: () => context.push('/owner/orders'),
+                      child: _RecentOrdersList(orders: orders),
                     ),
                     const SizedBox(height: 28),
                     _DashboardSection(
@@ -441,17 +443,24 @@ class _HeaderPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.16),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: Text(
         text,
         style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.8,
+          color: AppColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.1,
         ),
       ),
     );
@@ -473,11 +482,18 @@ class _HeaderIconButton extends StatelessWidget {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.18),
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 10,
+              offset: Offset(0, 6),
+            ),
+          ],
         ),
-        child: Icon(icon, color: Colors.white, size: 22),
+        child: Icon(icon, color: AppColors.textPrimary, size: 22),
       ),
     );
   }
@@ -644,10 +660,10 @@ class _QuickActionsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
@@ -659,16 +675,8 @@ class _QuickActionsRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          for (var i = 0; i < actions.length; i++) ...[
+          for (var i = 0; i < actions.length; i++)
             Expanded(child: _QuickActionTile(action: actions[i])),
-            if (i != actions.length - 1)
-              Container(
-                width: 1,
-                height: 44,
-                color: AppColors.divider,
-                margin: const EdgeInsets.symmetric(horizontal: 10),
-              ),
-          ],
         ],
       ),
     );
@@ -685,18 +693,18 @@ class _QuickActionTile extends StatelessWidget {
       onTap: () => context.push(action.path),
       borderRadius: BorderRadius.circular(18),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: action.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(action.icon, color: action.color, size: 18),
+              child: Icon(action.icon, color: action.color, size: 20),
             ),
             const SizedBox(height: 8),
             Text(
@@ -989,11 +997,15 @@ class _SalesTrendChart extends StatelessWidget {
 class _DashboardSection extends StatelessWidget {
   final String title;
   final String? subtitle;
+  final String? trailingText;
+  final VoidCallback? onTrailingTap;
   final Widget child;
 
   const _DashboardSection({
     required this.title,
     this.subtitle,
+    this.trailingText,
+    this.onTrailingTap,
     required this.child,
   });
 
@@ -1007,14 +1019,41 @@ class _DashboardSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
+                  if (trailingText != null) ...[
+                    const SizedBox(width: 12),
+                    InkWell(
+                      onTap: onTrailingTap,
+                      borderRadius: BorderRadius.circular(999),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        child: Text(
+                          trailingText!,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: 4),
@@ -1033,6 +1072,120 @@ class _DashboardSection extends StatelessWidget {
         const SizedBox(height: 20),
         child,
       ],
+    );
+  }
+}
+
+class _SalesTrendBars extends StatelessWidget {
+  final List<DailySalesData> dailySales;
+  const _SalesTrendBars({required this.dailySales});
+
+  @override
+  Widget build(BuildContext context) {
+    final last =
+        dailySales.length > 7 ? dailySales.sublist(dailySales.length - 7) : dailySales;
+    if (last.isEmpty) {
+      return Container(
+        height: 220,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 18,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Text(
+            'No revenue data yet',
+            style: TextStyle(
+              color: AppColors.textLight,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final maxValue = last.map((d) => d.amount).fold<double>(0, (a, b) => a > b ? a : b);
+    final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.25;
+
+    return Container(
+      height: 240,
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: BarChart(
+        BarChartData(
+          maxY: maxY,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: maxY / 4,
+            getDrawingHorizontalLine: (_) =>
+                FlLine(color: AppColors.divider, strokeWidth: 1),
+          ),
+          borderData: FlBorderData(show: false),
+          barTouchData: BarTouchData(enabled: false),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                getTitlesWidget: (value, meta) {
+                  final i = value.toInt();
+                  if (i < 0 || i >= last.length) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      DateFormat('EEE').format(last[i].date).toUpperCase(),
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          barGroups: [
+            for (var i = 0; i < last.length; i++)
+              BarChartGroupData(
+                x: i,
+                barRods: [
+                  BarChartRodData(
+                    toY: last[i].amount,
+                    width: 14,
+                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.primaryLight.withValues(
+                      alpha: i == last.length - 3 ? 1 : 0.6,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
