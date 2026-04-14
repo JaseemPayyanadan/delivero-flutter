@@ -401,6 +401,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                                 updatedAt: DateTime.now(),
                               );
                               ref.read(ordersProvider.notifier).updateOrder(next);
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).removeCurrentSnackBar();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: const Text(
@@ -523,6 +525,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     final updatedOrder = order.copyWith(status: newStatus);
     ref.read(ordersProvider.notifier).updateOrder(updatedOrder);
 
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Order is now ${_humanizeWord(newStatus.name)}'),

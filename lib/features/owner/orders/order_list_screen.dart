@@ -58,6 +58,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final summary = _getPackagingSummary(filteredOrders);
     if (summary.isEmpty) {
       if (!mounted) return;
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(

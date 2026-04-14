@@ -857,6 +857,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     } else {
       ref.read(ordersProvider.notifier).updateOrder(nextOrder);
     }
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(

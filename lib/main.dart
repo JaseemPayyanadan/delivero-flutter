@@ -41,6 +41,19 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
       theme: AppTheme.light(),
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        if (child == null) return const SizedBox.shrink();
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            final focus = FocusManager.instance.primaryFocus;
+            if (focus != null && !focus.hasPrimaryFocus) {
+              focus.unfocus();
+            }
+          },
+          child: child,
+        );
+      },
     );
   }
 }
