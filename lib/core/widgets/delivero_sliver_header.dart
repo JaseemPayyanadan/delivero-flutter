@@ -76,8 +76,13 @@ class DeliveroSliverHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Default [kToolbarHeight] (56) is too short for our two-line title + padding
+    // in [FlexibleSpaceBar]; a taller collapsed bar avoids bottom overflow when pinned.
+    const collapsedToolbarHeight = 80.0;
+
     return SliverAppBar(
       expandedHeight: expandedHeight,
+      toolbarHeight: collapsedToolbarHeight,
       floating: floating,
       pinned: pinned,
       centerTitle: centerTitle,

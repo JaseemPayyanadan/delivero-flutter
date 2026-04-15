@@ -63,8 +63,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           .watch(ordersProvider)
           .firstWhereOrNull((o) => o.id == widget.orderId);
       if (existing != null) {
-        final customer =
-            customers.firstWhereOrNull((c) => c.id == existing.customerId);
+        final customer = customers.firstWhereOrNull(
+          (c) => c.id == existing.customerId,
+        );
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted || _initializedFromOrder) return;
           setState(() {
@@ -628,7 +629,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
 
     final selectedIds = selected.map((e) => e.$1.id).toSet();
-    final staleIds = _qtyControllers.keys.where((k) => !selectedIds.contains(k));
+    final staleIds = _qtyControllers.keys.where(
+      (k) => !selectedIds.contains(k),
+    );
     for (final id in staleIds.toList()) {
       _removeQtyController(id);
     }
@@ -1123,7 +1126,9 @@ class _SelectedMenuItemCard extends StatelessWidget {
                     Text(
                       '₹${NumberFormat.decimalPattern().format(unitPrice)}.00',
                       style: TextStyle(
-                        color: isCustom ? AppColors.primary : AppColors.textLight,
+                        color: isCustom
+                            ? AppColors.primary
+                            : AppColors.textLight,
                         fontWeight: FontWeight.w900,
                         fontSize: 12,
                       ),
@@ -1139,7 +1144,9 @@ class _SelectedMenuItemCard extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryLighter.withValues(alpha: 0.9),
+                            color: AppColors.primaryLighter.withValues(
+                              alpha: 0.9,
+                            ),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: const Text(

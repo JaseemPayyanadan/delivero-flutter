@@ -30,7 +30,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   PaymentStatus? _draftPaymentStatus;
   PaymentMethod? _draftPaymentMethod;
   double? _draftAmountPaid;
-  final TextEditingController _partialAmountController = TextEditingController();
+  final TextEditingController _partialAmountController =
+      TextEditingController();
 
   @override
   void dispose() {
@@ -69,11 +70,11 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     _draftPaymentStatus ??= order.paymentStatus ?? PaymentStatus.unpaid;
     _draftPaymentMethod ??= order.paymentMethod ?? PaymentMethod.cash;
     _draftAmountPaid ??= order.amountPaid;
-    if ((_draftPaymentStatus ?? PaymentStatus.unpaid) == PaymentStatus.partial &&
+    if ((_draftPaymentStatus ?? PaymentStatus.unpaid) ==
+            PaymentStatus.partial &&
         _partialAmountController.text.trim().isEmpty) {
       final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
-      _partialAmountController.text =
-          seed == 0 ? '' : seed.toStringAsFixed(0);
+      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
     }
 
     // Best-effort approximation for "Delivery Fee" row in the screenshot.
@@ -87,9 +88,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       PaymentStatus.paid => order.totalAmount,
       PaymentStatus.unpaid => 0.0,
       PaymentStatus.partial => (order.amountPaid ?? 0.0).clamp(
-          0.0,
-          order.totalAmount,
-        ),
+        0.0,
+        order.totalAmount,
+      ),
     };
     final balanceDue = (order.totalAmount - effectivePaid).clamp(
       0.0,
@@ -265,7 +266,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                             Expanded(
                               child: _LabeledDropdown<PaymentStatus>(
                                 label: 'STATUS',
-                                value: _draftPaymentStatus ?? PaymentStatus.unpaid,
+                                value:
+                                    _draftPaymentStatus ?? PaymentStatus.unpaid,
                                 items: const [
                                   PaymentStatus.unpaid,
                                   PaymentStatus.paid,
@@ -287,7 +289,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                             Expanded(
                               child: _LabeledDropdown<PaymentMethod>(
                                 label: 'METHOD',
-                                value: _draftPaymentMethod ?? PaymentMethod.cash,
+                                value:
+                                    _draftPaymentMethod ?? PaymentMethod.cash,
                                 items: const [
                                   PaymentMethod.cash,
                                   PaymentMethod.upi,
@@ -319,9 +322,10 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                               const SizedBox(height: 8),
                               TextField(
                                 controller: _partialAmountController,
-                                keyboardType: const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 decoration: InputDecoration(
                                   hintText: money0.format(order.totalAmount),
                                   prefixIcon: const Icon(
@@ -363,14 +367,18 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                               } else {
                                 final parsed =
                                     (_draftAmountPaid ??
-                                            double.tryParse(
-                                              _partialAmountController.text
-                                                  .trim()
-                                                  .replaceAll(',', ''),
-                                            )) ??
-                                        0.0;
-                                final clamped = parsed.clamp(0.0, order.totalAmount);
-                                if (clamped <= 0 || clamped >= order.totalAmount) {
+                                        double.tryParse(
+                                          _partialAmountController.text
+                                              .trim()
+                                              .replaceAll(',', ''),
+                                        )) ??
+                                    0.0;
+                                final clamped = parsed.clamp(
+                                  0.0,
+                                  order.totalAmount,
+                                );
+                                if (clamped <= 0 ||
+                                    clamped >= order.totalAmount) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
@@ -400,14 +408,20 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                                     : DateTime.now(),
                                 updatedAt: DateTime.now(),
                               );
-                              ref.read(ordersProvider.notifier).updateOrder(next);
+                              ref
+                                  .read(ordersProvider.notifier)
+                                  .updateOrder(next);
                               if (!mounted) return;
-                              ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                              ScaffoldMessenger.of(
+                                context,
+                              ).removeCurrentSnackBar();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: const Text(
                                     'Payment status updated',
-                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                   behavior: SnackBarBehavior.floating,
                                   backgroundColor: AppColors.success,
@@ -426,7 +440,10 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                                 borderRadius: BorderRadius.circular(18),
                               ),
                             ),
-                            icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                            icon: const Icon(
+                              Icons.receipt_long_rounded,
+                              size: 18,
+                            ),
                             label: const Text(
                               'Update Payment Status',
                               style: TextStyle(fontWeight: FontWeight.w900),

@@ -142,9 +142,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'edit/:id',
-                builder: (context, state) => CreateOrderScreen(
-                  orderId: state.pathParameters['id'],
-                ),
+                builder: (context, state) =>
+                    CreateOrderScreen(orderId: state.pathParameters['id']),
               ),
               GoRoute(
                 path: ':id',

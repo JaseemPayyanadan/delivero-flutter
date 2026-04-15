@@ -26,7 +26,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedRouteId;
-  OrderStatus? _selectedStatus;
   PaymentStatus? _selectedPaymentStatus;
   final _rupee = NumberFormat.currency(
     locale: 'en_IN',
@@ -363,16 +362,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         _ => routeIdForOrder(order) == _selectedRouteId,
       };
 
-      final matchesStatus = _selectedStatus == null
-          ? true
-          : order.status == _selectedStatus;
-
       final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
       final matchesPayment = _selectedPaymentStatus == null
           ? true
           : paymentStatus == _selectedPaymentStatus;
 
-      return matchesSearch && matchesRoute && matchesStatus && matchesPayment;
+      return matchesSearch && matchesRoute && matchesPayment;
     }).toList();
 
     filteredOrders.sort((a, b) {
@@ -516,33 +511,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             physics: const BouncingScrollPhysics(),
             child: Row(
               children: [
-                _buildStatusChip(null, 'All'),
-                const SizedBox(width: 10),
-                _buildStatusChip(OrderStatus.pending, 'Pending'),
-                const SizedBox(width: 10),
-                _buildStatusChip(OrderStatus.confirmed, 'Out for delivery'),
-                const SizedBox(width: 10),
-                _buildStatusChip(OrderStatus.preparing, 'Preparing'),
-                const SizedBox(width: 10),
-                _buildStatusChip(OrderStatus.ready, 'Ready'),
-                const SizedBox(width: 10),
-                _buildStatusChip(OrderStatus.delivered, 'Delivered'),
-                const SizedBox(width: 10),
-                _buildStatusChip(OrderStatus.cancelled, 'Cancelled'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                _buildRouteChip(
-                  null,
-                  'All Routes',
-                  routesLoaded: routesLoaded,
-                ),
+                _buildRouteChip(null, 'All Routes', routesLoaded: routesLoaded),
                 _buildRouteChip(
                   '__unassigned__',
                   'Unassigned',
@@ -579,31 +548,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
   }
 
-  Widget _buildStatusChip(OrderStatus? status, String label) {
-    final isSelected = _selectedStatus == status;
-    return InkWell(
-      onTap: () => setState(() => _selectedStatus = isSelected ? null : status),
-      borderRadius: BorderRadius.circular(18),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.backgroundSecondary,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textPrimary,
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
-            letterSpacing: -0.1,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildRouteChip(
     String? routeId,
     String label, {
@@ -626,7 +570,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : AppColors.backgroundSecondary,
+            color: isSelected
+                ? AppColors.primary
+                : AppColors.backgroundSecondary,
             borderRadius: BorderRadius.circular(18),
           ),
           child: Text(
@@ -648,199 +594,158 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   Future<void> _showFiltersSheet(BuildContext context) async {
-    final res = await showModalBottomSheet<
-        ({OrderStatus? status, PaymentStatus? payment})>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            OrderStatus? status = _selectedStatus;
-            PaymentStatus? payment = _selectedPaymentStatus;
+    final res =
+        await showModalBottomSheet<({bool clearAll, PaymentStatus? payment})?>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) {
+            return StatefulBuilder(
+              builder: (context, setModalState) {
+                PaymentStatus? payment = _selectedPaymentStatus;
 
-            Widget chip<T>(T? value, T? selected, String label) {
-              final isSelected = value == selected;
-              return ChoiceChip(
-                selected: isSelected,
-                label: Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                Widget chip(PaymentStatus? value, String label) {
+                  final isSelected = value == payment;
+                  return ChoiceChip(
+                    selected: isSelected,
+                    label: Text(
+                      label,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: isSelected
+                            ? Colors.white
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                    selectedColor: AppColors.primary,
+                    backgroundColor: AppColors.backgroundSecondary,
+                    onSelected: (_) => setModalState(() {
+                      payment = isSelected ? null : value;
+                    }),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  );
+                }
+
+                return SafeArea(
+                  top: false,
+                  child: Container(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      12,
+                      16,
+                      16 + MediaQuery.viewInsetsOf(context).bottom,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(28),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 44,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: AppColors.border,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Filters',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Payment',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            chip(PaymentStatus.paid, 'Paid'),
+                            chip(PaymentStatus.partial, 'Partial'),
+                            chip(PaymentStatus.unpaid, 'Unpaid'),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(context, (
+                                  clearAll: true,
+                                  payment: null,
+                                )),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                    color: AppColors.border,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Clear',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: () => Navigator.pop(context, (
+                                  clearAll: false,
+                                  payment: payment,
+                                )),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Apply',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                selectedColor: AppColors.primary,
-                backgroundColor: AppColors.backgroundSecondary,
-                onSelected: (_) => setModalState(() {
-                  if (T == OrderStatus) {
-                    status = isSelected ? null : value as OrderStatus?;
-                  } else if (T == PaymentStatus) {
-                    payment = isSelected ? null : value as PaymentStatus?;
-                  }
-                }),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              );
-            }
-
-            return SafeArea(
-              top: false,
-              child: Container(
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  12,
-                  16,
-                  16 + MediaQuery.viewInsetsOf(context).bottom,
-                ),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 44,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: AppColors.border,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Filters',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Status',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        chip<OrderStatus>(OrderStatus.pending, status, 'Pending'),
-                        chip<OrderStatus>(
-                          OrderStatus.confirmed,
-                          status,
-                          'Out for delivery',
-                        ),
-                        chip<OrderStatus>(
-                          OrderStatus.preparing,
-                          status,
-                          'Preparing',
-                        ),
-                        chip<OrderStatus>(OrderStatus.ready, status, 'Ready'),
-                        chip<OrderStatus>(
-                          OrderStatus.delivered,
-                          status,
-                          'Delivered',
-                        ),
-                        chip<OrderStatus>(
-                          OrderStatus.cancelled,
-                          status,
-                          'Cancelled',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Payment',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        chip<PaymentStatus>(PaymentStatus.paid, payment, 'Paid'),
-                        chip<PaymentStatus>(
-                          PaymentStatus.partial,
-                          payment,
-                          'Partial',
-                        ),
-                        chip<PaymentStatus>(
-                          PaymentStatus.unpaid,
-                          payment,
-                          'Unpaid',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(
-                              context,
-                              (status: null, payment: null),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: AppColors.border),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: const Text(
-                              'Clear',
-                              style: TextStyle(fontWeight: FontWeight.w900),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: () => Navigator.pop(
-                              context,
-                              (status: status, payment: payment),
-                            ),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: const Text(
-                              'Apply',
-                              style: TextStyle(fontWeight: FontWeight.w900),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                );
+              },
             );
           },
         );
-      },
-    );
 
     if (!mounted || res == null) return;
     setState(() {
-      _selectedStatus = res.status;
-      _selectedPaymentStatus = res.payment;
+      _selectedPaymentStatus = res.clearAll ? null : res.payment;
     });
   }
 
@@ -970,11 +875,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         color: AppColors.primaryLighter.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(
-                        leading,
-                        size: 18,
-                        color: AppColors.primary,
-                      ),
+                      child: Icon(leading, size: 18, color: AppColors.primary),
                     ),
                     const SizedBox(width: 10),
                     Expanded(

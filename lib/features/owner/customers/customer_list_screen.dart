@@ -503,13 +503,14 @@ class _CustomerListCard extends StatelessWidget {
           );
 
     return Material(
-      color: AppColors.surface,
+      color: Colors.white,
       borderRadius: BorderRadius.circular(22),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Ink(
           decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: AppColors.border),
             boxShadow: const [

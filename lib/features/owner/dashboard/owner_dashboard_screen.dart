@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,16 @@ import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/order.dart';
+
+Future<void> _refreshOwnerDashboard(WidgetRef ref) async {
+  await Future.wait([
+    ref.read(ordersProvider.notifier).refresh(),
+    ref.read(customersProvider.notifier).refresh(),
+    ref.read(foodItemsProvider.notifier).refresh(),
+    ref.read(routesProvider.notifier).refresh(),
+    ref.read(driversProvider.notifier).refresh(),
+  ]);
+}
 
 class OwnerDashboardScreen extends ConsumerWidget {
   const OwnerDashboardScreen({super.key});
@@ -57,238 +68,307 @@ class OwnerDashboardScreen extends ConsumerWidget {
     final displayName = (user?.name.trim().isNotEmpty ?? false)
         ? user!.name.trim()
         : 'Owner';
-    final greeting = 'Hello, $displayName (Owner)';
+    final greeting = 'Hello, $displayName';
+    // Use viewPadding (not padding) for top inset: on edge-to-edge layouts padding can
+    // be 0 while the status bar / notch still occupies space — a few px mismatch clips
+    // the header. SliverAppBar also defaults to hard clipping unless disabled below.
+    final safeTop = MediaQuery.viewPaddingOf(context).top;
+    // flexibleSpace content is bottom-aligned in a Stack; if expandedHeight is too
+    // small, the Column overflows upward and the top clips.
+    final expandedHeaderHeight = isEmpty
+        ? (safeTop + 128.0).clamp(192.0, 264.0)
+        : (safeTop + 468.0).clamp(380.0, 640.0);
+    final bottomInset =
+        MediaQuery.paddingOf(context).bottom + 100; // nav bar + home indicator
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          SliverAppBar(
-            expandedHeight: isEmpty ? 170.0 : 280.0,
-            floating: false,
-            pinned: true,
-            backgroundColor: AppColors.backgroundPrimary,
-            elevation: 0,
-            surfaceTintColor: Colors.transparent,
-            toolbarHeight: 0,
-            automaticallyImplyLeading: false,
-            systemOverlayStyle: AppTheme.systemOverlayStyle.copyWith(
-              statusBarColor: AppColors.primaryLighter.withValues(alpha: 0.35),
-            ),
-            flexibleSpace: Stack(
-              children: [
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          AppColors.primaryLighter.withValues(alpha: 0.42),
-                          AppColors.backgroundPrimary,
-                          AppColors.backgroundPrimary,
-                        ],
-                        stops: const [0.0, 0.62, 1.0],
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        displacement: 48,
+        onRefresh: () => _refreshOwnerDashboard(ref),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            SliverAppBar(
+              expandedHeight: expandedHeaderHeight,
+              floating: false,
+              pinned: true,
+              clipBehavior: Clip.none,
+              backgroundColor: AppColors.backgroundPrimary,
+              elevation: 0,
+              surfaceTintColor: Colors.transparent,
+              toolbarHeight: 0,
+              automaticallyImplyLeading: false,
+              systemOverlayStyle: AppTheme.systemOverlayStyle.copyWith(
+                statusBarColor: AppColors.primaryLighter.withValues(
+                  alpha: 0.35,
+                ),
+              ),
+              flexibleSpace: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            AppColors.primaryLighter.withValues(alpha: 0.42),
+                            AppColors.backgroundPrimary,
+                            AppColors.backgroundPrimary,
+                          ],
+                          stops: const [0.0, 0.62, 1.0],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 24,
-                  right: 24,
-                  bottom: 16,
-                  child: SafeArea(
-                    top: false,
-                    bottom: false,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                greeting,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: AppColors.textSecondary.withValues(
-                                    alpha: 0.9,
+                  Positioned(
+                    left: 24,
+                    right: 24,
+                    bottom: 16,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: safeTop),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  greeting,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary.withValues(
+                                      alpha: 0.9,
+                                    ),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                            ),
-                            _HeaderIconButton(
-                              icon: Icons.notifications_none_rounded,
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text(
-                                      'Notifications coming soon',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
+                              _HeaderIconButton(
+                                icon: Icons.notifications_none_rounded,
+                                showBadge: true,
+                                tooltip: 'Notifications',
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                        'Notifications coming soon',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: AppColors.secondary,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      action: SnackBarAction(
+                                        label: 'OK',
+                                        textColor: Colors.white70,
+                                        onPressed: () {},
                                       ),
                                     ),
-                                    behavior: SnackBarBehavior.floating,
-                                    backgroundColor: AppColors.secondary,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Dashboard',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -1.0,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _HeaderPill(text: shortDateStr.toUpperCase()),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          dateStr,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppColors.textSecondary.withValues(
-                              alpha: 0.8,
-                            ),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (!isEmpty) ...[
-                          const SizedBox(height: 14),
-                          _KpiStrip(
-                            children: [
-                              _KpiCard(
-                                title: 'Revenue',
-                                value:
-                                    '₹${NumberFormat.compact().format(totalRevenue)}',
-                                icon: Icons.currency_rupee_rounded,
-                                tone: _KpiTone.primary,
-                              ),
-                              _KpiCard(
-                                title: 'Orders Today',
-                                value: todayOrdersCount.toString(),
-                                icon: Icons.today_rounded,
-                                tone: _KpiTone.neutral,
-                              ),
-                              _KpiCard(
-                                title: 'Customers',
-                                value: customers.length.toString(),
-                                icon: Icons.people_alt_rounded,
-                                tone: _KpiTone.warning,
-                              ),
-                              _KpiCard(
-                                title: 'Fulfillment',
-                                value: '${(fulfillmentRate * 100).round()}%',
-                                icon: Icons.check_circle_rounded,
-                                tone: _KpiTone.success,
+                                  );
+                                },
                               ),
                             ],
                           ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Dashboard',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 30,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  dateStr,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary.withValues(
+                                      alpha: 0.8,
+                                    ),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              _HeaderPill(text: shortDateStr.toUpperCase()),
+                            ],
+                          ),
+                          if (!isEmpty) ...[
+                            const SizedBox(height: 14),
+                            _KpiStrip(
+                              children: [
+                                _KpiCard(
+                                  title: 'Revenue',
+                                  value:
+                                      '₹${NumberFormat.compact().format(totalRevenue)}',
+                                  icon: Icons.currency_rupee_rounded,
+                                  tone: _KpiTone.primary,
+                                ),
+                                _KpiCard(
+                                  title: 'Orders Today',
+                                  value: todayOrdersCount.toString(),
+                                  icon: Icons.today_rounded,
+                                  tone: _KpiTone.neutral,
+                                ),
+                                _KpiCard(
+                                  title: 'Customers',
+                                  value: customers.length.toString(),
+                                  icon: Icons.people_alt_rounded,
+                                  tone: _KpiTone.warning,
+                                ),
+                                _KpiCard(
+                                  title: 'Fulfillment',
+                                  value: '${(fulfillmentRate * 100).round()}%',
+                                  icon: Icons.check_circle_rounded,
+                                  tone: _KpiTone.success,
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isEmpty && isLoading)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Loading your workspace…',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textSecondary.withValues(
+                              alpha: 0.95,
+                            ),
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Pull down anytime to refresh.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textLight.withValues(alpha: 0.9),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          if (isEmpty && isLoading)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: _buildEmptyState(context),
-            )
-          else
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 18),
-                    _QuickActionsRow(
-                      actions: [
-                        _QuickAction(
-                          label: 'New Order',
-                          icon: Icons.add_shopping_cart_rounded,
-                          color: AppColors.primary,
-                          path: '/owner/orders/create',
-                        ),
-                        _QuickAction(
-                          label: 'Customers',
-                          icon: Icons.business_rounded,
-                          color: AppColors.success,
-                          path: '/owner/customers',
-                        ),
-                        _QuickAction(
-                          label: 'Routes',
-                          icon: Icons.alt_route_rounded,
-                          color: AppColors.info,
-                          path: '/owner/routes',
-                        ),
-                        _QuickAction(
-                          label: 'Drivers',
-                          icon: Icons.person_add_alt_1_rounded,
-                          color: AppColors.secondary,
-                          path: '/owner/routes?tab=drivers',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _DashboardSection(
-                      title: 'Sales Revenue',
-                      trailingText: 'This Week',
-                      child: _SalesTrendBars(dailySales: reports.dailySales),
-                    ),
-                    const SizedBox(height: 28),
-                    _DashboardSection(
-                      title: 'Recent Orders',
-                      subtitle: 'Latest transactions across all accounts',
-                      trailingText: 'View all',
-                      onTrailingTap: () => context.push('/owner/orders'),
-                      child: _RecentOrdersList(orders: orders),
-                    ),
-                    const SizedBox(height: 28),
-                    _DashboardSection(
-                      title: 'Product Mix',
-                      subtitle: 'Revenue distribution across catalog',
-                      child: _ProductSaleChart(
-                        productSales: reports.productSales,
+              )
+            else if (isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildEmptyState(context),
+              )
+            else
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 18),
+                      _QuickActionsRow(
+                        actions: [
+                          _QuickAction(
+                            label: 'New Order',
+                            icon: Icons.add_shopping_cart_rounded,
+                            color: AppColors.primary,
+                            path: '/owner/orders/create',
+                          ),
+                          _QuickAction(
+                            label: 'Customers',
+                            icon: Icons.business_rounded,
+                            color: AppColors.success,
+                            path: '/owner/customers',
+                          ),
+                          _QuickAction(
+                            label: 'Routes',
+                            icon: Icons.alt_route_rounded,
+                            color: AppColors.info,
+                            path: '/owner/routes',
+                          ),
+                          _QuickAction(
+                            label: 'Drivers',
+                            icon: Icons.person_add_alt_1_rounded,
+                            color: AppColors.secondary,
+                            path: '/owner/routes?tab=drivers',
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 120),
-                  ],
+                      const SizedBox(height: 24),
+                      _DashboardSection(
+                        title: 'Sales Revenue',
+                        trailingText: 'This Week',
+                        child: _SalesTrendBars(dailySales: reports.dailySales),
+                      ),
+                      const SizedBox(height: 28),
+                      _DashboardSection(
+                        title: 'Recent Orders',
+                        subtitle: 'Latest transactions across all accounts',
+                        trailingText: 'View all',
+                        onTrailingTap: () => context.push('/owner/orders'),
+                        child: _RecentOrdersList(orders: orders),
+                      ),
+                      const SizedBox(height: 28),
+                      _DashboardSection(
+                        title: 'Product Mix',
+                        subtitle: 'Revenue distribution across catalog',
+                        child: _ProductSaleChart(
+                          productSales: reports.productSales,
+                        ),
+                      ),
+                      SizedBox(height: bottomInset),
+                    ],
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -394,11 +474,25 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 28),
+            Text(
+              'Tip: pull down on this screen anytime to refresh data.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textLight.withValues(alpha: 0.95),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 28),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => context.push('/owner/customers'),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  context.push('/owner/customers');
+                },
                 icon: const Icon(Icons.add_rounded, color: Colors.white),
                 label: const Text(
                   'Add your first customer',
@@ -464,32 +558,67 @@ class _HeaderPill extends StatelessWidget {
 class _HeaderIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final bool showBadge;
+  final String? tooltip;
 
-  const _HeaderIconButton({required this.icon, required this.onTap});
+  const _HeaderIconButton({
+    required this.icon,
+    required this.onTap,
+    this.showBadge = false,
+    this.tooltip,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 10,
-              offset: Offset(0, 6),
-            ),
-          ],
+    final button = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.border),
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadow,
+                blurRadius: 10,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Icon(icon, color: AppColors.textPrimary, size: 22),
+              if (showBadge)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: AppColors.error,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.surface, width: 1.5),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
-        child: Icon(icon, color: AppColors.textPrimary, size: 22),
       ),
     );
+    if (tooltip == null) return button;
+    return Tooltip(message: tooltip!, child: button);
   }
 }
 
@@ -570,7 +699,7 @@ class _KpiCard extends StatelessWidget {
     }
 
     return Container(
-      height: 104,
+      constraints: const BoxConstraints(minHeight: 100),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -586,6 +715,7 @@ class _KpiCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
             width: 40,
@@ -596,7 +726,7 @@ class _KpiCard extends StatelessWidget {
             ),
             child: Icon(icon, color: accent, size: 20),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             title.toUpperCase(),
             maxLines: 1,
@@ -608,16 +738,20 @@ class _KpiCard extends StatelessWidget {
               letterSpacing: 1.0,
             ),
           ),
-          const Spacer(),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.7,
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.7,
+              ),
             ),
           ),
         ],
@@ -676,35 +810,45 @@ class _QuickActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => context.push(action.path),
-      borderRadius: BorderRadius.circular(18),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: action.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(action.icon, color: action.color, size: 20),
+    return Tooltip(
+      message: action.label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            context.push(action.path);
+          },
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: action.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(action.icon, color: action.color, size: 20),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  action.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              action.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -716,6 +860,14 @@ class _ProductSaleChart extends StatelessWidget {
 
   const _ProductSaleChart({required this.productSales});
 
+  static const List<Color> _barPalette = [
+    AppColors.primary,
+    AppColors.info,
+    AppColors.success,
+    AppColors.warning,
+    AppColors.secondary,
+  ];
+
   @override
   Widget build(BuildContext context) {
     final sortedSales = productSales.values.toList()
@@ -724,203 +876,389 @@ class _ProductSaleChart extends StatelessWidget {
 
     if (displaySales.isEmpty) {
       return Container(
-        height: 100,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(28),
           border: Border.all(color: AppColors.border),
-        ),
-        child: const Center(
-          child: Text(
-            'No sales data yet',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textLight,
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 18,
+              offset: Offset(0, 10),
             ),
-          ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.backgroundSecondary,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(
+                Icons.stacked_bar_chart_rounded,
+                color: AppColors.textLight,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'No product mix yet',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'When orders include line items, revenue share by product appears here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary.withValues(alpha: 0.95),
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    final totalRevenue = sortedSales.fold<double>(0, (sum, e) => sum + e.revenue);
+    final catalogTotal = sortedSales.fold<double>(
+      0,
+      (sum, e) => sum + e.revenue,
+    );
+    final topFiveTotal = displaySales.fold<double>(
+      0,
+      (sum, e) => sum + e.revenue,
+    );
     final topRevenue = displaySales.first.revenue;
-    final maxY = (topRevenue <= 0 ? 1.0 : topRevenue) * 1.25;
-    const barPalette = <Color>[
-      AppColors.primary,
-      AppColors.info,
-      AppColors.success,
-      AppColors.warning,
-      AppColors.secondary,
-    ];
+    final maxY = (topRevenue <= 0 ? 1.0 : topRevenue) * 1.22;
+    final yInterval = maxY > 0 ? maxY / 4 : 1.0;
 
-    return Container(
-      height: 240,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 30,
-            offset: Offset(0, 15),
-          ),
-        ],
-      ),
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: maxY,
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: maxY / 4,
-            getDrawingHorizontalLine: (_) =>
-                FlLine(color: AppColors.divider, strokeWidth: 1),
-          ),
-          barTouchData: BarTouchData(
-            enabled: true,
-            touchTooltipData: BarTouchTooltipData(
-              tooltipPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              tooltipBorderRadius: BorderRadius.circular(12),
-              tooltipMargin: 10,
-              maxContentWidth: 220,
-              fitInsideHorizontally: true,
-              fitInsideVertically: true,
-              getTooltipColor: (_) =>
-                  AppColors.textPrimary.withValues(alpha: 0.92),
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                if (groupIndex < 0 || groupIndex >= displaySales.length) {
-                  return null;
-                }
-                final item = displaySales[groupIndex];
-                final pct = totalRevenue <= 0 ? 0.0 : (item.revenue / totalRevenue);
-                final revenueStr = '₹${NumberFormat.compact().format(item.revenue)}';
-                return BarTooltipItem(
-                  '${item.name}\n',
-                  const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                    height: 1.2,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: '$revenueStr  •  ${(pct * 100).toStringAsFixed(1)}%\n',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
-                        height: 1.3,
-                      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (sortedSales.length > 5)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, right: 4, bottom: 10),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: AppColors.textSecondary.withValues(alpha: 0.85),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Showing top 5 by revenue · ${sortedSales.length} products in catalog',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary.withValues(alpha: 0.95),
+                      height: 1.35,
                     ),
-                    TextSpan(
-                      text: 'Qty: ${item.quantity}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 46,
-                getTitlesWidget: (value, meta) {
-                  if (value < 0 || value >= displaySales.length) {
-                    return const SizedBox();
-                  }
-                  final name = displaySales[value.toInt()].name;
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Transform.rotate(
-                      angle: -0.42, // ~-24deg for readability
-                      alignment: Alignment.topLeft,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 80),
-                        child: Text(
-                          name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textLight,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 44,
-                getTitlesWidget: (value, meta) {
-                  final label = value == 0
-                      ? '0'
-                      : '₹${NumberFormat.compact().format(value)}';
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Text(
-                      label,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          barGroups: displaySales.asMap().entries.map((e) {
-            final color = barPalette[e.key % barPalette.length];
-            return BarChartGroupData(
-              x: e.key,
-              barRods: [
-                BarChartRodData(
-                  toY: e.value.revenue,
-                  width: 18,
-                  borderRadius: BorderRadius.circular(10),
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      color.withValues(alpha: 0.55),
-                      color,
-                    ],
                   ),
                 ),
               ],
-            );
-          }).toList(),
+            ),
+          ),
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.border),
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadow,
+                blurRadius: 22,
+                offset: Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '₹${NumberFormat.compact().format(topFiveTotal)} in view',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  if (catalogTotal > 0)
+                    Text(
+                      catalogTotal > topFiveTotal
+                          ? '${((topFiveTotal / catalogTotal) * 100).round()}% of catalog revenue'
+                          : '100% of catalog revenue',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textLight,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 196,
+                child: BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceAround,
+                    maxY: maxY,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: yInterval,
+                      getDrawingHorizontalLine: (_) =>
+                          FlLine(color: AppColors.divider, strokeWidth: 1),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        direction: TooltipDirection.top,
+                        tooltipPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        tooltipBorderRadius: BorderRadius.circular(12),
+                        tooltipMargin: 8,
+                        maxContentWidth: 240,
+                        fitInsideHorizontally: true,
+                        fitInsideVertically: true,
+                        getTooltipColor: (_) =>
+                            AppColors.textPrimary.withValues(alpha: 0.94),
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          if (groupIndex < 0 ||
+                              groupIndex >= displaySales.length) {
+                            return null;
+                          }
+                          final item = displaySales[groupIndex];
+                          final pct = catalogTotal <= 0
+                              ? 0.0
+                              : (item.revenue / catalogTotal);
+                          final revenueStr =
+                              '₹${NumberFormat.compact().format(item.revenue)}';
+                          return BarTooltipItem(
+                            '${item.name}\n',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                              height: 1.2,
+                            ),
+                            children: [
+                              TextSpan(
+                                text:
+                                    '$revenueStr · ${(pct * 100).toStringAsFixed(1)}% of catalog\n',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  height: 1.35,
+                                ),
+                              ),
+                              TextSpan(
+                                text: '${item.quantity} units sold',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 26,
+                          getTitlesWidget: (value, meta) {
+                            final i = value.toInt();
+                            if (i < 0 || i >= displaySales.length) {
+                              return const SizedBox.shrink();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                '#${i + 1}',
+                                style: TextStyle(
+                                  color: i == 0
+                                      ? AppColors.primary
+                                      : AppColors.textLight,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 42,
+                          interval: yInterval,
+                          getTitlesWidget: (value, meta) {
+                            final label = value == 0
+                                ? '0'
+                                : '₹${NumberFormat.compact().format(value)}';
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: Text(
+                                label,
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  color: AppColors.textLight,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                    ),
+                    barGroups: displaySales.asMap().entries.map((e) {
+                      final i = e.key;
+                      final color = _barPalette[i % _barPalette.length];
+                      final isTop = i == 0;
+                      return BarChartGroupData(
+                        x: i,
+                        barRods: [
+                          BarChartRodData(
+                            toY: e.value.revenue,
+                            width: isTop ? 20 : 16,
+                            borderRadius: BorderRadius.circular(10),
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                color.withValues(alpha: isTop ? 0.65 : 0.5),
+                                color,
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1, color: AppColors.divider),
+              ),
+              const Text(
+                'BREAKDOWN',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textLight,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...displaySales.asMap().entries.map((e) {
+                final i = e.key;
+                final item = e.value;
+                final color = _barPalette[i % _barPalette.length];
+                final pct = catalogTotal <= 0
+                    ? 0.0
+                    : (item.revenue / catalogTotal) * 100;
+                final pctLabel = pct >= 10
+                    ? '${pct.round()}%'
+                    : '${pct.toStringAsFixed(1)}%';
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: i == displaySales.length - 1 ? 0 : 8,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        margin: const EdgeInsets.only(top: 4),
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            height: 1.25,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '₹${NumberFormat.compact().format(item.revenue)}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          Text(
+                            '$pctLabel · ${item.quantity} qty',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -989,25 +1327,42 @@ class _DashboardSection extends StatelessWidget {
                     ),
                   ),
                   if (trailingText != null) ...[
-                    const SizedBox(width: 12),
-                    InkWell(
-                      onTap: onTrailingTap,
-                      borderRadius: BorderRadius.circular(999),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
+                    const SizedBox(width: 8),
+                    if (onTrailingTap != null)
+                      TextButton(
+                        onPressed: onTrailingTap,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(44, 40),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(
                           trailingText!,
                           style: const TextStyle(
-                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                        child: Text(
+                          trailingText!,
+                          style: TextStyle(
+                            color: AppColors.primary.withValues(alpha: 0.85),
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ],
               ),
@@ -1043,8 +1398,7 @@ class _SalesTrendBars extends StatelessWidget {
         : dailySales;
     if (last.isEmpty) {
       return Container(
-        height: 220,
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(28),
@@ -1057,14 +1411,45 @@ class _SalesTrendBars extends StatelessWidget {
             ),
           ],
         ),
-        child: const Center(
-          child: Text(
-            'No revenue data yet',
-            style: TextStyle(
-              color: AppColors.textLight,
-              fontWeight: FontWeight.w700,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.backgroundSecondary,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(
+                Icons.show_chart_rounded,
+                color: AppColors.textLight,
+                size: 28,
+              ),
             ),
-          ),
+            const SizedBox(height: 14),
+            const Text(
+              'No revenue trend yet',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Paid and recorded orders will build this 7-day chart.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary.withValues(alpha: 0.95),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -1072,127 +1457,317 @@ class _SalesTrendBars extends StatelessWidget {
     final maxValue = last
         .map((d) => d.amount)
         .fold<double>(0, (a, b) => a > b ? a : b);
-    final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.25;
+    final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.22;
+    final yInterval = maxY > 0 ? maxY / 4 : 1.0;
     final highlightIndex = _pickHighlightIndex(last);
+    final weekTotal = last.fold<double>(0, (s, d) => s + d.amount);
+    final weekOrders = last.fold<int>(0, (s, d) => s + d.count);
+    final best = last[highlightIndex];
+    final rangeStart = last.first.date;
+    final rangeEnd = last.last.date;
+    final rangeLabel =
+        rangeStart.year == rangeEnd.year &&
+            rangeStart.month == rangeEnd.month &&
+            rangeStart.day == rangeEnd.day
+        ? DateFormat('EEE, MMM d').format(rangeStart)
+        : '${DateFormat('MMM d').format(rangeStart)} – ${DateFormat('MMM d').format(rangeEnd)}';
 
-    return Container(
-      height: 240,
-      padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 18,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: BarChart(
-        BarChartData(
-          maxY: maxY,
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: maxY / 4,
-            getDrawingHorizontalLine: (_) =>
-                FlLine(color: AppColors.divider, strokeWidth: 1),
-          ),
-          borderData: FlBorderData(show: false),
-          barTouchData: BarTouchData(
-            enabled: true,
-            handleBuiltInTouches: true,
-            touchTooltipData: BarTouchTooltipData(
-              tooltipPadding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 8,
-              ),
-              tooltipBorderRadius: BorderRadius.circular(10),
-              tooltipMargin: 10,
-              maxContentWidth: 120,
-              fitInsideHorizontally: true,
-              fitInsideVertically: true,
-              getTooltipColor: (_) =>
-                  AppColors.textPrimary.withValues(alpha: 0.92),
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                if (groupIndex != highlightIndex) return null;
-                final val = rod.toY;
-                final label = '₹${NumberFormat.compact().format(val)}';
-                return BarTooltipItem(
-                  label,
-                  const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 11,
-                    letterSpacing: 0.2,
-                  ),
-                );
-              },
-            ),
-          ),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 28,
-                getTitlesWidget: (value, meta) {
-                  final i = value.toInt();
-                  if (i < 0 || i >= last.length) return const SizedBox.shrink();
-                  final isHighlight = i == highlightIndex;
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      DateFormat('EEE').format(last[i].date).toUpperCase(),
-                      style: TextStyle(
-                        color: isHighlight
-                            ? AppColors.textPrimary
-                            : AppColors.textLight,
-                        fontSize: 10,
-                        fontWeight:
-                            isHighlight ? FontWeight.w900 : FontWeight.w800,
-                      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (dailySales.length > 7)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, right: 4, bottom: 10),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_view_week_rounded,
+                  size: 16,
+                  color: AppColors.textSecondary.withValues(alpha: 0.85),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Last 7 days on the chart · ${dailySales.length} days of history',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary.withValues(alpha: 0.95),
+                      height: 1.35,
                     ),
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
-          barGroups: [
-            for (var i = 0; i < last.length; i++)
-              BarChartGroupData(
-                x: i,
-                showingTooltipIndicators:
-                    i == highlightIndex ? const [0] : const [],
-                barRods: [
-                  BarChartRodData(
-                    toY: last[i].amount,
-                    width: 14,
-                    borderRadius: BorderRadius.circular(10),
-                    color: i == highlightIndex
-                        ? AppColors.primary
-                        : AppColors.backgroundSecondary.withValues(alpha: 0.9),
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.border),
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadow,
+                blurRadius: 22,
+                offset: Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '₹${NumberFormat.compact().format(weekTotal)} total',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          rangeLabel,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '$weekOrders ${weekOrders == 1 ? 'order' : 'orders'}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Best: ${DateFormat('EEE').format(best.date)} · ₹${NumberFormat.compact().format(best.amount)}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-          ],
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 200,
+                child: BarChart(
+                  BarChartData(
+                    maxY: maxY,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: yInterval,
+                      getDrawingHorizontalLine: (_) =>
+                          FlLine(color: AppColors.divider, strokeWidth: 1),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      handleBuiltInTouches: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        direction: TooltipDirection.top,
+                        tooltipPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        tooltipBorderRadius: BorderRadius.circular(12),
+                        tooltipMargin: 8,
+                        maxContentWidth: 220,
+                        fitInsideHorizontally: true,
+                        fitInsideVertically: true,
+                        getTooltipColor: (_) =>
+                            AppColors.textPrimary.withValues(alpha: 0.94),
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          if (groupIndex < 0 || groupIndex >= last.length) {
+                            return null;
+                          }
+                          final d = last[groupIndex];
+                          final val = rod.toY;
+                          final label =
+                              '₹${NumberFormat.compact().format(val)}';
+                          final dayLine = DateFormat(
+                            'EEEE, MMM d',
+                          ).format(d.date);
+                          final share = weekTotal <= 0
+                              ? 0.0
+                              : (val / weekTotal) * 100;
+                          return BarTooltipItem(
+                            '$dayLine\n',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                              height: 1.25,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: '$label · ${share.round()}% of week\n',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  height: 1.35,
+                                ),
+                              ),
+                              TextSpan(
+                                text:
+                                    '${d.count} ${d.count == 1 ? 'order' : 'orders'}',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 40,
+                          interval: yInterval,
+                          getTitlesWidget: (value, meta) {
+                            final label = value == 0
+                                ? '0'
+                                : '₹${NumberFormat.compact().format(value)}';
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: Text(
+                                label,
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  color: AppColors.textLight,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 30,
+                          getTitlesWidget: (value, meta) {
+                            final i = value.toInt();
+                            if (i < 0 || i >= last.length) {
+                              return const SizedBox.shrink();
+                            }
+                            final isHighlight = i == highlightIndex;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                DateFormat(
+                                  'EEE',
+                                ).format(last[i].date).toUpperCase(),
+                                style: TextStyle(
+                                  color: isHighlight
+                                      ? AppColors.primary
+                                      : AppColors.textLight,
+                                  fontSize: 10,
+                                  fontWeight: isHighlight
+                                      ? FontWeight.w900
+                                      : FontWeight.w800,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    barGroups: [
+                      for (var i = 0; i < last.length; i++)
+                        BarChartGroupData(
+                          x: i,
+                          showingTooltipIndicators: i == highlightIndex
+                              ? const [0]
+                              : const [],
+                          barRods: [
+                            BarChartRodData(
+                              toY: last[i].amount,
+                              width: i == highlightIndex ? 16 : 13,
+                              borderRadius: BorderRadius.circular(10),
+                              gradient: i == highlightIndex
+                                  ? LinearGradient(
+                                      begin: Alignment.bottomCenter,
+                                      end: Alignment.topCenter,
+                                      colors: [
+                                        AppColors.primary.withValues(
+                                          alpha: 0.75,
+                                        ),
+                                        AppColors.primary,
+                                      ],
+                                    )
+                                  : null,
+                              color: i == highlightIndex
+                                  ? null
+                                  : AppColors.backgroundSecondary.withValues(
+                                      alpha: 0.92,
+                                    ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Tap a bar for revenue, share of this period, and order count.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textLight.withValues(alpha: 0.95),
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
   int _pickHighlightIndex(List<DailySalesData> last) {
-    final thuIndex = last.indexWhere((d) => d.date.weekday == DateTime.thursday);
+    final thuIndex = last.indexWhere(
+      (d) => d.date.weekday == DateTime.thursday,
+    );
     if (thuIndex != -1) return thuIndex;
     if (last.isEmpty) return 0;
     var maxIdx = 0;
@@ -1221,22 +1796,74 @@ class _RecentOrdersList extends StatelessWidget {
 
     if (displayOrders.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: AppColors.border),
-        ),
-        child: const Center(
-          child: Text(
-            'No recent orders',
-            style: TextStyle(
-              color: AppColors.textLight,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 14,
+              offset: Offset(0, 8),
             ),
-          ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.shopping_bag_outlined,
+              size: 40,
+              color: AppColors.primary.withValues(alpha: 0.45),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'No orders yet',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Create an order to see it show up here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary.withValues(alpha: 0.9),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  context.push('/owner/orders/create');
+                },
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text(
+                  'New order',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                ),
+                style: FilledButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  backgroundColor: AppColors.primaryLighter.withValues(
+                    alpha: 0.65,
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -1248,7 +1875,10 @@ class _RecentOrdersList extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
-            onPressed: () => context.push('/owner/orders'),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              context.push('/owner/orders');
+            },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               side: const BorderSide(color: AppColors.border),
@@ -1298,7 +1928,10 @@ class _RecentOrderTile extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: ListTile(
-        onTap: () => context.push('/owner/orders/${order.id}'),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          context.push('/owner/orders/${order.id}');
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         leading: Container(
           width: 44,
