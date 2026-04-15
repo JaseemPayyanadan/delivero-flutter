@@ -1,3 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -6,11 +9,19 @@ import 'app/providers.dart';
 import 'app/router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/firebase_service.dart';
+import 'core/services/push_notification_service.dart';
 
-void main() async {
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(AppTheme.systemOverlayStyle);
   await FirebaseService.init();
+  if (Firebase.apps.isNotEmpty && !kIsWeb) {
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
+  PushNotificationService.instance.attachMessenger(rootScaffoldMessengerKey);
   runApp(const ProviderScope(child: DeliveroApp()));
 }
 
@@ -29,6 +40,8 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await ref.read(appStartupProvider.notifier).init();
       await ref.read(authProvider.notifier).init();
+      await PushNotificationService.instance.configure();
+      await PushNotificationService.instance.setUser(ref.read(authProvider).user);
     });
   }
 
@@ -36,10 +49,15 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
 
+    ref.listen(authProvider, (previous, next) {
+      PushNotificationService.instance.setUser(next.user);
+    });
+
     return MaterialApp.router(
       title: 'Delivero',
       theme: AppTheme.light(),
       routerConfig: router,
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
         if (child == null) return const SizedBox.shrink();

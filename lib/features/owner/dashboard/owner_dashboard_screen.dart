@@ -153,6 +153,13 @@ class OwnerDashboardScreen extends ConsumerWidget {
                                 ),
                               ),
                               _HeaderIconButton(
+                                icon: Icons.search_rounded,
+                                showBadge: false,
+                                tooltip: 'Search orders & customers',
+                                onTap: () => context.push('/owner/search'),
+                              ),
+                              const SizedBox(width: 4),
+                              _HeaderIconButton(
                                 icon: Icons.notifications_none_rounded,
                                 showBadge: true,
                                 tooltip: 'Notifications',
@@ -160,7 +167,9 @@ class OwnerDashboardScreen extends ConsumerWidget {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: const Text(
-                                        'Notifications coming soon',
+                                        'Push alerts are on when you allow '
+                                        'notifications. Server can target your '
+                                        'device via FCM.',
                                         style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                         ),

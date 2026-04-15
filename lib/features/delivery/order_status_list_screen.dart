@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/maps_launch.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/order.dart';
 
@@ -203,6 +204,26 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
               ),
             ),
             const Divider(height: 24),
+            if (order.customerAddress.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openMaps(context, order.customerAddress),
+                    icon: const Icon(Icons.navigation_rounded, size: 18),
+                    label: const Text(
+                      'Navigate',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+              ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -251,6 +272,15 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openMaps(BuildContext context, String address) async {
+    final ok = await openMapsForAddress(address);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open maps')),
+      );
+    }
   }
 
   void _confirmDelivery(BuildContext context, WidgetRef ref, Order order) {

@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/maps_launch.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/order.dart';
@@ -173,7 +174,13 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
               ],
             ),
             const SizedBox(height: 18),
-            _CustomerOverviewCard(order: order, route: route),
+            _CustomerOverviewCard(
+              order: order,
+              route: route,
+              onOpenMaps: order.customerAddress.trim().isEmpty
+                  ? null
+                  : () => _openMaps(context, order.customerAddress),
+            ),
             const SizedBox(height: 22),
             _SectionHeader(
               title: 'Order Items',
@@ -467,6 +474,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
               ),
               onCallCustomer: () =>
                   _handleCallCustomer(context, order.customerPhone),
+              onOpenMaps: order.customerAddress.trim().isEmpty
+                  ? null
+                  : () => _openMaps(context, order.customerAddress),
               onCancelOrder: () => _handleStatusChange(
                 context,
                 ref,
@@ -491,6 +501,25 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     }
     final short = upper.length > 4 ? upper.substring(0, 4) : upper;
     return '#ORD-$short';
+  }
+
+  Future<void> _openMaps(BuildContext context, String address) async {
+    final ok = await openMapsForAddress(address);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Could not open maps',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.error,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _handleCallCustomer(BuildContext context, String phone) async {
@@ -798,8 +827,13 @@ class _PillBadge extends StatelessWidget {
 class _CustomerOverviewCard extends StatelessWidget {
   final Order order;
   final DeliveryRoute? route;
+  final VoidCallback? onOpenMaps;
 
-  const _CustomerOverviewCard({required this.order, required this.route});
+  const _CustomerOverviewCard({
+    required this.order,
+    required this.route,
+    this.onOpenMaps,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -883,6 +917,53 @@ class _CustomerOverviewCard extends StatelessWidget {
               border: null,
             ),
           ),
+          if (order.customerAddress.trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 16,
+                  color: AppColors.textLight,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    order.customerAddress,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (onOpenMaps != null) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onOpenMaps,
+                  icon: const Icon(Icons.navigation_rounded, size: 18),
+                  label: const Text(
+                    'Navigate',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ],
       ),
     );
@@ -1079,12 +1160,14 @@ class _BottomActions extends StatelessWidget {
   final bool isDelivered;
   final VoidCallback onMarkDelivered;
   final VoidCallback onCallCustomer;
+  final VoidCallback? onOpenMaps;
   final VoidCallback onCancelOrder;
 
   const _BottomActions({
     required this.isDelivered,
     required this.onMarkDelivered,
     required this.onCallCustomer,
+    this.onOpenMaps,
     required this.onCancelOrder,
   });
 
@@ -1120,25 +1203,50 @@ class _BottomActions extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: onCallCustomer,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.backgroundSecondary,
-                  foregroundColor: AppColors.textPrimary,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(22),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: onCallCustomer,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.backgroundSecondary,
+                      foregroundColor: AppColors.textPrimary,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                    ),
+                    icon: const Icon(Icons.call_rounded, size: 18),
+                    label: const Text(
+                      'Call',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
                   ),
                 ),
-                icon: const Icon(Icons.call_rounded, size: 18),
-                label: const Text(
-                  'Call Customer',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
-              ),
+                if (onOpenMaps != null) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: onOpenMaps,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryLighter,
+                        foregroundColor: AppColors.primary,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                      ),
+                      icon: const Icon(Icons.navigation_rounded, size: 18),
+                      label: const Text(
+                        'Navigate',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
             const SizedBox(height: 10),
             TextButton.icon(

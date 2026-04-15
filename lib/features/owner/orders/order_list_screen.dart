@@ -350,11 +350,14 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     }
 
     final filteredOrders = orders.where((order) {
-      final matchesSearch =
-          order.customerName.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          ) ||
-          order.id.toLowerCase().contains(_searchQuery.toLowerCase());
+      final q = _searchQuery.toLowerCase().trim();
+      final matchesSearch = q.isEmpty
+          ? true
+          : order.customerName.toLowerCase().contains(q) ||
+                order.id.toLowerCase().contains(q) ||
+                order.customerPhone.contains(_searchQuery.trim()) ||
+                order.customerAddress.toLowerCase().contains(q) ||
+                order.customerEmail.toLowerCase().contains(q);
 
       final matchesRoute = switch (_selectedRouteId) {
         null => true,
