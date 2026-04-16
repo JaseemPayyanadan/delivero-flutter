@@ -169,16 +169,13 @@ class PushNotificationService {
           .doc(factoryId)
           .collection('deliveroPushDevices')
           .doc(user.id)
-          .set(
-            {
-              'fcmToken': token,
-              'email': user.email,
-              'role': user.role.name,
-              'linkedEntityId': user.linkedEntityId,
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          );
+          .set({
+            'fcmToken': token,
+            'email': user.email,
+            'role': user.role.name,
+            'linkedEntityId': user.linkedEntityId,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
       if (kDebugMode) {
         debugPrint('[FCM] Token saved for ${user.id}');
       }

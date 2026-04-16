@@ -8,12 +8,17 @@ class AppColors {
   static const secondary = Color(0xFF0F172A); // Slate Navy
   static const accent = Color(0xFFF59E0B); // Amber for alerts
 
+  // Gradient stops for hero/financial cards
+  static const primaryGradientStart = Color(0xFF2563EB);
+  static const primaryGradientEnd = Color(0xFF1E3A8A); // Deep Indigo-Blue
+
   // Backgrounds
   static const backgroundPrimary = Color(0xFFF8FAFC); // Very light slate
   static const backgroundSecondary = Color(0xFFF1F5F9);
   static const backgroundTertiary = Color(0xFFE2E8F0);
 
   static const surface = Color(0xFFFFFFFF);
+  static const surfaceElevated = Color(0xFFFDFEFF); // Slightly warm white for depth
   static const border = Color(0xFFE2E8F0);
   static const divider = Color(0xFFF1F5F9);
 

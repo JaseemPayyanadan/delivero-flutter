@@ -247,14 +247,84 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (myOrders.isEmpty)
-              const SliverFillRemaining(
+              SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(
-                  child: Text(
-                    'No assigned orders yet',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 40,
+                      vertical: 60,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 88,
+                          height: 88,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.local_shipping_outlined,
+                            color: AppColors.primary,
+                            size: 40,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        const Text(
+                          'No deliveries yet',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Orders assigned to you will appear here. Check back once your manager has created a delivery.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.textSecondary.withValues(alpha: 0.85),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.tips_and_updates_outlined,
+                                size: 16,
+                                color: AppColors.textLight,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Pull down to refresh',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -345,8 +415,8 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
@@ -421,59 +491,87 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+        gradient: const LinearGradient(
+          colors: [
+            AppColors.primaryGradientStart,
+            AppColors.primaryGradientEnd,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: AppColors.primary.withValues(alpha: 0.35),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      child: Column(
+      child: Stack(
         children: [
-          const Text(
-            'Total Collected Today',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+          // Decorative sparkle icon in corner
+          Positioned(
+            top: -8,
+            right: -4,
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              color: Colors.white.withValues(alpha: 0.08),
+              size: 80,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            '₹${(cash + upi).toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildFinancialItem(
-                'Cash',
-                '₹${cash.toStringAsFixed(0)}',
-                Icons.payments_outlined,
+              const Text(
+                'Total Collected Today',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
               ),
-              Container(width: 1, height: 40, color: Colors.white24),
-              _buildFinancialItem(
-                'UPI',
-                '₹${upi.toStringAsFixed(0)}',
-                Icons.qr_code_scanner_outlined,
+              const SizedBox(height: 6),
+              Text(
+                '\u20b9${(cash + upi).toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1,
+                ),
               ),
-              Container(width: 1, height: 40, color: Colors.white24),
-              _buildFinancialItem(
-                'Pending',
-                '₹${pending.toStringAsFixed(0)}',
-                Icons.hourglass_empty_outlined,
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildFinancialItem(
+                    'Cash',
+                    '\u20b9${cash.toStringAsFixed(0)}',
+                    Icons.payments_outlined,
+                  ),
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: Colors.white24,
+                  ),
+                  _buildFinancialItem(
+                    'UPI',
+                    '\u20b9${upi.toStringAsFixed(0)}',
+                    Icons.qr_code_scanner_outlined,
+                  ),
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: Colors.white24,
+                  ),
+                  _buildFinancialItem(
+                    'Pending',
+                    '\u20b9${pending.toStringAsFixed(0)}',
+                    Icons.hourglass_empty_outlined,
+                  ),
+                ],
               ),
             ],
           ),
@@ -511,8 +609,9 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(32),
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
@@ -527,6 +626,7 @@ class DeliveryDashboardScreen extends ConsumerWidget {
             'Deliveries Scheduled',
             orders.length.toString(),
             AppColors.info,
+            Icons.calendar_today_outlined,
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
@@ -539,26 +639,43 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                 .length
                 .toString(),
             AppColors.warning,
+            Icons.hourglass_top_outlined,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, Color color) {
+  Widget _buildSummaryRow(
+    String label,
+    String value,
+    Color color,
+    IconData icon,
+  ) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-            fontSize: 15,
+        Container(
+          width: 36,
+          height: 36,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+              fontSize: 14,
+            ),
           ),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
@@ -567,8 +684,8 @@ class DeliveryDashboardScreen extends ConsumerWidget {
             value,
             style: TextStyle(
               color: color,
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
             ),
           ),
         ),
@@ -785,16 +902,16 @@ class _KpiCard extends StatelessWidget {
         tint = AppColors.warningLighter;
         break;
       case _KpiTone.neutral:
-        accent = AppColors.textPrimary;
+        accent = AppColors.textSecondary;
         tint = AppColors.backgroundSecondary;
         break;
     }
 
     return Container(
-      width: 178,
-      padding: const EdgeInsets.all(14),
+      width: 156,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceElevated,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
@@ -805,47 +922,41 @@ class _KpiCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: tint.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: accent, size: 20),
+            child: Icon(icon, color: accent, size: 18),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textLight,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.6,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 12),
+          Text(
+            title.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textLight,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: accent,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.6,
             ),
           ),
         ],
@@ -861,26 +972,50 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.2,
+        // Left accent bar
+        Container(
+          width: 3,
+          height: 38,
+          margin: const EdgeInsets.only(right: 12, top: 2),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.primary,
+                AppColors.primaryGradientEnd,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(999),
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: TextStyle(
-            color: AppColors.textSecondary.withValues(alpha: 0.8),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            height: 1.2,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: AppColors.textSecondary.withValues(alpha: 0.8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
+              ),
+            ],
           ),
         ),
       ],

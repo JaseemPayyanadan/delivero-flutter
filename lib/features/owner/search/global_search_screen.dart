@@ -202,10 +202,7 @@ class _CustomerHitTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
-        subtitle: Text(
-          customer.phone,
-          style: const TextStyle(fontSize: 12),
-        ),
+        subtitle: Text(customer.phone, style: const TextStyle(fontSize: 12)),
         trailing: const Icon(Icons.chevron_right_rounded),
       ),
     );

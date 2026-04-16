@@ -41,7 +41,9 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
       await ref.read(appStartupProvider.notifier).init();
       await ref.read(authProvider.notifier).init();
       await PushNotificationService.instance.configure();
-      await PushNotificationService.instance.setUser(ref.read(authProvider).user);
+      await PushNotificationService.instance.setUser(
+        ref.read(authProvider).user,
+      );
     });
   }
 

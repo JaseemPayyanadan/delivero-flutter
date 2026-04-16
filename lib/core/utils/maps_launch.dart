@@ -9,9 +9,7 @@ Future<bool> openMapsForAddress(String address) async {
   final encoded = Uri.encodeComponent(trimmed);
   final Uri uri;
   if (kIsWeb) {
-    uri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$encoded',
-    );
+    uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encoded');
   } else {
     switch (defaultTargetPlatform) {
       case TargetPlatform.iOS:

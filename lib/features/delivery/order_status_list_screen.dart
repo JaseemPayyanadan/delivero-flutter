@@ -277,9 +277,9 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
   Future<void> _openMaps(BuildContext context, String address) async {
     final ok = await openMapsForAddress(address);
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open maps')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not open maps')));
     }
   }
 
