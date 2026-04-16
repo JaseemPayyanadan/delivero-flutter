@@ -508,7 +508,7 @@ class _OwnerDashboardTop extends StatelessWidget {
                   Expanded(
                     child: _DashboardKpiCard(
                       icon: Icons.today_rounded,
-                      iconTone: AppColors.secondary,
+                      iconTone: AppColors.info,
                       title: 'Orders Today',
                       value: isLoading ? '—' : todayOrdersCount.toString(),
                     ),
