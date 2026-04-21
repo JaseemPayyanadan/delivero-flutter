@@ -336,11 +336,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ? null
                                 : _handleLogin,
                             child: authState.isLoading
-                                ? const SizedBox(
+                                ? SizedBox(
                                     height: 24,
                                     width: 24,
                                     child: CircularProgressIndicator(
-                                      color: Colors.white,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onPrimary,
                                       strokeWidth: 2.5,
                                     ),
                                   )

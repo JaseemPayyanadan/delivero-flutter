@@ -292,7 +292,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ),
               child: Center(
                 child: step.isCompleted
-                    ? const Icon(Icons.check, size: 18, color: Colors.white)
+                    ? Icon(
+                        Icons.check,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      )
                     : Text(
                         index.toString(),
                         style: const TextStyle(

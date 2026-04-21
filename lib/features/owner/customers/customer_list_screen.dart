@@ -155,7 +155,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/owner/customers/add'),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 10,
         child: const Icon(Icons.add_rounded),
       ),
@@ -503,14 +503,14 @@ class _CustomerListCard extends StatelessWidget {
           );
 
     return Material(
-      color: Colors.white,
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(22),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Ink(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: AppColors.border),
             boxShadow: const [
@@ -745,7 +745,7 @@ class _RouteChip extends StatelessWidget {
         ? AppColors.primary
         : AppColors.backgroundSecondary.withValues(alpha: 0.7);
     final fg = isSelected
-        ? Colors.white
+        ? Theme.of(context).colorScheme.onPrimary
         : isDisabled
         ? AppColors.textDisabled
         : AppColors.textPrimary;

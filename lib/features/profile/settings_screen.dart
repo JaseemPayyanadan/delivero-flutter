@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/delivero_sliver_header.dart';
 import '../../data/models/user.dart';
 import '../../data/models/driver.dart';
@@ -342,8 +343,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 user.name.trim().isNotEmpty
                     ? user.name.trim()[0].toUpperCase()
                     : '?',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimary,
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
                 ),
@@ -357,12 +358,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 Text(
                   user.name,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.5,
-                  ),
+                  style: context.appTextStyles.appBarTitle,
                 ),
                 const SizedBox(height: 6),
                 Container(

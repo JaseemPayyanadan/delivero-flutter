@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/auth_controller.dart';
@@ -140,6 +141,46 @@ class OrdersNotifier extends Notifier<List<Order>> {
     try {
       _subscription = _mapCollection('orders').snapshots().listen(
         (snapshot) {
+          final customers = ref.read(customersProvider);
+          final routes = ref.read(routesProvider);
+
+          String? deriveRouteKey(Order o) {
+            final raw = o.assignedRoute?.trim();
+            if (raw != null && raw.isNotEmpty) return raw;
+
+            final byId =
+                customers.firstWhereOrNull((c) => c.id == o.customerId);
+            final idRoute = byId?.assignedRoute?.trim();
+            if (idRoute?.isNotEmpty == true) return idRoute;
+
+            final phone = o.customerPhone.trim();
+            if (phone.isNotEmpty) {
+              final byPhone =
+                  customers.firstWhereOrNull((c) => c.phone.trim() == phone);
+              final phoneRoute = byPhone?.assignedRoute?.trim();
+              if (phoneRoute?.isNotEmpty == true) return phoneRoute;
+            }
+
+            final name = o.customerName.trim().toLowerCase();
+            if (name.isNotEmpty) {
+              final byName = customers.firstWhereOrNull(
+                (c) => c.name.trim().toLowerCase() == name,
+              );
+              final nameRoute = byName?.assignedRoute?.trim();
+              if (nameRoute?.isNotEmpty == true) return nameRoute;
+            }
+            return null;
+          }
+
+          String? normalizeRouteId(String? key) {
+            if (key == null) return null;
+            final k = key.trim();
+            if (k.isEmpty) return null;
+            final route =
+                routes.firstWhereOrNull((r) => r.id == k || r.name == k);
+            return route == null ? k : route.id;
+          }
+
           state = snapshot.docs
               .where((doc) {
                 final data = doc.data();
@@ -147,7 +188,14 @@ class OrdersNotifier extends Notifier<List<Order>> {
                     ?.toString();
                 return fid == factoryId;
               })
-              .map((doc) => Order.fromJson({...doc.data(), 'id': doc.id}))
+              .map((doc) {
+                final o = Order.fromJson({...doc.data(), 'id': doc.id});
+                final derivedKey = deriveRouteKey(o);
+                final normalizedId = normalizeRouteId(derivedKey);
+                if (normalizedId == null || normalizedId.isEmpty) return o;
+                if (o.assignedRoute?.trim() == normalizedId) return o;
+                return o.copyWith(assignedRoute: normalizedId);
+              })
               .toList();
           Future.microtask(() {
             ref.read(ordersLoadedProvider.notifier).state = true;

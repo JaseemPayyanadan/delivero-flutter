@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/customer.dart';
+import '../../../data/models/delivery_route.dart';
 import '../../../data/models/order.dart';
 
 class GlobalSearchScreen extends ConsumerStatefulWidget {
@@ -45,6 +49,7 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
   Widget build(BuildContext context) {
     final customers = ref.watch(customersProvider);
     final orders = ref.watch(ordersProvider);
+    final routes = ref.watch(routesProvider);
     final lower = _q.trim().toLowerCase();
 
     final matchedCustomers = lower.isEmpty
@@ -57,8 +62,8 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        title: TextField(
+      appBar: DeliveroAppBar(
+        titleWidget: TextField(
           controller: _query,
           autofocus: true,
           decoration: const InputDecoration(
@@ -96,10 +101,16 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
                 if (matchedOrders.isNotEmpty) ...[
                   _SectionTitle('Orders (${matchedOrders.length})'),
                   ...matchedOrders.map(
-                    (o) => _OrderHitTile(
-                      order: o,
-                      onTap: () => context.push('/owner/orders/${o.id}'),
-                    ),
+                    (o) {
+                      final route = routes.firstWhereOrNull(
+                        (r) => r.id == o.assignedRoute || r.name == o.assignedRoute,
+                      );
+                      return _OrderHitTile(
+                        order: o,
+                        route: route,
+                        onTap: () => context.push('/owner/orders/${o.id}'),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -142,10 +153,9 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8, top: 4),
       child: Text(
         text,
-        style: const TextStyle(
+        style: context.appTextStyles.caption.copyWith(
           fontSize: 12,
           fontWeight: FontWeight.w900,
-          color: AppColors.textLight,
           letterSpacing: 0.6,
         ),
       ),
@@ -157,11 +167,13 @@ class _OrderHitTile extends StatelessWidget {
   final Order order;
   final VoidCallback onTap;
 
-  const _OrderHitTile({required this.order, required this.onTap});
+  final DeliveryRoute? route;
+
+  const _OrderHitTile({required this.order, required this.onTap, this.route});
 
   @override
   Widget build(BuildContext context) {
-    final route = order.assignedRoute ?? '—';
+    final routeLabel = route?.name ?? (order.assignedRoute?.trim().isNotEmpty == true ? order.assignedRoute!.trim() : 'Unassigned');
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -173,7 +185,7 @@ class _OrderHitTile extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         subtitle: Text(
-          '${order.id} · $route',
+          '${order.id} · $routeLabel',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 12),

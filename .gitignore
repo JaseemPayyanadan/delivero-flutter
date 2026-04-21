@@ -55,3 +55,6 @@ app.*.map.json
 # Android signing (do not commit keys)
 android/key.properties
 **/*.jks
+gitignore
+**/android/key.properties
+**/android/app/*.jks**/android/app/*.keystore

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../app/reports_provider.dart';
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/order.dart';
 
 Future<void> _refreshOwnerDashboard(WidgetRef ref) async {
@@ -203,11 +204,11 @@ class OwnerDashboardScreen extends ConsumerWidget {
                   width: 72,
                   height: 72,
                   decoration: const BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: AppColors.shadow,
                         blurRadius: 10,
                         offset: Offset(0, 4),
                       ),
@@ -228,7 +229,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: AppColors.backgroundSecondary,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: AppColors.surface, width: 2),
                     ),
                     child: const Icon(
                       Icons.bar_chart_rounded,
@@ -240,13 +241,11 @@ class OwnerDashboardScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 32),
-            const Text(
+            Text(
               'Ready to Build Your Dashboard?',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: context.appTextStyles.sliverTitle.copyWith(
                 fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
                 letterSpacing: -0.5,
               ),
             ),
@@ -301,24 +300,8 @@ class OwnerDashboardScreen extends ConsumerWidget {
                   HapticFeedback.lightImpact();
                   context.push('/owner/customers');
                 },
-                icon: const Icon(Icons.add_rounded, color: Colors.white),
-                label: const Text(
-                  'Add your first customer',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
-                    fontSize: 14,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 8,
-                ),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add your first customer'),
               ),
             ),
           ],
@@ -1099,8 +1082,8 @@ class _ProductSaleChart extends StatelessWidget {
                               '₹${NumberFormat.compact().format(item.revenue)}';
                           return BarTooltipItem(
                             '${item.name}\n',
-                            const TextStyle(
-                              color: Colors.white,
+                            TextStyle(
+                              color: Theme.of(context).colorScheme.onPrimary,
                               fontWeight: FontWeight.w900,
                               fontSize: 12,
                               height: 1.2,
@@ -1109,8 +1092,11 @@ class _ProductSaleChart extends StatelessWidget {
                               TextSpan(
                                 text:
                                     '$revenueStr · ${(pct * 100).toStringAsFixed(1)}% of catalog\n',
-                                style: const TextStyle(
-                                  color: Colors.white70,
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary
+                                      .withValues(alpha: 0.7),
                                   fontWeight: FontWeight.w800,
                                   fontSize: 11,
                                   height: 1.35,
@@ -1118,8 +1104,11 @@ class _ProductSaleChart extends StatelessWidget {
                               ),
                               TextSpan(
                                 text: '${item.quantity} units sold',
-                                style: const TextStyle(
-                                  color: Colors.white70,
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary
+                                      .withValues(alpha: 0.7),
                                   fontWeight: FontWeight.w800,
                                   fontSize: 11,
                                   height: 1.35,
@@ -1727,8 +1716,8 @@ class _SalesTrendBars extends StatelessWidget {
                               : (val / weekTotal) * 100;
                           return BarTooltipItem(
                             '$dayLine\n',
-                            const TextStyle(
-                              color: Colors.white,
+                            TextStyle(
+                              color: Theme.of(context).colorScheme.onPrimary,
                               fontWeight: FontWeight.w900,
                               fontSize: 12,
                               height: 1.25,
@@ -1736,8 +1725,11 @@ class _SalesTrendBars extends StatelessWidget {
                             children: [
                               TextSpan(
                                 text: '$label · ${share.round()}% of week\n',
-                                style: const TextStyle(
-                                  color: Colors.white70,
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary
+                                      .withValues(alpha: 0.7),
                                   fontWeight: FontWeight.w800,
                                   fontSize: 11,
                                   height: 1.35,
@@ -1746,8 +1738,11 @@ class _SalesTrendBars extends StatelessWidget {
                               TextSpan(
                                 text:
                                     '${d.count} ${d.count == 1 ? 'order' : 'orders'}',
-                                style: const TextStyle(
-                                  color: Colors.white70,
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary
+                                      .withValues(alpha: 0.7),
                                   fontWeight: FontWeight.w800,
                                   fontSize: 11,
                                   height: 1.35,

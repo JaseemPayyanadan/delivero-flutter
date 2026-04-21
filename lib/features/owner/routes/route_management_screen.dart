@@ -92,7 +92,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: AppColors.shadow,
                           blurRadius: 6,
                           offset: const Offset(0, 3),
                         ),
@@ -213,19 +213,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
               }
               if (context.mounted) Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              isEdit ? 'Save' : 'Add route',
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
+            child: Text(isEdit ? 'Save' : 'Add route'),
           ),
         ],
       ),
@@ -245,6 +233,54 @@ class _RouteListTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Local search/filter state kept in widget tree to avoid global providers.
+    return _RouteListTabBody(routes: routes, drivers: drivers, routesLoaded: routesLoaded);
+  }
+}
+
+class _RouteListTabBody extends ConsumerStatefulWidget {
+  final List<DeliveryRoute> routes;
+  final List<Driver> drivers;
+  final bool routesLoaded;
+  const _RouteListTabBody({
+    required this.routes,
+    required this.drivers,
+    required this.routesLoaded,
+  });
+
+  @override
+  ConsumerState<_RouteListTabBody> createState() => _RouteListTabBodyState();
+}
+
+enum _RouteFilter { all, active, inactive }
+
+class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
+  final TextEditingController _search = TextEditingController();
+  String _q = '';
+  _RouteFilter _filter = _RouteFilter.all;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  bool _matches(DeliveryRoute route, String driverName) {
+    if (_filter == _RouteFilter.active && !route.isActive) return false;
+    if (_filter == _RouteFilter.inactive && route.isActive) return false;
+    final query = _q.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    return route.name.toLowerCase().contains(query) ||
+        route.area.toLowerCase().contains(query) ||
+        driverName.toLowerCase().contains(query);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final routes = widget.routes;
+    final drivers = widget.drivers;
+    final routesLoaded = widget.routesLoaded;
+
     if (!routesLoaded && routes.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -256,128 +292,175 @@ class _RouteListTab extends ConsumerWidget {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(24, 4, 24, 72),
-      itemCount: routes.length,
-      itemBuilder: (context, index) {
-        final route = routes[index];
-        final assignedDriver = drivers.firstWhereOrNull(
-          (d) => d.id == route.assignedDriver,
-        );
-        final driverName = assignedDriver?.name ?? 'No driver yet';
+    final visible = <({DeliveryRoute route, String driverName})>[];
+    for (final route in routes) {
+      final assignedDriver =
+          drivers.firstWhereOrNull((d) => d.id == route.assignedDriver);
+      final driverName = assignedDriver?.name ?? 'No driver yet';
+      if (_matches(route, driverName)) {
+        visible.add((route: route, driverName: driverName));
+      }
+    }
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.border),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadow,
-                blurRadius: 20,
-                offset: Offset(0, 10),
-              ),
-            ],
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 72),
+      children: [
+        TextField(
+          controller: _search,
+          onChanged: (v) => setState(() => _q = v),
+          decoration: const InputDecoration(
+            hintText: 'Search routes, areas, drivers…',
+            prefixIcon: Icon(Icons.search_rounded),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: InkWell(
-              onTap: () => _showRouteDetails(context, route, driverName),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            _FilterChip(
+              label: 'All',
+              selected: _filter == _RouteFilter.all,
+              onTap: () => setState(() => _filter = _RouteFilter.all),
+            ),
+            const SizedBox(width: 10),
+            _FilterChip(
+              label: 'Active',
+              selected: _filter == _RouteFilter.active,
+              onTap: () => setState(() => _filter = _RouteFilter.active),
+            ),
+            const SizedBox(width: 10),
+            _FilterChip(
+              label: 'Inactive',
+              selected: _filter == _RouteFilter.inactive,
+              onTap: () => setState(() => _filter = _RouteFilter.inactive),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        ...visible.map((e) {
+          final route = e.route;
+          final driverName = e.driverName;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppColors.border),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: InkWell(
+                onTap: () => _showRouteDetails(context, route, driverName),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.alt_route_rounded,
+                              color: AppColors.primary,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.alt_route_rounded,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                route.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 18,
-                                  color: AppColors.textPrimary,
-                                  letterSpacing: -0.5,
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  route.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: -0.5,
+                                  ),
                                 ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  route.area.toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.textLight,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _buildStatusBadge(route.isActive),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundSecondary,
+                        border: const Border(
+                          top: BorderSide(color: AppColors.border),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.person_pin_circle_rounded,
+                                size: 16,
+                                color: AppColors.textLight,
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(width: 8),
                               Text(
-                                route.area.toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.textLight,
+                                driverName,
+                                style: TextStyle(
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.8,
+                                  color: route.assignedDriver != null
+                                      ? AppColors.textPrimary
+                                      : AppColors.error,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        _buildStatusBadge(route.isActive),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundSecondary,
-                      border: const Border(
-                        top: BorderSide(color: AppColors.border),
+                          _buildActionMenu(context, ref, route),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.person_pin_circle_rounded,
-                              size: 16,
-                              color: AppColors.textLight,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              driverName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: route.assignedDriver != null
-                                    ? AppColors.textPrimary
-                                    : AppColors.error,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                        _buildActionMenu(context, ref, route),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
+          );
+        }),
+        if (visible.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 60),
+            child: _buildEmptyState(
+              Icons.search_off_rounded,
+              'No matches',
+              'Try a different keyword or filter.',
+            ),
           ),
-        );
-      },
+      ],
     );
   }
 
@@ -436,7 +519,8 @@ class _RouteListTab extends ConsumerWidget {
     WidgetRef ref,
     DeliveryRoute route,
   ) {
-    final availableDrivers = drivers
+    final availableDrivers = ref
+        .read(driversProvider)
         .where((d) => d.isActive && d.currentRoute == null)
         .toList();
 
@@ -601,18 +685,9 @@ class _RouteListTab extends ConsumerWidget {
               ref.read(routesProvider.notifier).updateRoute(updated);
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
             child: const Text(
               'Save',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -834,6 +909,41 @@ class _RouteListTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.textPrimary : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: selected ? Colors.transparent : AppColors.border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Theme.of(context).colorScheme.onPrimary : AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1266,10 +1376,7 @@ void _showAddEditDriverDialog(
             ),
             child: Text(
               isEdit ? 'Save' : 'Add driver',
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
         ],

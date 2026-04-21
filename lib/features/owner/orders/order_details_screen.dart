@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/maps_launch.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/delivery_route.dart';
@@ -51,6 +52,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
         .watch(ordersProvider)
         .firstWhereOrNull((o) => o.id == widget.orderId);
     final routes = ref.watch(routesProvider);
+    final customers = ref.watch(customersProvider);
 
     if (order == null) {
       return Scaffold(
@@ -62,6 +64,27 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     final route = routes.firstWhereOrNull(
       (r) => r.id == order.assignedRoute || r.name == order.assignedRoute,
     );
+
+    final derivedCustomerRoute = customers
+            .firstWhereOrNull((c) => c.id == order.customerId)
+            ?.assignedRoute
+            ?.trim() ??
+        customers
+            .firstWhereOrNull((c) => c.phone.trim() == order.customerPhone.trim())
+            ?.assignedRoute
+            ?.trim() ??
+        customers
+            .firstWhereOrNull(
+              (c) => c.name.trim().toLowerCase() == order.customerName.trim().toLowerCase(),
+            )
+            ?.assignedRoute
+            ?.trim();
+
+    final effectiveRouteKey =
+        (order.assignedRoute?.trim().isNotEmpty == true) ? order.assignedRoute!.trim() : derivedCustomerRoute;
+    final effectiveRoute = effectiveRouteKey == null
+        ? null
+        : routes.firstWhereOrNull((r) => r.id == effectiveRouteKey || r.name == effectiveRouteKey);
 
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentStatusColor(paymentStatus);
@@ -176,7 +199,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
             const SizedBox(height: 18),
             _CustomerOverviewCard(
               order: order,
-              route: route,
+              route: effectiveRoute ?? route,
               onOpenMaps: order.customerAddress.trim().isEmpty
                   ? null
                   : () => _openMaps(context, order.customerAddress),
@@ -643,7 +666,7 @@ Color _getStatusColor(OrderStatus status) {
 Color _getStatusBg(OrderStatus status) {
   switch (status) {
     case OrderStatus.pending:
-      return const Color(0xFFFFE7B2);
+      return AppColors.warningLighter.withValues(alpha: 0.9);
     case OrderStatus.delivered:
       return AppColors.backgroundTertiary.withValues(alpha: 0.8);
     case OrderStatus.cancelled:
@@ -656,7 +679,7 @@ Color _getStatusBg(OrderStatus status) {
 Color _getStatusFg(OrderStatus status) {
   switch (status) {
     case OrderStatus.pending:
-      return const Color(0xFFB45309);
+      return AppColors.warning;
     case OrderStatus.delivered:
       return AppColors.textSecondary;
     case OrderStatus.cancelled:
@@ -692,7 +715,7 @@ class _Card extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
@@ -725,12 +748,7 @@ class _SectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.2,
-            ),
+            style: context.appTextStyles.sectionHeader,
           ),
         ),
         if (trailingWidget != null) trailingWidget!,
@@ -837,7 +855,10 @@ class _CustomerOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final routeLabel = route?.name ?? order.assignedRoute ?? 'Not set';
+    final routeLabel = route?.name ??
+        (order.assignedRoute?.trim().isNotEmpty == true
+            ? order.assignedRoute!.trim()
+            : 'Unassigned');
 
     return _Card(
       padding: const EdgeInsets.all(18),
@@ -905,16 +926,33 @@ class _CustomerOverviewCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Center(
-            child: _PillBadge(
-              label: routeLabel,
-              leading: const Icon(
-                Icons.near_me_rounded,
-                size: 16,
-                color: AppColors.primary,
-              ),
-              background: AppColors.backgroundSecondary,
-              foreground: AppColors.textPrimary,
-              border: null,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _PillBadge(
+                  label: routeLabel,
+                  leading: const Icon(
+                    Icons.near_me_rounded,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                  background: AppColors.backgroundSecondary,
+                  foreground: AppColors.textPrimary,
+                  border: null,
+                ),
+                if (routeLabel == 'Unassigned') ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          context.push('/owner/customers/edit/${order.customerId}'),
+                      icon: const Icon(Icons.alt_route_rounded, size: 18),
+                      label: const Text('Assign route'),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           if (order.customerAddress.trim().isNotEmpty) ...[
@@ -1189,7 +1227,7 @@ class _BottomActions extends StatelessWidget {
                 onPressed: isDelivered ? null : onMarkDelivered,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(

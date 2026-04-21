@@ -183,13 +183,12 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       if (customersLoaded && customer == null) {
         return Scaffold(
           backgroundColor: AppColors.backgroundPrimary,
-          appBar: AppBar(
-            backgroundColor: AppColors.surface,
+          appBar: DeliveroAppBar(
+            title: 'Partner',
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_rounded),
               onPressed: () => context.pop(),
             ),
-            title: const Text('Partner'),
           ),
           body: Center(
             child: Padding(
@@ -322,9 +321,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           ),
           child: Text(
             _isEditMode ? 'Save changes' : 'Add customer',
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w900,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onPrimary,
               letterSpacing: 1,
               fontSize: 14,
             ),

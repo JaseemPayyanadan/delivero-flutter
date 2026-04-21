@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app_colors.dart';
+import 'app_text_styles.dart';
 
 class AppTheme {
   static const SystemUiOverlayStyle systemOverlayStyle = SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
     statusBarBrightness: Brightness.light,
-    systemNavigationBarColor: Colors.white,
+    systemNavigationBarColor: AppColors.surface,
     systemNavigationBarIconBrightness: Brightness.dark,
     systemNavigationBarDividerColor: Colors.transparent,
   );
 
   static ThemeData light() {
     final baseTextTheme = ThemeData(useMaterial3: true).textTheme;
+    final appText = AppTextStyles.light(baseTextTheme);
     return ThemeData(
       useMaterial3: true,
       fontFamily: 'Geist',
@@ -30,25 +32,20 @@ class AppTheme {
         secondary: AppColors.secondary,
         surface: AppColors.surface,
         error: AppColors.error,
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
+        onPrimary: AppColors.surface,
+        onSecondary: AppColors.surface,
         onSurface: AppColors.textPrimary,
-        onError: Colors.white,
+        onError: AppColors.surface,
         outline: AppColors.border,
         surfaceContainerHighest: AppColors.backgroundSecondary,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.backgroundPrimary,
         elevation: 0,
         centerTitle: false,
         systemOverlayStyle: systemOverlayStyle,
-        iconTheme: IconThemeData(color: AppColors.textPrimary, size: 22),
-        titleTextStyle: TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -0.5,
-        ),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 22),
+        titleTextStyle: appText.appBarTitle,
       ),
       textTheme: baseTextTheme.copyWith(
         displayLarge: baseTextTheme.displayLarge?.copyWith(
@@ -111,7 +108,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.surface,
           minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -127,7 +124,7 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.surface,
           padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -160,10 +157,39 @@ class AppTheme {
         secondaryLabelStyle: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: Colors.white,
+          color: AppColors.surface,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         side: BorderSide.none,
+      ),
+      tabBarTheme: TabBarTheme(
+        dividerColor: Colors.transparent,
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
+        splashFactory: NoSplash.splashFactory,
+        labelColor: AppColors.primary,
+        unselectedLabelColor: AppColors.textSecondary,
+        labelStyle: const TextStyle(
+          fontWeight: FontWeight.w900,
+          fontSize: 13,
+          letterSpacing: 0.4,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+          letterSpacing: 0.2,
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 6,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface,
@@ -188,6 +214,9 @@ class AppTheme {
           );
         }),
       ),
+      extensions: <ThemeExtension<dynamic>>[
+        appText,
+      ],
     );
   }
 }

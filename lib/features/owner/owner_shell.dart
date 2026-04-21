@@ -40,7 +40,7 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
           : FloatingActionButton(
               onPressed: () => context.push('/owner/orders/create'),
               backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               elevation: 10,
               child: const Icon(Icons.add_rounded, size: 26),
             ),
@@ -50,11 +50,11 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             border: const Border(top: BorderSide(color: AppColors.border)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
+                color: AppColors.shadow,
                 blurRadius: 10,
                 offset: const Offset(0, -4),
               ),
@@ -63,7 +63,7 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
           child: NavigationBarTheme(
             data: NavigationBarThemeData(
               height: 52,
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surface,
               surfaceTintColor: Colors.transparent,
               indicatorColor: AppColors.primaryLighter,
               indicatorShape: RoundedRectangleBorder(

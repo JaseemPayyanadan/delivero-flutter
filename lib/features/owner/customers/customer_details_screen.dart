@@ -211,23 +211,13 @@ class CustomerDetailsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      appBar: AppBar(
-        backgroundColor: AppColors.backgroundPrimary,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
+      appBar: DeliveroAppBar(
+        title: 'Customer Profile',
+        centerTitle: true,
         leading: IconButton(
           tooltip: 'Back',
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-        ),
-        centerTitle: true,
-        title: const Text(
-          'Customer Profile',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
-          ),
         ),
         actions: [
           TextButton(
@@ -280,9 +270,9 @@ class CustomerDetailsScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person_rounded,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   size: 34,
                 ),
               ),

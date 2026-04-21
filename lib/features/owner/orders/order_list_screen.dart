@@ -12,6 +12,7 @@ import 'package:printing/printing.dart';
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../data/models/customer.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 
@@ -291,23 +292,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               Navigator.pop(context);
               await _printPackagingSummary(filteredOrders);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            icon: const Icon(
-              Icons.print_rounded,
-              size: 18,
-              color: Colors.white,
-            ),
+            icon: const Icon(Icons.print_rounded, size: 18),
             label: const Text(
               'PRINT',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w900),
             ),
           ),
         ],
@@ -321,6 +309,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final ordersLoaded = ref.watch(ordersLoadedProvider);
     final routes = ref.watch(routesProvider);
     final routesLoaded = ref.watch(routesLoadedProvider);
+    final customers = ref.watch(customersProvider);
     final bool noOrdersYet = orders.isEmpty;
 
     String? routeIdForOrder(Order o) {
@@ -449,7 +438,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate(
-                    _buildGroupedOrderWidgets(filteredOrders, routes),
+                    _buildGroupedOrderWidgets(filteredOrders, routes, customers),
                   ),
                 ),
               ),
@@ -462,14 +451,42 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   List<Widget> _buildGroupedOrderWidgets(
     List<Order> filteredOrders,
     List<DeliveryRoute> routes,
+    List<Customer> customers,
   ) {
     String routeLabelFor(Order order) {
       final raw = order.assignedRoute?.trim();
-      if (raw == null || raw.isEmpty) return 'Unassigned';
+      String? customerRoute() {
+        final byId = customers.firstWhereOrNull((c) => c.id == order.customerId);
+        if (byId?.assignedRoute?.trim().isNotEmpty == true) {
+          return byId!.assignedRoute!.trim();
+        }
+
+        final phone = order.customerPhone.trim();
+        if (phone.isNotEmpty) {
+          final byPhone = customers.firstWhereOrNull((c) => c.phone.trim() == phone);
+          if (byPhone?.assignedRoute?.trim().isNotEmpty == true) {
+            return byPhone!.assignedRoute!.trim();
+          }
+        }
+
+        final name = order.customerName.trim().toLowerCase();
+        if (name.isNotEmpty) {
+          final byName = customers.firstWhereOrNull(
+            (c) => c.name.trim().toLowerCase() == name,
+          );
+          if (byName?.assignedRoute?.trim().isNotEmpty == true) {
+            return byName!.assignedRoute!.trim();
+          }
+        }
+        return null;
+      }
+
+      final effective = (raw == null || raw.isEmpty) ? customerRoute() : raw;
+      if (effective == null || effective.isEmpty) return 'Unassigned';
       final route = routes.firstWhereOrNull(
-        (r) => r.id == raw || r.name == raw,
+        (r) => r.id == effective || r.name == effective,
       );
-      return route?.name ?? raw;
+      return route?.name ?? effective;
     }
 
     final groups = <String, List<Order>>{};
@@ -539,7 +556,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       );
                       return _buildRouteChip(
                         routeId,
-                        route?.name ?? 'Unknown Route',
+                        route?.name ?? routeId,
                         routesLoaded: routesLoaded,
                       );
                     }),
@@ -582,7 +599,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             label,
             style: TextStyle(
               color: isSelected
-                  ? Colors.white
+                  ? Theme.of(context).colorScheme.onPrimary
                   : isLoading || (!routesLoaded && routeId != null)
                   ? AppColors.textDisabled
                   : AppColors.textPrimary,
@@ -616,7 +633,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
                         color: isSelected
-                            ? Colors.white
+                            ? Theme.of(context).colorScheme.onPrimary
                             : AppColors.textPrimary,
                       ),
                     ),

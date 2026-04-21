@@ -362,7 +362,8 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
                                   onPressed: _complete,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
-                                    foregroundColor: Colors.white,
+                                    foregroundColor:
+                                        Theme.of(context).colorScheme.onPrimary,
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 16,
                                       vertical: 12,
@@ -386,7 +387,6 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
                                       Icon(
                                         Icons.arrow_forward_rounded,
                                         size: 18,
-                                        color: Colors.white,
                                       ),
                                     ],
                                   ),

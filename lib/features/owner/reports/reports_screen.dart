@@ -36,9 +36,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
               primary: AppColors.primary,
-              onPrimary: Colors.white,
               onSurface: AppColors.textPrimary,
             ),
           ),
@@ -535,10 +534,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Optimize Your Fleet',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                       fontWeight: FontWeight.w900,
                       fontSize: 16,
                       letterSpacing: -0.2,
@@ -548,7 +547,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   Text(
                     'Our AI suggests actions in 2 minutes for the upcoming weekend — just to maintain your 98% success rate.',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onPrimary
+                          .withValues(alpha: 0.9),
                       height: 1.4,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -560,7 +562,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     child: FilledButton(
                       onPressed: () => _toast('Upgrade coming soon'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
+                        backgroundColor: AppColors.surface,
                         foregroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -595,6 +597,7 @@ class _PresetPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onPrimary = Theme.of(context).colorScheme.onPrimary;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
@@ -613,7 +616,7 @@ class _PresetPill extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: selected ? Colors.white : AppColors.textSecondary,
+              color: selected ? onPrimary : AppColors.textSecondary,
               fontWeight: FontWeight.w800,
               fontSize: 12,
             ),

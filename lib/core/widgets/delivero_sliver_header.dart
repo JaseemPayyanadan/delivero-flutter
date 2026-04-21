@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
 
 class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
-  final String title;
+  final String? title;
+  final Widget? titleWidget;
   final bool centerTitle;
   final List<Widget>? actions;
   final Widget? leading;
 
   const DeliveroAppBar({
     super.key,
-    required this.title,
+    this.title,
+    this.titleWidget,
     this.centerTitle = false,
     this.actions,
     this.leading,
@@ -29,17 +32,14 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
       systemOverlayStyle: AppTheme.systemOverlayStyle,
       centerTitle: centerTitle,
       leading: leading,
-      title: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 16,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.2,
-        ),
-      ),
+      title: titleWidget ??
+          Text(
+            title ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style:
+                context.appTextStyles.sectionHeader.copyWith(letterSpacing: 0.2),
+          ),
       actions: actions,
     );
   }
@@ -107,12 +107,7 @@ class DeliveroSliverHeader extends StatelessWidget {
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1,
-              ),
+              style: context.appTextStyles.sliverTitle,
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 2),
@@ -120,11 +115,7 @@ class DeliveroSliverHeader extends StatelessWidget {
                 subtitle!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: context.appTextStyles.sliverSubtitle,
               ),
             ],
           ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_colors.dart';
 import 'dashboard/delivery_dashboard_screen.dart';
 import 'order_status_list_screen.dart';
 import '../profile/settings_screen.dart';
@@ -25,11 +26,11 @@ class DeliveryShell extends ConsumerWidget {
         top: false,
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 18),
-          decoration: const BoxDecoration(color: Colors.white),
+          decoration: const BoxDecoration(color: AppColors.surface),
           child: NavigationBarTheme(
             data: NavigationBarThemeData(
               height: 52,
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surface,
               surfaceTintColor: Colors.transparent,
               indicatorColor: Colors.transparent,
               overlayColor: WidgetStateProperty.all(Colors.transparent),
@@ -37,7 +38,7 @@ class DeliveryShell extends ConsumerWidget {
               labelTextStyle: WidgetStateProperty.resolveWith((states) {
                 final selected = states.contains(WidgetState.selected);
                 return TextStyle(
-                  color: selected ? Colors.black : Colors.black54,
+                  color: selected ? AppColors.textPrimary : AppColors.textSecondary,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
                   fontSize: 10,
                 );
@@ -45,7 +46,7 @@ class DeliveryShell extends ConsumerWidget {
               iconTheme: WidgetStateProperty.resolveWith((states) {
                 final selected = states.contains(WidgetState.selected);
                 return IconThemeData(
-                  color: selected ? Colors.black : Colors.black54,
+                  color: selected ? AppColors.textPrimary : AppColors.textSecondary,
                   size: 20,
                 );
               }),

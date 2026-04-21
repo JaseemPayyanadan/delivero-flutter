@@ -156,7 +156,9 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
       onSelected: (val) => setState(() => _selectedStatus = key),
       selectedColor: AppColors.primary,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : AppColors.textPrimary,
+        color: isSelected
+            ? Theme.of(context).colorScheme.onPrimary
+            : AppColors.textPrimary,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
     );

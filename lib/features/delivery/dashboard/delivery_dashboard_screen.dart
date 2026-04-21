@@ -381,7 +381,12 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                         subtitle: 'Collections and outstanding amounts',
                       ),
                       const SizedBox(height: 14),
-                      _buildFinancialCard(todayCash, todayUpi, todayPending),
+                      _buildFinancialCard(
+                        context,
+                        todayCash,
+                        todayUpi,
+                        todayPending,
+                      ),
                       const SizedBox(height: 20),
                       _SectionTitle(
                         title: 'All-Time Summary',
@@ -487,7 +492,13 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFinancialCard(double cash, double upi, double pending) {
+  Widget _buildFinancialCard(
+    BuildContext context,
+    double cash,
+    double upi,
+    double pending,
+  ) {
+    final onPrimary = Theme.of(context).colorScheme.onPrimary;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -516,17 +527,17 @@ class DeliveryDashboardScreen extends ConsumerWidget {
             right: -4,
             child: Icon(
               Icons.auto_awesome_rounded,
-              color: Colors.white.withValues(alpha: 0.08),
+              color: onPrimary.withValues(alpha: 0.08),
               size: 80,
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Total Collected Today',
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: onPrimary.withValues(alpha: 0.7),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.2,
@@ -535,8 +546,8 @@ class DeliveryDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 6),
               Text(
                 '\u20b9${(cash + upi).toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: onPrimary,
                   fontSize: 34,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -1,
@@ -547,6 +558,7 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _buildFinancialItem(
+                    context,
                     'Cash',
                     '\u20b9${cash.toStringAsFixed(0)}',
                     Icons.payments_outlined,
@@ -554,9 +566,10 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                   Container(
                     width: 1,
                     height: 40,
-                    color: Colors.white24,
+                    color: onPrimary.withValues(alpha: 0.24),
                   ),
                   _buildFinancialItem(
+                    context,
                     'UPI',
                     '\u20b9${upi.toStringAsFixed(0)}',
                     Icons.qr_code_scanner_outlined,
@@ -564,9 +577,10 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                   Container(
                     width: 1,
                     height: 40,
-                    color: Colors.white24,
+                    color: onPrimary.withValues(alpha: 0.24),
                   ),
                   _buildFinancialItem(
+                    context,
                     'Pending',
                     '\u20b9${pending.toStringAsFixed(0)}',
                     Icons.hourglass_empty_outlined,
@@ -580,23 +594,29 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFinancialItem(String label, String value, IconData icon) {
+  Widget _buildFinancialItem(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+  ) {
+    final onPrimary = Theme.of(context).colorScheme.onPrimary;
     return Column(
       children: [
-        Icon(icon, color: Colors.white, size: 20),
+        Icon(icon, color: onPrimary, size: 20),
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: onPrimary,
             fontWeight: FontWeight.w800,
             fontSize: 15,
           ),
         ),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white70,
+          style: TextStyle(
+            color: onPrimary.withValues(alpha: 0.7),
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),

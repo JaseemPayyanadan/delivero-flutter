@@ -191,7 +191,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             border: Border(top: BorderSide(color: AppColors.border)),
           ),
           child: FilledButton(
@@ -204,22 +204,22 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               ),
             ),
             child: _isSubmitting
-                ? const SizedBox(
+                ? SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.4,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   )
                 : Text(
                     widget.orderId == null
                         ? 'Confirm & Schedule Delivery'
                         : 'Update Order',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.2,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
           ),
@@ -362,10 +362,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               ),
               child: const Text(
                 'SAVE',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
           ],
@@ -500,7 +497,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           builder: (context, controller) {
             return Container(
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
@@ -711,7 +708,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: selected ? Colors.white : AppColors.textPrimary,
+                  color: selected
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : AppColors.textPrimary,
                   fontWeight: FontWeight.w900,
                   fontSize: 12,
                 ),
@@ -809,6 +808,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           r.id == _selectedCustomer!.assignedRoute ||
           r.name == _selectedCustomer!.assignedRoute,
     );
+    final normalizedRouteId = route?.id ??
+        (_selectedCustomer!.assignedRoute?.trim().isNotEmpty == true
+            ? _selectedCustomer!.assignedRoute!.trim()
+            : null);
     final assignedDriver = route?.assignedDriver;
     final discountAmount = _computePartnerDiscount(subtotal);
     final totalAmount = (subtotal - discountAmount)
@@ -832,7 +835,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             discountAmount: discountAmount,
             totalAmount: totalAmount,
             status: OrderStatus.pending,
-            assignedRoute: _selectedCustomer!.assignedRoute,
+            assignedRoute: normalizedRouteId,
             assignedDriver: assignedDriver,
             orderDate: now,
             createdAt: now,
@@ -850,7 +853,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             subtotal: subtotal,
             discountAmount: discountAmount,
             totalAmount: totalAmount,
-            assignedRoute: _selectedCustomer!.assignedRoute,
+            assignedRoute: normalizedRouteId,
             assignedDriver: assignedDriver,
             updatedAt: now,
           );
@@ -1324,7 +1327,9 @@ class _WeekdayPicker extends StatelessWidget {
               child: Text(
                 e.value,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.textLight,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : AppColors.textLight,
                   fontWeight: FontWeight.w900,
                 ),
               ),

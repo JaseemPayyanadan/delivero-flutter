@@ -137,12 +137,12 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddEditDialog(context, ref),
         backgroundColor: AppColors.secondary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 8,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        icon: const Icon(Icons.add_rounded),
         label: const Text(
           'New product',
           style: TextStyle(
-            color: Colors.white,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
             fontSize: 14,
@@ -288,14 +288,6 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
           const SizedBox(height: 18),
           ElevatedButton.icon(
             onPressed: () => _showAddEditDialog(context, ref),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
             icon: const Icon(Icons.add_rounded, size: 18),
             label: const Text(
               'Add product',
@@ -509,17 +501,10 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
               }
               if (context.mounted) Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
             child: Text(
               isEdit ? 'Save' : 'Add',
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
               ),
             ),
           ),

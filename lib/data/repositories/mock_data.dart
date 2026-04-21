@@ -130,6 +130,7 @@ final mockOrders = [
     customerEmail: 'contact@grandhotel.com',
     customerPhone: '+1-555-1001',
     customerAddress: '101 Hotel St',
+    assignedRoute: 'r1',
     items: [
       OrderItem(
         id: 'oi1',
@@ -157,6 +158,7 @@ final mockOrders = [
     customerEmail: 'info@citycafe.com',
     customerPhone: '+1-555-1002',
     customerAddress: '202 Cafe Ave',
+    assignedRoute: 'r1',
     items: [
       OrderItem(
         id: 'oi2',

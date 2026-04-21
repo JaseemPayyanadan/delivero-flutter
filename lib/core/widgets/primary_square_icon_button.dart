@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 
 class PrimarySquareIconButton extends StatelessWidget {
   final IconData icon;
@@ -23,7 +24,7 @@ class PrimarySquareIconButton extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           boxShadow: const [
             BoxShadow(
               color: AppColors.shadow,
@@ -32,7 +33,11 @@ class PrimarySquareIconButton extends StatelessWidget {
             ),
           ],
         ),
-        child: Icon(icon, color: Colors.white, size: 22),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.onPrimary,
+          size: 22,
+        ),
       ),
     );
   }
