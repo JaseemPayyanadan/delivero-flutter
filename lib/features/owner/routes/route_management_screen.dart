@@ -279,13 +279,13 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
       );
     }
 
-    final visible = <({DeliveryRoute route, String driverName})>[];
+    final visible = <({DeliveryRoute route, Driver? driver, String driverName})>[];
     for (final route in routes) {
       final assignedDriver =
           drivers.firstWhereOrNull((d) => d.id == route.assignedDriver);
       final driverName = assignedDriver?.name ?? 'No driver yet';
       if (_matches(route, driverName)) {
-        visible.add((route: route, driverName: driverName));
+        visible.add((route: route, driver: assignedDriver, driverName: driverName));
       }
     }
 
@@ -316,12 +316,17 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
         ...visible.map((e) {
           final route = e.route;
           final driverName = e.driverName;
+          final driver = e.driver;
           final hasDriver =
               route.assignedDriver != null && route.assignedDriver!.isNotEmpty;
           return RouteCard(
             route: route,
             driverName: driverName,
             hasDriver: hasDriver,
+            vehicleTypeLabel: driver == null
+                ? null
+                : '${driver.vehicleType.name[0].toUpperCase()}${driver.vehicleType.name.substring(1)}',
+            vehicleType: driver?.vehicleType,
             onTap: () => _showRouteDetails(context, route, driverName),
             onAssign: () => _showAssignDialog(context, ref, route),
             trailingMenu: _buildActionMenu(context, ref, route),

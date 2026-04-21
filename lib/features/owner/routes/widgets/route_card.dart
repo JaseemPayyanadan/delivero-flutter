@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../data/models/delivery_route.dart';
+import '../../../../data/models/driver.dart';
 
 class RouteCard extends StatelessWidget {
   final DeliveryRoute route;
   final String driverName;
   final bool hasDriver;
+  final String? vehicleTypeLabel;
+  final VehicleType? vehicleType;
   final VoidCallback onTap;
   final VoidCallback onAssign;
   final Widget trailingMenu;
@@ -17,10 +20,25 @@ class RouteCard extends StatelessWidget {
     required this.route,
     required this.driverName,
     required this.hasDriver,
+    this.vehicleTypeLabel,
+    this.vehicleType,
     required this.onTap,
     required this.onAssign,
     required this.trailingMenu,
   });
+
+  String _vehicleAsset(VehicleType type) {
+    switch (type) {
+      case VehicleType.bike:
+        return 'assets/images/scooty.png';
+      case VehicleType.scooter:
+        return 'assets/images/scooter.webp';
+      case VehicleType.auto:
+        return 'assets/images/auto.png';
+      case VehicleType.van:
+        return 'assets/images/scooter.webp';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +190,33 @@ class RouteCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
+                    if (hasDriver && vehicleType != null) ...[
+                      Container(
+                        width: 30,
+                        height: 30,
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Image.asset(
+                          _vehicleAsset(vehicleType!),
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        vehicleTypeLabel ?? '',
+                        style: context.appTextStyles.caption.copyWith(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textSecondary,
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
                     Expanded(
                       child: Text(
                         driverName,
