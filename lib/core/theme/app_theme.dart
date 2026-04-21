@@ -162,7 +162,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         side: BorderSide.none,
       ),
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         dividerColor: Colors.transparent,
         overlayColor: WidgetStateProperty.all(Colors.transparent),
         splashFactory: NoSplash.splashFactory,

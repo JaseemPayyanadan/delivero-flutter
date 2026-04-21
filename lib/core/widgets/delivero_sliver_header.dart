@@ -10,6 +10,7 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool centerTitle;
   final List<Widget>? actions;
   final Widget? leading;
+  final double leadingSlotWidth;
 
   const DeliveroAppBar({
     super.key,
@@ -18,6 +19,7 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.centerTitle = false,
     this.actions,
     this.leading,
+    this.leadingSlotWidth = kToolbarHeight,
   });
 
   @override
@@ -25,6 +27,20 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final actionsCount = actions?.length ?? 0;
+    final leftPad = leading == null ? 0.0 : leadingSlotWidth;
+    // IconButtons are typically ~56 logical pixels wide.
+    final rightPad = actionsCount <= 0 ? 0.0 : (actionsCount * 56.0);
+
+    final Widget resolvedTitle = titleWidget ??
+        Text(
+          title ?? '',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style:
+              context.appTextStyles.sectionHeader.copyWith(letterSpacing: 0.2),
+        );
+
     return AppBar(
       backgroundColor: AppColors.backgroundPrimary,
       elevation: 0,
@@ -32,14 +48,12 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
       systemOverlayStyle: AppTheme.systemOverlayStyle,
       centerTitle: centerTitle,
       leading: leading,
-      title: titleWidget ??
-          Text(
-            title ?? '',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style:
-                context.appTextStyles.sectionHeader.copyWith(letterSpacing: 0.2),
-          ),
+      title: centerTitle
+          ? Padding(
+              padding: EdgeInsets.only(left: leftPad, right: rightPad),
+              child: Align(alignment: Alignment.center, child: resolvedTitle),
+            )
+          : resolvedTitle,
       actions: actions,
     );
   }

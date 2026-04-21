@@ -5,10 +5,13 @@ import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/primary_square_icon_button.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/driver.dart';
+import 'widgets/management_search_filters.dart';
+import 'widgets/route_card.dart';
 
 class RouteManagementScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
@@ -79,7 +82,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
                   vertical: 8,
                 ),
                 child: Container(
-                  height: 52,
+                  height: 60,
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: AppColors.backgroundSecondary,
@@ -87,31 +90,15 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
                   ),
                   child: TabBar(
                     controller: _tabController,
-                    indicator: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.shadow,
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    labelColor: AppColors.primary,
-                    unselectedLabelColor: AppColors.textSecondary,
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                      letterSpacing: 0.5,
-                    ),
-                    unselectedLabelStyle: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                    tabs: const [
-                      Tab(text: 'Routes'),
-                      Tab(text: 'Drivers'),
+                    tabs: [
+                      Tab(
+                        icon: const Icon(Icons.alt_route_rounded, size: 18),
+                        text: 'Routes',
+                      ),
+                      Tab(
+                        icon: const Icon(Icons.person_pin_circle_rounded, size: 18),
+                        text: 'Drivers',
+                      ),
                     ],
                   ),
                 ),
@@ -305,150 +292,39 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 4, 24, 72),
       children: [
-        TextField(
+        ManagementSearchFilters(
           controller: _search,
           onChanged: (v) => setState(() => _q = v),
-          decoration: const InputDecoration(
-            hintText: 'Search routes, areas, drivers…',
-            prefixIcon: Icon(Icons.search_rounded),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _FilterChip(
+          chips: [
+            ManagementFilterChip(
               label: 'All',
               selected: _filter == _RouteFilter.all,
               onTap: () => setState(() => _filter = _RouteFilter.all),
             ),
-            const SizedBox(width: 10),
-            _FilterChip(
+            ManagementFilterChip(
               label: 'Active',
               selected: _filter == _RouteFilter.active,
               onTap: () => setState(() => _filter = _RouteFilter.active),
             ),
-            const SizedBox(width: 10),
-            _FilterChip(
+            ManagementFilterChip(
               label: 'Inactive',
               selected: _filter == _RouteFilter.inactive,
               onTap: () => setState(() => _filter = _RouteFilter.inactive),
             ),
           ],
         ),
-        const SizedBox(height: 16),
         ...visible.map((e) {
           final route = e.route;
           final driverName = e.driverName;
-          return Container(
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: AppColors.border),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadow,
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: InkWell(
-                onTap: () => _showRouteDetails(context, route, driverName),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(
-                              Icons.alt_route_rounded,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  route.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 18,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  route.area.toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: AppColors.textLight,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.8,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          _buildStatusBadge(route.isActive),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.backgroundSecondary,
-                        border: const Border(
-                          top: BorderSide(color: AppColors.border),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.person_pin_circle_rounded,
-                                size: 16,
-                                color: AppColors.textLight,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                driverName,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: route.assignedDriver != null
-                                      ? AppColors.textPrimary
-                                      : AppColors.error,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          _buildActionMenu(context, ref, route),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          final hasDriver =
+              route.assignedDriver != null && route.assignedDriver!.isNotEmpty;
+          return RouteCard(
+            route: route,
+            driverName: driverName,
+            hasDriver: hasDriver,
+            onTap: () => _showRouteDetails(context, route, driverName),
+            onAssign: () => _showAssignDialog(context, ref, route),
+            trailingMenu: _buildActionMenu(context, ref, route),
           );
         }),
         if (visible.isEmpty)
@@ -464,25 +340,7 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
     );
   }
 
-  Widget _buildStatusBadge(bool isActive) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: (isActive ? AppColors.success : AppColors.textDisabled)
-            .withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        isActive ? 'On' : 'Off',
-        style: TextStyle(
-          color: isActive ? AppColors.success : AppColors.textDisabled,
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
+  // Status badge moved into `RouteCard`.
 
   Widget _buildActionMenu(
     BuildContext context,
@@ -845,15 +703,6 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
               const SizedBox(height: 14),
               _detailRow('Driver', driverName),
               const SizedBox(height: 10),
-              _detailRow(
-                'Capacity',
-                '${route.currentOrders}/${route.maxOrders} orders',
-              ),
-              const SizedBox(height: 10),
-              _detailRow(
-                'Est. delivery time',
-                '${route.estimatedDeliveryTime} min',
-              ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
@@ -888,10 +737,9 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
-              color: AppColors.textLight,
-              fontWeight: FontWeight.w800,
+            style: context.appTextStyles.caption.copyWith(
               fontSize: 11,
+              fontWeight: FontWeight.w800,
               letterSpacing: 0.4,
             ),
           ),
@@ -901,11 +749,7 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w900,
-              fontSize: 12,
-            ),
+            style: context.appTextStyles.sectionHeader.copyWith(fontSize: 12),
           ),
         ),
       ],
@@ -913,40 +757,9 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+// Info chip moved into `RouteCard`.
 
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.textPrimary : AppColors.surface,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: selected ? Colors.transparent : AppColors.border),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Theme.of(context).colorScheme.onPrimary : AppColors.textSecondary,
-            fontWeight: FontWeight.w800,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-}
+// Filter chips extracted to widgets/management_search_filters.dart
 
 class _DriverListTab extends ConsumerWidget {
   final List<Driver> drivers;
