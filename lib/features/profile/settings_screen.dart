@@ -206,12 +206,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _showLogoutDialog,
                       icon: const Icon(Icons.logout_rounded, size: 20),
-                      label: const Text(
+                      label: Text(
                         'Sign out',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.2,
+                        style: context.appTextStyles.buttonLabel.copyWith(
                           fontSize: 15,
+                          letterSpacing: 0.2,
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
@@ -239,16 +238,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildProfileCard(User? user) {
     if (user == null) {
       return Container(
-        padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(32),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AppColors.border),
           boxShadow: const [
             BoxShadow(
               color: AppColors.shadow,
-              blurRadius: 30,
-              offset: Offset(0, 15),
+              blurRadius: 18,
+              offset: Offset(0, 10),
             ),
           ],
         ),
@@ -259,7 +258,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               height: 72,
               decoration: BoxDecoration(
                 color: AppColors.backgroundSecondary,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
               ),
             ),
             const SizedBox(width: 20),
@@ -302,16 +301,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 30,
-            offset: Offset(0, 15),
+            blurRadius: 18,
+            offset: Offset(0, 10),
           ),
         ],
       ),
@@ -329,7 +328,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primary.withValues(alpha: 0.3),
@@ -372,11 +371,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   child: Text(
                     user.role.name.toUpperCase(),
-                    style: const TextStyle(
+                    style: context.appTextStyles.caption.copyWith(
                       color: AppColors.textLight,
                       fontSize: 9,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
+                      height: 1.0,
                     ),
                   ),
                 ),
@@ -406,10 +406,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(width: 8),
           Text(
             text,
-            style: const TextStyle(
+            style: context.appTextStyles.body.copyWith(
               fontSize: 12,
-              color: AppColors.textSecondary,
               fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
             ),
           ),
         ],
@@ -437,16 +437,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       title: Text(
         title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w900,
-          fontSize: 14,
-          color: AppColors.textPrimary,
-          letterSpacing: -0.2,
-        ),
+        style: context.appTextStyles.sectionHeader,
       ),
       subtitle: Text(
         description,
-        style: const TextStyle(
+        style: context.appTextStyles.caption.copyWith(
           fontSize: 12,
           color: AppColors.textLight,
           fontWeight: FontWeight.w600,
@@ -470,16 +465,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return SwitchListTile.adaptive(
       title: Text(
         title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w900,
-          color: AppColors.textPrimary,
-          letterSpacing: -0.2,
-        ),
+        style: context.appTextStyles.sectionHeader,
       ),
       subtitle: Text(
         description,
-        style: const TextStyle(
+        style: context.appTextStyles.caption.copyWith(
           fontSize: 12,
           color: AppColors.textLight,
           fontWeight: FontWeight.w600,
@@ -506,14 +496,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text(
-          'Sign out?',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        content: const Text(
+        title: const Text('Sign out?'),
+        content: Text(
           'You will need to sign in again to keep using the app.',
-          style: TextStyle(height: 1.5),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
         ),
         actions: [
           TextButton(
@@ -572,11 +558,12 @@ class _SectionCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
             child: Text(
               title.toUpperCase(),
-              style: const TextStyle(
+              style: context.appTextStyles.caption.copyWith(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 color: AppColors.textLight,
                 letterSpacing: 1.2,
+                height: 1.0,
               ),
             ),
           ),

@@ -162,6 +162,34 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         side: BorderSide.none,
       ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: AppColors.textLight,
+        textColor: AppColors.textPrimary,
+        contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+        minLeadingWidth: 40,
+        horizontalTitleGap: 12,
+        dense: true,
+        visualDensity: VisualDensity(horizontal: 0, vertical: -1),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titleTextStyle: appText.sectionHeader,
+        contentTextStyle: baseTextTheme.bodyMedium?.copyWith(
+          color: AppColors.textSecondary,
+          height: 1.5,
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        showDragHandle: true,
+      ),
       tabBarTheme: TabBarThemeData(
         dividerColor: Colors.transparent,
         overlayColor: WidgetStateProperty.all(Colors.transparent),
