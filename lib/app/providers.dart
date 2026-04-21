@@ -148,15 +148,17 @@ class OrdersNotifier extends Notifier<List<Order>> {
             final raw = o.assignedRoute?.trim();
             if (raw != null && raw.isNotEmpty) return raw;
 
-            final byId =
-                customers.firstWhereOrNull((c) => c.id == o.customerId);
+            final byId = customers.firstWhereOrNull(
+              (c) => c.id == o.customerId,
+            );
             final idRoute = byId?.assignedRoute?.trim();
             if (idRoute?.isNotEmpty == true) return idRoute;
 
             final phone = o.customerPhone.trim();
             if (phone.isNotEmpty) {
-              final byPhone =
-                  customers.firstWhereOrNull((c) => c.phone.trim() == phone);
+              final byPhone = customers.firstWhereOrNull(
+                (c) => c.phone.trim() == phone,
+              );
               final phoneRoute = byPhone?.assignedRoute?.trim();
               if (phoneRoute?.isNotEmpty == true) return phoneRoute;
             }
@@ -176,8 +178,9 @@ class OrdersNotifier extends Notifier<List<Order>> {
             if (key == null) return null;
             final k = key.trim();
             if (k.isEmpty) return null;
-            final route =
-                routes.firstWhereOrNull((r) => r.id == k || r.name == k);
+            final route = routes.firstWhereOrNull(
+              (r) => r.id == k || r.name == k,
+            );
             return route == null ? k : route.id;
           }
 

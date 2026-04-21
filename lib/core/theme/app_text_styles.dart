@@ -47,7 +47,8 @@ class AppTextStyles extends ThemeExtension<AppTextStyles> {
         color: AppColors.textPrimary,
         letterSpacing: -0.2,
       ),
-      body: base.bodyMedium?.copyWith(color: AppColors.textSecondary) ??
+      body:
+          base.bodyMedium?.copyWith(color: AppColors.textSecondary) ??
           const TextStyle(color: AppColors.textSecondary),
       caption: const TextStyle(
         fontSize: 12,
@@ -101,6 +102,6 @@ class AppTextStyles extends ThemeExtension<AppTextStyles> {
 
 extension AppTextStylesX on BuildContext {
   AppTextStyles get appTextStyles =>
-      Theme.of(this).extension<AppTextStyles>() ?? AppTextStyles.light(Theme.of(this).textTheme);
+      Theme.of(this).extension<AppTextStyles>() ??
+      AppTextStyles.light(Theme.of(this).textTheme);
 }
-

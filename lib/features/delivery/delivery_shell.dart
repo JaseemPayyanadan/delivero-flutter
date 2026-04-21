@@ -38,7 +38,9 @@ class DeliveryShell extends ConsumerWidget {
               labelTextStyle: WidgetStateProperty.resolveWith((states) {
                 final selected = states.contains(WidgetState.selected);
                 return TextStyle(
-                  color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+                  color: selected
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
                   fontSize: 10,
                 );
@@ -46,7 +48,9 @@ class DeliveryShell extends ConsumerWidget {
               iconTheme: WidgetStateProperty.resolveWith((states) {
                 final selected = states.contains(WidgetState.selected);
                 return IconThemeData(
-                  color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+                  color: selected
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
                   size: 20,
                 );
               }),

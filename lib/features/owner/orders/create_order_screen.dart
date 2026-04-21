@@ -102,6 +102,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   children: [
                     Text(
                       widget.orderId == null ? 'Create Order' : 'Edit Order',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w900,
@@ -114,6 +116,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       widget.orderId == null
                           ? 'Configure your recurring delivery schedule'
                           : 'Update items, pricing and schedule',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
@@ -159,6 +163,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           ),
                           label: const Text(
                             'Add More',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontWeight: FontWeight.w900),
                           ),
                         ),
@@ -212,14 +218,20 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   )
-                : Text(
-                    widget.orderId == null
-                        ? 'Confirm & Schedule Delivery'
-                        : 'Update Order',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.2,
-                      color: Theme.of(context).colorScheme.onPrimary,
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: Text(
+                      widget.orderId == null
+                          ? 'Confirm & Schedule Delivery'
+                          : 'Update Order',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.2,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
                     ),
                   ),
           ),
@@ -808,7 +820,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           r.id == _selectedCustomer!.assignedRoute ||
           r.name == _selectedCustomer!.assignedRoute,
     );
-    final normalizedRouteId = route?.id ??
+    final normalizedRouteId =
+        route?.id ??
         (_selectedCustomer!.assignedRoute?.trim().isNotEmpty == true
             ? _selectedCustomer!.assignedRoute!.trim()
             : null);

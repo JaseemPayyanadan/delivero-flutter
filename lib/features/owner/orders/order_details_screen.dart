@@ -65,26 +65,34 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       (r) => r.id == order.assignedRoute || r.name == order.assignedRoute,
     );
 
-    final derivedCustomerRoute = customers
+    final derivedCustomerRoute =
+        customers
             .firstWhereOrNull((c) => c.id == order.customerId)
             ?.assignedRoute
             ?.trim() ??
         customers
-            .firstWhereOrNull((c) => c.phone.trim() == order.customerPhone.trim())
+            .firstWhereOrNull(
+              (c) => c.phone.trim() == order.customerPhone.trim(),
+            )
             ?.assignedRoute
             ?.trim() ??
         customers
             .firstWhereOrNull(
-              (c) => c.name.trim().toLowerCase() == order.customerName.trim().toLowerCase(),
+              (c) =>
+                  c.name.trim().toLowerCase() ==
+                  order.customerName.trim().toLowerCase(),
             )
             ?.assignedRoute
             ?.trim();
 
-    final effectiveRouteKey =
-        (order.assignedRoute?.trim().isNotEmpty == true) ? order.assignedRoute!.trim() : derivedCustomerRoute;
+    final effectiveRouteKey = (order.assignedRoute?.trim().isNotEmpty == true)
+        ? order.assignedRoute!.trim()
+        : derivedCustomerRoute;
     final effectiveRoute = effectiveRouteKey == null
         ? null
-        : routes.firstWhereOrNull((r) => r.id == effectiveRouteKey || r.name == effectiveRouteKey);
+        : routes.firstWhereOrNull(
+            (r) => r.id == effectiveRouteKey || r.name == effectiveRouteKey,
+          );
 
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentStatusColor(paymentStatus);
@@ -746,10 +754,7 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            title,
-            style: context.appTextStyles.sectionHeader,
-          ),
+          child: Text(title, style: context.appTextStyles.sectionHeader),
         ),
         if (trailingWidget != null) trailingWidget!,
         if (trailingWidget == null && trailing != null)
@@ -855,7 +860,8 @@ class _CustomerOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final routeLabel = route?.name ??
+    final routeLabel =
+        route?.name ??
         (order.assignedRoute?.trim().isNotEmpty == true
             ? order.assignedRoute!.trim()
             : 'Unassigned');
@@ -945,8 +951,9 @@ class _CustomerOverviewCard extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          context.push('/owner/customers/edit/${order.customerId}'),
+                      onPressed: () => context.push(
+                        '/owner/customers/edit/${order.customerId}',
+                      ),
                       icon: const Icon(Icons.alt_route_rounded, size: 18),
                       label: const Text('Assign route'),
                     ),

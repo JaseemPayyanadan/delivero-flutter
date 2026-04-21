@@ -4,4 +4,3 @@ class AppRadii {
   static const double md = 16;
   static const double lg = 24;
 }
-

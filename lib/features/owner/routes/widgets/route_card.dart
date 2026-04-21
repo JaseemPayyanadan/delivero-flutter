@@ -42,7 +42,9 @@ class RouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = route.isActive ? AppColors.success : AppColors.textDisabled;
+    final statusColor = route.isActive
+        ? AppColors.success
+        : AppColors.textDisabled;
     final statusBg = statusColor.withValues(alpha: 0.12);
 
     return Container(
@@ -106,9 +108,9 @@ class RouteCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: context.appTextStyles.appBarTitle
                                       .copyWith(
-                                    fontSize: 17,
-                                    letterSpacing: -0.4,
-                                  ),
+                                        fontSize: 17,
+                                        letterSpacing: -0.4,
+                                      ),
                                 ),
                               ),
                             ],
@@ -146,11 +148,12 @@ class RouteCard extends StatelessWidget {
                                     route.area.trim(),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: context.appTextStyles.caption.copyWith(
-                                      fontSize: 11.5,
-                                      color: AppColors.textSecondary,
-                                      height: 1.0,
-                                    ),
+                                    style: context.appTextStyles.caption
+                                        .copyWith(
+                                          fontSize: 11.5,
+                                          color: AppColors.textSecondary,
+                                          height: 1.0,
+                                        ),
                                   ),
                                 ),
                               ],
@@ -206,13 +209,17 @@ class RouteCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        vehicleTypeLabel ?? '',
-                        style: context.appTextStyles.caption.copyWith(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textSecondary,
-                          height: 1.0,
+                      Flexible(
+                        child: Text(
+                          vehicleTypeLabel ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.appTextStyles.caption.copyWith(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textSecondary,
+                            height: 1.0,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -257,4 +264,3 @@ class RouteCard extends StatelessWidget {
     );
   }
 }
-

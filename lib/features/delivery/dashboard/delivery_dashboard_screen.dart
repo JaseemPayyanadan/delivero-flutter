@@ -287,7 +287,9 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                           'Orders assigned to you will appear here. Check back once your manager has created a delivery.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: AppColors.textSecondary.withValues(alpha: 0.85),
+                            color: AppColors.textSecondary.withValues(
+                              alpha: 0.85,
+                            ),
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             height: 1.5,
@@ -1004,10 +1006,7 @@ class _SectionTitle extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                AppColors.primary,
-                AppColors.primaryGradientEnd,
-              ],
+              colors: [AppColors.primary, AppColors.primaryGradientEnd],
             ),
             borderRadius: BorderRadius.circular(999),
           ),

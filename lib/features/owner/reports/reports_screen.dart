@@ -547,10 +547,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   Text(
                     'Our AI suggests actions in 2 minutes for the upcoming weekend — just to maintain your 98% success rate.',
                     style: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onPrimary
-                          .withValues(alpha: 0.9),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onPrimary.withValues(alpha: 0.9),
                       height: 1.4,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,

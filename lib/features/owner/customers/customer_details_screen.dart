@@ -70,11 +70,7 @@ Future<void> _confirmAndDeleteCustomer(
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: const Text(
-        'Delete this customer?',
-        style: TextStyle(fontWeight: FontWeight.w800),
-      ),
+      title: const Text('Delete this customer?'),
       content: Text(
         'Remove "$customerName" from your list. Past orders are not deleted, but you cannot undo this.',
       ),
@@ -220,15 +216,10 @@ class CustomerDetailsScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
         ),
         actions: [
-          TextButton(
+          IconButton(
+            tooltip: 'Edit customer',
             onPressed: () => context.push('/owner/customers/edit/$customerId'),
-            child: const Text(
-              'Edit',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                color: AppColors.primary,
-              ),
-            ),
+            icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
           ),
           PopupMenuButton<String>(
             tooltip: 'More',
@@ -282,6 +273,8 @@ class CustomerDetailsScreen extends ConsumerWidget {
               child: Text(
                 customer.name,
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
                   fontSize: 24,

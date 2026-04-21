@@ -100,18 +100,17 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
               children: [
                 if (matchedOrders.isNotEmpty) ...[
                   _SectionTitle('Orders (${matchedOrders.length})'),
-                  ...matchedOrders.map(
-                    (o) {
-                      final route = routes.firstWhereOrNull(
-                        (r) => r.id == o.assignedRoute || r.name == o.assignedRoute,
-                      );
-                      return _OrderHitTile(
-                        order: o,
-                        route: route,
-                        onTap: () => context.push('/owner/orders/${o.id}'),
-                      );
-                    },
-                  ),
+                  ...matchedOrders.map((o) {
+                    final route = routes.firstWhereOrNull(
+                      (r) =>
+                          r.id == o.assignedRoute || r.name == o.assignedRoute,
+                    );
+                    return _OrderHitTile(
+                      order: o,
+                      route: route,
+                      onTap: () => context.push('/owner/orders/${o.id}'),
+                    );
+                  }),
                   const SizedBox(height: 16),
                 ],
                 if (matchedCustomers.isNotEmpty) ...[
@@ -173,7 +172,11 @@ class _OrderHitTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final routeLabel = route?.name ?? (order.assignedRoute?.trim().isNotEmpty == true ? order.assignedRoute!.trim() : 'Unassigned');
+    final routeLabel =
+        route?.name ??
+        (order.assignedRoute?.trim().isNotEmpty == true
+            ? order.assignedRoute!.trim()
+            : 'Unassigned');
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(

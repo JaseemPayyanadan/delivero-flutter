@@ -438,7 +438,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate(
-                    _buildGroupedOrderWidgets(filteredOrders, routes, customers),
+                    _buildGroupedOrderWidgets(
+                      filteredOrders,
+                      routes,
+                      customers,
+                    ),
                   ),
                 ),
               ),
@@ -456,14 +460,18 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     String routeLabelFor(Order order) {
       final raw = order.assignedRoute?.trim();
       String? customerRoute() {
-        final byId = customers.firstWhereOrNull((c) => c.id == order.customerId);
+        final byId = customers.firstWhereOrNull(
+          (c) => c.id == order.customerId,
+        );
         if (byId?.assignedRoute?.trim().isNotEmpty == true) {
           return byId!.assignedRoute!.trim();
         }
 
         final phone = order.customerPhone.trim();
         if (phone.isNotEmpty) {
-          final byPhone = customers.firstWhereOrNull((c) => c.phone.trim() == phone);
+          final byPhone = customers.firstWhereOrNull(
+            (c) => c.phone.trim() == phone,
+          );
           if (byPhone?.assignedRoute?.trim().isNotEmpty == true) {
             return byPhone!.assignedRoute!.trim();
           }

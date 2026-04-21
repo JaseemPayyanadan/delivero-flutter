@@ -168,8 +168,9 @@ class AppTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 6),
         minLeadingWidth: 40,
         horizontalTitleGap: 12,
-        dense: true,
-        visualDensity: VisualDensity(horizontal: 0, vertical: -1),
+        dense: false,
+        minVerticalPadding: 10,
+        visualDensity: VisualDensity.standard,
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.surface,
@@ -242,9 +243,7 @@ class AppTheme {
           );
         }),
       ),
-      extensions: <ThemeExtension<dynamic>>[
-        appText,
-      ],
+      extensions: <ThemeExtension<dynamic>>[appText],
     );
   }
 }

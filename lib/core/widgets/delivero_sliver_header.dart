@@ -32,13 +32,15 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
     // IconButtons are typically ~56 logical pixels wide.
     final rightPad = actionsCount <= 0 ? 0.0 : (actionsCount * 56.0);
 
-    final Widget resolvedTitle = titleWidget ??
+    final Widget resolvedTitle =
+        titleWidget ??
         Text(
           title ?? '',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style:
-              context.appTextStyles.sectionHeader.copyWith(letterSpacing: 0.2),
+          style: context.appTextStyles.sectionHeader.copyWith(
+            letterSpacing: 0.2,
+          ),
         );
 
     return AppBar(

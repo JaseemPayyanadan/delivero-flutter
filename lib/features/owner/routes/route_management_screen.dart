@@ -96,7 +96,10 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
                         text: 'Routes',
                       ),
                       Tab(
-                        icon: const Icon(Icons.person_pin_circle_rounded, size: 18),
+                        icon: const Icon(
+                          Icons.person_pin_circle_rounded,
+                          size: 18,
+                        ),
                         text: 'Drivers',
                       ),
                     ],
@@ -221,7 +224,11 @@ class _RouteListTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Local search/filter state kept in widget tree to avoid global providers.
-    return _RouteListTabBody(routes: routes, drivers: drivers, routesLoaded: routesLoaded);
+    return _RouteListTabBody(
+      routes: routes,
+      drivers: drivers,
+      routesLoaded: routesLoaded,
+    );
   }
 }
 
@@ -279,13 +286,19 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
       );
     }
 
-    final visible = <({DeliveryRoute route, Driver? driver, String driverName})>[];
+    final visible =
+        <({DeliveryRoute route, Driver? driver, String driverName})>[];
     for (final route in routes) {
-      final assignedDriver =
-          drivers.firstWhereOrNull((d) => d.id == route.assignedDriver);
+      final assignedDriver = drivers.firstWhereOrNull(
+        (d) => d.id == route.assignedDriver,
+      );
       final driverName = assignedDriver?.name ?? 'No driver yet';
       if (_matches(route, driverName)) {
-        visible.add((route: route, driver: assignedDriver, driverName: driverName));
+        visible.add((
+          route: route,
+          driver: assignedDriver,
+          driverName: driverName,
+        ));
       }
     }
 
@@ -636,28 +649,13 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
   ) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      useSafeArea: true,
       builder: (context) {
-        return Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.border),
-          ),
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(height: 14),
               Row(
                 children: [
                   Container(
@@ -681,9 +679,7 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                           route.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w900,
+                          style: context.appTextStyles.sectionHeader.copyWith(
                             fontSize: 16,
                             letterSpacing: -0.3,
                           ),
@@ -693,9 +689,9 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                           route.area,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
+                          style: context.appTextStyles.body.copyWith(
                             fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -707,26 +703,12 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
               const Divider(height: 1, color: AppColors.divider),
               const SizedBox(height: 14),
               _detailRow('Driver', driverName),
-              const SizedBox(height: 10),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () => Navigator.pop(context),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
+                  child: const Text('OK'),
                 ),
               ),
             ],

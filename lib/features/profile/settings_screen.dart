@@ -355,10 +355,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  user.name,
-                  style: context.appTextStyles.appBarTitle,
-                ),
+                Text(user.name, style: context.appTextStyles.appBarTitle),
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -435,10 +432,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         child: Icon(icon, color: AppColors.primary, size: 20),
       ),
-      title: Text(
-        title,
-        style: context.appTextStyles.sectionHeader,
-      ),
+      title: Text(title, style: context.appTextStyles.sectionHeader),
       subtitle: Text(
         description,
         style: context.appTextStyles.caption.copyWith(
@@ -463,10 +457,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required IconData icon,
   }) {
     return SwitchListTile.adaptive(
-      title: Text(
-        title,
-        style: context.appTextStyles.sectionHeader,
-      ),
+      title: Text(title, style: context.appTextStyles.sectionHeader),
       subtitle: Text(
         description,
         style: context.appTextStyles.caption.copyWith(
@@ -497,9 +488,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Sign out?'),
-        content: Text(
+        content: const Text(
           'You will need to sign in again to keep using the app.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
         ),
         actions: [
           TextButton(

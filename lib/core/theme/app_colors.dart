@@ -18,7 +18,9 @@ class AppColors {
   static const backgroundTertiary = Color(0xFFE2E8F0);
 
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceElevated = Color(0xFFFDFEFF); // Slightly warm white for depth
+  static const surfaceElevated = Color(
+    0xFFFDFEFF,
+  ); // Slightly warm white for depth
   static const border = Color(0xFFE2E8F0);
   static const divider = Color(0xFFF1F5F9);
 

@@ -360,7 +360,9 @@ class _OwnerDashboardTop extends StatelessWidget {
                       Text(
                         _getGreeting(),
                         style: TextStyle(
-                          color: AppColors.textSecondary.withValues(alpha: 0.85),
+                          color: AppColors.textSecondary.withValues(
+                            alpha: 0.85,
+                          ),
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -664,10 +666,7 @@ class _DashboardKpiCard extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      iconTone,
-                      iconTone.withValues(alpha: 0.5),
-                    ],
+                    colors: [iconTone, iconTone.withValues(alpha: 0.5)],
                   ),
                 ),
               ),
@@ -1093,9 +1092,7 @@ class _ProductSaleChart extends StatelessWidget {
                                 text:
                                     '$revenueStr · ${(pct * 100).toStringAsFixed(1)}% of catalog\n',
                                 style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimary
+                                  color: Theme.of(context).colorScheme.onPrimary
                                       .withValues(alpha: 0.7),
                                   fontWeight: FontWeight.w800,
                                   fontSize: 11,
@@ -1105,9 +1102,7 @@ class _ProductSaleChart extends StatelessWidget {
                               TextSpan(
                                 text: '${item.quantity} units sold',
                                 style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimary
+                                  color: Theme.of(context).colorScheme.onPrimary
                                       .withValues(alpha: 0.7),
                                   fontWeight: FontWeight.w800,
                                   fontSize: 11,
@@ -1402,7 +1397,9 @@ class _DashboardSection extends StatelessWidget {
                             child: Text(
                               trailingText!,
                               style: TextStyle(
-                                color: AppColors.primary.withValues(alpha: 0.85),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.85,
+                                ),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -1726,9 +1723,7 @@ class _SalesTrendBars extends StatelessWidget {
                               TextSpan(
                                 text: '$label · ${share.round()}% of week\n',
                                 style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimary
+                                  color: Theme.of(context).colorScheme.onPrimary
                                       .withValues(alpha: 0.7),
                                   fontWeight: FontWeight.w800,
                                   fontSize: 11,
@@ -1739,9 +1734,7 @@ class _SalesTrendBars extends StatelessWidget {
                                 text:
                                     '${d.count} ${d.count == 1 ? 'order' : 'orders'}',
                                 style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimary
+                                  color: Theme.of(context).colorScheme.onPrimary
                                       .withValues(alpha: 0.7),
                                   fontWeight: FontWeight.w800,
                                   fontSize: 11,
@@ -1842,8 +1835,12 @@ class _SalesTrendBars extends StatelessWidget {
                                       begin: Alignment.bottomCenter,
                                       end: Alignment.topCenter,
                                       colors: [
-                                        AppColors.primary.withValues(alpha: 0.08),
-                                        AppColors.primary.withValues(alpha: 0.18),
+                                        AppColors.primary.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                        AppColors.primary.withValues(
+                                          alpha: 0.18,
+                                        ),
                                       ],
                                     ),
                               color: null,

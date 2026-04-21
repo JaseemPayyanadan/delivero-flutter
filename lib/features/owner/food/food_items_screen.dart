@@ -503,9 +503,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
             },
             child: Text(
               isEdit ? 'Save' : 'Add',
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
         ],
