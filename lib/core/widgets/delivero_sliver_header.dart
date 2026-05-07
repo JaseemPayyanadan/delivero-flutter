@@ -49,7 +49,13 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
       surfaceTintColor: Colors.transparent,
       systemOverlayStyle: AppTheme.systemOverlayStyle,
       centerTitle: centerTitle,
-      leading: leading,
+      leading: leading ??
+          (Navigator.of(context).canPop()
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => Navigator.of(context).pop(),
+                )
+              : null),
       title: centerTitle
           ? Padding(
               padding: EdgeInsets.only(left: leftPad, right: rightPad),

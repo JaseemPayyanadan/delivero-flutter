@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -12,6 +13,7 @@ import 'package:printing/printing.dart';
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
@@ -717,10 +719,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           children: [
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () => Navigator.pop(context, (
-                                  clearAll: true,
-                                  payment: null,
-                                )),
+                                onPressed: () {
+                                  HapticFeedback.lightImpact();
+                                  Navigator.pop(context, (
+                                    clearAll: true,
+                                    payment: null,
+                                  ));
+                                },
                                 style: OutlinedButton.styleFrom(
                                   side: const BorderSide(
                                     color: AppColors.border,
@@ -741,10 +746,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: FilledButton(
-                                onPressed: () => Navigator.pop(context, (
-                                  clearAll: false,
-                                  payment: payment,
-                                )),
+                                onPressed: () {
+                                  HapticFeedback.mediumImpact();
+                                  Navigator.pop(context, (
+                                    clearAll: false,
+                                    payment: payment,
+                                  ));
+                                },
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.primary,
                                   padding: const EdgeInsets.symmetric(
@@ -1051,69 +1059,16 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   Widget _buildEmptyState({required bool hasAnyOrders}) {
-    final title = hasAnyOrders ? 'No transactions found' : 'No orders yet';
-    final subtitle = hasAnyOrders
-        ? 'Try adjusting your filters or search terms'
-        : 'Create your first order to see it here.';
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundSecondary,
-              borderRadius: BorderRadius.circular(40),
-            ),
-            child: const Icon(
-              Icons.receipt_long_rounded,
-              size: 64,
-              color: AppColors.textLight,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-            ),
-          ),
-          if (!hasAnyOrders) ...[
-            const SizedBox(height: 20),
-            SizedBox(
-              width: 220,
-              child: FilledButton.icon(
-                onPressed: () => context.push('/owner/orders/create'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text(
-                  'Create order',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
+    return DeliveroEmptyState(
+      title: hasAnyOrders ? 'No transactions found' : 'No orders yet',
+      subtitle: hasAnyOrders
+          ? 'Try adjusting your filters or search terms'
+          : 'Create your first order to see it here.',
+      icon: Icons.receipt_long_rounded,
+      actionLabel: hasAnyOrders ? null : 'Create order',
+      onActionPressed: hasAnyOrders
+          ? null
+          : () => context.push('/owner/orders/create'),
     );
   }
 }

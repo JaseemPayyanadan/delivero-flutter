@@ -36,8 +36,8 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
   @override
   void initState() {
     super.initState();
-    // Initialize startup flags and auth state
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    // Start initialization early but let the splash screen control the transition
+    Future.microtask(() async {
       await ref.read(appStartupProvider.notifier).init();
       await ref.read(authProvider.notifier).init();
       await PushNotificationService.instance.configure();

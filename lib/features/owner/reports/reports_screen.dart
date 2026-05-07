@@ -7,6 +7,8 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delivero_empty_state.dart';
+import '../../../core/widgets/delivero_skeleton.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/driver.dart';
 
@@ -241,7 +243,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               o.orderDate.isBefore(endExclusive),
         )
         .toList();
-    final reports = isLoading ? ReportsData.empty() : _computeReports(inRange);
+    final reports = (isLoading || inRange.isEmpty)
+        ? ReportsData.empty()
+        : _computeReports(inRange);
     final df = DateFormat('MMM d');
     final rangeLabel =
         '${df.format(_selectedDateRange.start)} — ${df.format(_selectedDateRange.end)}';
@@ -252,80 +256,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         '${(fulfillmentRate * 100).clamp(0, 100).toStringAsFixed(1)}%';
     final topStaff = _computeTopStaff(inRange, drivers);
 
-    if (isLoading) {
-      return const Scaffold(
-        backgroundColor: AppColors.backgroundPrimary,
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
     if (noOrdersYet) {
       return Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(40),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(40),
-                  ),
-                  child: const Icon(
-                    Icons.analytics_rounded,
-                    size: 64,
-                    color: AppColors.textLight,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'No insights yet',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Create an order to see sales, products, and customer rankings here.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                    height: 1.45,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                SizedBox(
-                  width: 220,
-                  child: FilledButton.icon(
-                    onPressed: () => context.push('/owner/orders/create'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text(
-                      'Create order',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        body: DeliveroEmptyState(
+          title: 'No insights yet',
+          subtitle:
+              'Create an order to see sales, products, and customer rankings here.',
+          icon: Icons.analytics_rounded,
+          actionLabel: 'Create order',
+          onActionPressed: () => context.push('/owner/orders/create'),
         ),
       );
     }
@@ -416,6 +356,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               icon: Icons.payments_rounded,
               iconBg: AppColors.primaryLighter.withValues(alpha: 0.7),
               title: 'Total sales',
+              isLoading: isLoading,
               value:
                   '₹${NumberFormat.decimalPattern().format(reports.totalRevenue)}',
             ),
@@ -424,6 +365,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               icon: Icons.account_balance_wallet_rounded,
               iconBg: AppColors.warningLighter.withValues(alpha: 0.8),
               title: 'Pending payments',
+              isLoading: isLoading,
               value:
                   '₹${NumberFormat.decimalPattern().format(reports.totalPendingRevenue)}',
             ),
@@ -432,6 +374,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               icon: Icons.check_circle_rounded,
               iconBg: AppColors.successLighter.withValues(alpha: 0.8),
               title: 'Order success rate',
+              isLoading: isLoading,
               value: successRateLabel,
               trailing: Container(
                 padding: const EdgeInsets.symmetric(
@@ -673,12 +616,15 @@ class _InsightStatCard extends StatelessWidget {
   final String title;
   final String value;
   final Widget? trailing;
+  final bool isLoading;
+
   const _InsightStatCard({
     required this.icon,
     required this.iconBg,
     required this.title,
     required this.value,
     this.trailing,
+    this.isLoading = false,
   });
 
   @override
@@ -723,20 +669,22 @@ class _InsightStatCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.4,
+                if (isLoading)
+                  const DeliveroSkeleton(height: 20, width: 100)
+                else
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.4,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
-          // ignore: use_null_aware_elements
-          if (trailing != null) trailing!,
+          if (trailing != null && !isLoading) trailing!,
         ],
       ),
     );
@@ -750,88 +698,149 @@ class _SalesBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (dailySales.isEmpty) {
-      return const Text(
-        'No sales data for this period.',
-        style: TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w600,
+      return const SizedBox(
+        height: 200,
+        child: Center(
+          child: Text(
+            'No sales data for this period',
+            style: TextStyle(color: AppColors.textLight, fontSize: 13),
+          ),
         ),
       );
     }
-    final last = dailySales.length > 7
-        ? dailySales.sublist(dailySales.length - 7)
-        : dailySales;
-    final maxValue = last
-        .map((d) => d.amount)
-        .fold<double>(0, (a, b) => a > b ? a : b);
-    final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.25;
-    final groups = <BarChartGroupData>[
-      for (var i = 0; i < last.length; i++)
-        BarChartGroupData(
-          x: i,
-          barRods: [
-            BarChartRodData(
-              toY: last[i].amount,
-              width: 14,
-              borderRadius: BorderRadius.circular(8),
-              color: AppColors.primaryLight.withValues(
-                alpha: i == last.length - 3 ? 1 : 0.6,
-              ),
-            ),
-          ],
-        ),
-    ];
 
-    String fmtDay(int i) {
-      if (i < 0 || i >= last.length) return '';
-      return DateFormat('EEE').format(last[i].date).toUpperCase();
-    }
+    final maxAmount = dailySales
+        .map((d) => d.amount)
+        .reduce((a, b) => a > b ? a : b);
+    final yInterval = (maxAmount / 5).clamp(100.0, double.infinity);
 
     return SizedBox(
       height: 220,
       child: BarChart(
         BarChartData(
-          maxY: maxY,
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: maxY / 4,
-            getDrawingHorizontalLine: (_) =>
-                FlLine(color: AppColors.divider, strokeWidth: 1),
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxAmount * 1.2,
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipColor: (_) => AppColors.primary,
+              tooltipPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final date = dailySales[groupIndex].date;
+                final amount = rod.toY;
+                return BarTooltipItem(
+                  '${DateFormat('MMM d').format(date)}\n',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: '₹${NumberFormat.compact().format(amount)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
-          borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index < 0 || index >= dailySales.length)
+                    return const SizedBox();
+                  if (dailySales.length > 7 && index % 2 != 0)
+                    return const SizedBox();
+
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      DateFormat('dd/MM').format(dailySales[index].date),
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                },
+                reservedSize: 30,
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                interval: yInterval,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    NumberFormat.compact().format(value),
+                    style: const TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  );
+                },
+              ),
+            ),
             topTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
             ),
             rightTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
             ),
-            leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 28,
-                getTitlesWidget: (value, meta) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      fmtDay(value.toInt()),
-                      style: const TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  );
-                },
-              ),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: yInterval,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: AppColors.divider.withValues(alpha: 0.5),
+              strokeWidth: 1,
+              dashArray: [5, 5],
             ),
           ),
-          barTouchData: BarTouchData(enabled: false),
-          barGroups: groups,
+          borderData: FlBorderData(show: false),
+          barGroups: dailySales.asMap().entries.map((entry) {
+            return BarChartGroupData(
+              x: entry.key,
+              barRods: [
+                BarChartRodData(
+                  toY: entry.value.amount,
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary,
+                      AppColors.primary.withValues(alpha: 0.6),
+                    ],
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                  ),
+                  width: 14,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(6),
+                  ),
+                  backDrawRodData: BackgroundBarChartRodData(
+                    show: true,
+                    toY: maxAmount * 1.2,
+                    color: AppColors.backgroundSecondary.withValues(alpha: 0.3),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
         ),
       ),
     );

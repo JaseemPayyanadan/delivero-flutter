@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/food_item.dart';
 
 class FoodItemsScreen extends ConsumerStatefulWidget {
@@ -255,51 +256,12 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundSecondary,
-              borderRadius: BorderRadius.circular(40),
-            ),
-            child: const Icon(
-              Icons.inventory_2_outlined,
-              size: 64,
-              color: AppColors.textLight,
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Inventory is empty',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Add what you sell so you can put it on orders',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-          ),
-          const SizedBox(height: 18),
-          ElevatedButton.icon(
-            onPressed: () => _showAddEditDialog(context, ref),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text(
-              'Add product',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return DeliveroEmptyState(
+      title: 'Inventory is empty',
+      subtitle: 'Add what you sell so you can put it on orders',
+      icon: Icons.inventory_2_outlined,
+      actionLabel: 'Add product',
+      onActionPressed: () => _showAddEditDialog(context, ref),
     );
   }
 

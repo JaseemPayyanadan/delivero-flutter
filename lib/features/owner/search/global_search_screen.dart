@@ -7,6 +7,7 @@ import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/order.dart';
@@ -86,14 +87,11 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
         ],
       ),
       body: lower.isEmpty
-          ? Center(
-              child: Text(
-                'Type a name, phone, order id, or address',
-                style: TextStyle(
-                  color: AppColors.textSecondary.withValues(alpha: 0.9),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          ? const DeliveroEmptyState(
+              title: 'Start searching',
+              subtitle:
+                  'Type a name, phone, order id, or address to find matching results',
+              icon: Icons.search_rounded,
             )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -123,17 +121,11 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
                   ),
                 ],
                 if (matchedOrders.isEmpty && matchedCustomers.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 48),
-                    child: Center(
-                      child: Text(
-                        'No matches',
-                        style: TextStyle(
-                          color: AppColors.textLight,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
+                  const DeliveroEmptyState(
+                    title: 'No matches found',
+                    subtitle:
+                        'Try searching for something else or check for typos',
+                    icon: Icons.search_off_rounded,
                   ),
               ],
             ),

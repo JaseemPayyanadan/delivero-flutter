@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:collection/collection.dart';
@@ -6,6 +7,7 @@ import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/order.dart';
@@ -124,12 +126,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       backgroundColor: AppColors.backgroundPrimary,
       appBar: DeliveroAppBar(
         title: 'Customers',
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => context.pop(),
-              )
-            : null,
         actions: [
           IconButton(
             tooltip: 'Search',
@@ -153,7 +149,10 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/owner/customers/add'),
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          context.push('/owner/customers/add');
+        },
         backgroundColor: AppColors.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 10,
@@ -324,7 +323,10 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                 isActive: customer.isActive,
                 paymentStatus: paymentStatus,
                 scheduleLabel: scheduleLabel,
-                onTap: () => context.push('/owner/customers/${customer.id}'),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  context.push('/owner/customers/${customer.id}');
+                },
               );
             },
           ),
@@ -359,84 +361,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     String? actionLabel,
     VoidCallback? onAction,
   }) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundSecondary,
-                borderRadius: BorderRadius.circular(40),
-              ),
-              child: Icon(icon, size: 80, color: AppColors.textLight),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 15,
-                height: 1.5,
-              ),
-            ),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 24),
-              SizedBox(
-                width: 220,
-                child: FilledButton.icon(
-                  onPressed: onAction,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(
-                    actionLabel,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-            if (showArrow) ...[
-              const SizedBox(height: 48),
-              AnimatedBuilder(
-                animation: _arrowController,
-                builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(0, 10 * _arrowController.value),
-                    child: const Icon(
-                      Icons.keyboard_double_arrow_down_rounded,
-                      color: AppColors.primary,
-                      size: 40,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ],
-        ),
-      ),
+    return DeliveroEmptyState(
+      title: title,
+      subtitle: subtitle,
+      icon: icon,
+      actionLabel: actionLabel,
+      onActionPressed: onAction,
     );
   }
 }

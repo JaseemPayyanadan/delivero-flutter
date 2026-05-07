@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -49,32 +50,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final steps = [
       SetupStep(
         id: 'routes',
-        title: 'Setup Delivery Routes',
+        title: 'Define Delivery Routes',
         description:
-            'Create routes and assign drivers for deliveries. This is essential for organizing your delivery operations.',
-        icon: Icons.route_rounded,
+            'Organize your operations by creating delivery routes. Assign drivers and areas to streamline your logistics.',
+        icon: Icons.map_rounded,
         isCompleted: routes.isNotEmpty,
-        actionLabel: 'Add Routes',
+        actionLabel: 'Add First Route',
         route: '/owner/routes',
         importance: 'critical',
       ),
       SetupStep(
         id: 'products',
-        title: 'Add Food Items',
+        title: 'Build Your Menu',
         description:
-            'Add your menu items with prices. These are the products your customers will order.',
+            'Add the products and food items you sell. Set prices and categories to make ordering easy for your customers.',
         icon: Icons.restaurant_menu_rounded,
         isCompleted: foodItems.isNotEmpty,
-        actionLabel: 'Add Products',
+        actionLabel: 'Add Menu Items',
         route: '/owner/food-items',
         importance: 'critical',
       ),
       SetupStep(
         id: 'customers',
-        title: 'Add Customers',
+        title: 'Onboard Customers',
         description:
-            'Add your customer details, assign them to routes, and set their regular orders.',
-        icon: Icons.people_rounded,
+            'Add your regular customers and link them to their routes. You can even set recurring daily orders.',
+        icon: Icons.people_alt_rounded,
         isCompleted: customers.isNotEmpty,
         actionLabel: 'Add Customers',
         route: '/owner/customers',
@@ -82,8 +83,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ),
       SetupStep(
         id: 'orders',
-        title: 'Create Orders',
-        description: 'Start creating orders for your customers.',
+        title: 'Process First Order',
+        description:
+            'Everything is ready! Create your first delivery order and start managing your business in real-time.',
         icon: Icons.receipt_long_rounded,
         isCompleted: orders.isNotEmpty,
         actionLabel: 'Create Order',
@@ -98,138 +100,190 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         .where((s) => s.importance == 'critical' && !s.isCompleted)
         .length;
 
-    if (criticalStepsLeft == 0 && !_autoMarked) {
-      _autoMarked = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(appStartupProvider.notifier).markOnboardingSeen();
-        if (!mounted) return;
-        context.go('/owner');
-      });
-    }
-
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      appBar: DeliveroAppBar(
-        title: 'Setup Guide',
-        actions: [
-          TextButton(
-            onPressed: () =>
-                ref.read(appStartupProvider.notifier).markOnboardingSeen(),
-            child: const Text('Skip'),
+      body: CustomScrollView(
+        slivers: [
+          _buildSliverHeader(completedCount, steps.length, progress),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Setup Checklist',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (criticalStepsLeft > 0)
+                        _buildBadge('$criticalStepsLeft Required'),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Follow these steps to get your factory up and running.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ...steps.asMap().entries.map(
+                    (entry) => _buildStepCard(entry.value, entry.key + 1),
+                  ),
+                  const SizedBox(height: 40),
+                  _buildFooterAction(criticalStepsLeft == 0),
+                  const SizedBox(height: 48),
+                ],
+              ),
+            ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  Widget _buildSliverHeader(int completed, int total, double progress) {
+    return SliverAppBar(
+      expandedHeight: 280,
+      collapsedHeight: 100,
+      pinned: true,
+      stretch: true,
+      backgroundColor: AppColors.primary,
+      elevation: 0,
+      leading: const SizedBox.shrink(),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: TextButton(
+            onPressed: () =>
+                ref.read(authProvider.notifier).completeOnboarding(),
+            child: const Text(
+              'Skip Guide',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        stretchModes: const [StretchMode.zoomBackground, StretchMode.fadeTitle],
+        background: Stack(
+          fit: StackFit.expand,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 32),
-            _buildProgressCard(completedCount, steps.length, progress),
-            if (criticalStepsLeft > 0) ...[
-              const SizedBox(height: 24),
-              _buildAlertBox(criticalStepsLeft),
-            ],
-            const SizedBox(height: 32),
-            const Text(
-              'Setup Steps',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // Decorative background
+            Positioned(
+              right: -50,
+              top: -20,
+              child: Icon(
+                Icons.rocket_launch_rounded,
+                size: 240,
+                color: Colors.white.withValues(alpha: 0.1),
+              ),
             ),
-            const SizedBox(height: 16),
-            ...steps.asMap().entries.map(
-              (entry) => _buildStepCard(entry.value, entry.key + 1),
-            ),
-            const SizedBox(height: 40),
-            if (criticalStepsLeft == 0)
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => ref
-                      .read(appStartupProvider.notifier)
-                      .markOnboardingSeen(),
-                  child: const Text('Go to Dashboard'),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withValues(alpha: 0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Welcome to Delivero!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Let\'s set up your business workspace.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  _buildHeaderProgress(completed, total, progress),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        Center(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLighter,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.rocket_launch_rounded,
-              size: 32,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          "Welcome! Let's Get Started",
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          "Complete these steps to start managing your delivery business",
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProgressCard(int completed, int total, double progress) {
+  Widget _buildHeaderProgress(int completed, int total, double progress) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Setup Progress',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
               ),
               Text(
                 '${(progress * 100).round()}%',
                 style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: AppColors.backgroundSecondary,
-            color: AppColors.primary,
-            minHeight: 8,
-            borderRadius: BorderRadius.circular(4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              color: Colors.white,
+              minHeight: 10,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             '$completed of $total steps completed',
-            style: const TextStyle(
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.8),
               fontSize: 12,
-              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -237,30 +291,66 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  Widget _buildAlertBox(int count) {
+  Widget _buildBadge(String label) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.errorLighter.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.error),
+        color: AppColors.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_rounded, color: AppColors.error, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Complete $count required step(s) to start taking orders',
-              style: const TextStyle(
-                color: AppColors.error,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          color: AppColors.error,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooterAction(bool isFinished) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: isFinished
+          ? FilledButton.icon(
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                ref.read(authProvider.notifier).completeOnboarding();
+                context.go('/owner');
+              },
+              icon: const Icon(Icons.check_circle_rounded),
+              label: const Text(
+                'Launch Dashboard',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.success,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            )
+          : OutlinedButton(
+              onPressed: () =>
+                  ref.read(authProvider.notifier).completeOnboarding(),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text(
+                'I\'ll do this later',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -292,11 +382,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ),
               child: Center(
                 child: step.isCompleted
-                    ? Icon(
-                        Icons.check,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      )
+                    ? const Icon(Icons.check, size: 18, color: Colors.white)
                     : Text(
                         index.toString(),
                         style: const TextStyle(

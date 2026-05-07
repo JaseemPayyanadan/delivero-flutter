@@ -6,6 +6,7 @@ import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/maps_launch.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/order.dart';
 
 class OrderStatusListScreen extends ConsumerStatefulWidget {
@@ -318,22 +319,10 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
   }
 
   Widget _buildEmptyState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.local_shipping_outlined,
-            size: 64,
-            color: AppColors.textLight,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'No orders for you today',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
+    return const DeliveroEmptyState(
+      title: 'No orders for you today',
+      subtitle: 'Great job! You have no pending deliveries at the moment.',
+      icon: Icons.local_shipping_outlined,
     );
   }
 }

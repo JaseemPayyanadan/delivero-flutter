@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -204,7 +205,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: _showLogoutDialog,
+                      onPressed: () {
+                        HapticFeedback.heavyImpact();
+                        _showLogoutDialog();
+                      },
                       icon: const Icon(Icons.logout_rounded, size: 20),
                       label: Text(
                         'Sign out',
