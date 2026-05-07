@@ -36,9 +36,20 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
         transitionBuilder: (Widget child, Animation<double> animation) {
-          return FadeTransition(opacity: animation, child: child);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.02, 0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          );
         },
         child: IndexedStack(
           key: ValueKey<int>(_selectedIndex),

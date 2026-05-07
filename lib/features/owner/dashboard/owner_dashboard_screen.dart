@@ -192,61 +192,52 @@ class OwnerDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        DeliveroEmptyState(
-          title: 'Ready to Build Your Dashboard?',
-          subtitle:
-              'Get started by adding customers, products, routes, and creating your first order',
-          icon: Icons.dashboard_rounded,
-          actionLabel: 'Add your first customer',
-          onActionPressed: () {
-            HapticFeedback.lightImpact();
-            context.push('/owner/customers');
-          },
-        ),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _EmptyStateFeature(
-                icon: Icons.people_alt_rounded,
-                label: 'Customers',
-                onTap: () => context.push('/owner/customers'),
-              ),
-              _EmptyStateFeature(
-                icon: Icons.inventory_2_rounded,
-                label: 'Products',
-                onTap: () => context.push('/owner/food-items'),
-              ),
-              _EmptyStateFeature(
-                icon: Icons.alt_route_rounded,
-                label: 'Routes',
-                onTap: () => context.push('/owner/routes'),
-              ),
-              _EmptyStateFeature(
-                icon: Icons.receipt_long_rounded,
-                label: 'Orders',
-                onTap: () => context.push('/owner/orders'),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 100),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          DeliveroEmptyState(
+            title: 'Ready to Build Your Dashboard?',
+            subtitle:
+                'Get started by adding customers, products, routes, and creating your first order',
+            icon: Icons.dashboard_rounded,
+            actionLabel: 'Add your first customer',
+            onActionPressed: () {
+              context.push('/owner/customers');
+            },
           ),
-        ),
-        const SizedBox(height: 28),
-        Text(
-          'Tip: pull down on this screen anytime to refresh data.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textLight.withValues(alpha: 0.95),
-            height: 1.4,
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _EmptyStateFeature(
+                  icon: Icons.people_alt_rounded,
+                  label: 'Customers',
+                  onTap: () => context.push('/owner/customers'),
+                ),
+                _EmptyStateFeature(
+                  icon: Icons.inventory_2_rounded,
+                  label: 'Products',
+                  onTap: () => context.push('/owner/food-items'),
+                ),
+                _EmptyStateFeature(
+                  icon: Icons.alt_route_rounded,
+                  label: 'Routes',
+                  onTap: () => context.push('/owner/routes'),
+                ),
+                _EmptyStateFeature(
+                  icon: Icons.receipt_long_rounded,
+                  label: 'Orders',
+                  onTap: () => context.push('/owner/orders'),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -69,7 +69,7 @@ class DeliveroButton extends StatelessWidget {
     );
 
     Widget button = FilledButton(
-      onPressed: isLoading ? null : () {
+      onPressed: isLoading || onPressed == null ? null : () {
         if (useHaptics) HapticFeedback.mediumImpact();
         onPressed?.call();
       },
