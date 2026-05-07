@@ -759,10 +759,12 @@ class _SalesBarChart extends StatelessWidget {
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
-                  if (index < 0 || index >= dailySales.length)
+                  if (index < 0 || index >= dailySales.length) {
                     return const SizedBox();
-                  if (dailySales.length > 7 && index % 2 != 0)
+                  }
+                  if (dailySales.length > 7 && index % 2 != 0) {
                     return const SizedBox();
+                  }
 
                   return Padding(
                     padding: const EdgeInsets.only(top: 10),

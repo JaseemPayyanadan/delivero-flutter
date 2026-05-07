@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../app/providers.dart';
 import '../../data/models/user.dart';
 import 'hardcoded_users.dart';
 import '../../core/services/firebase_service.dart';

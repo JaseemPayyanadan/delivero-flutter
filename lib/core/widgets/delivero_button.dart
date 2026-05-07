@@ -29,7 +29,7 @@ class DeliveroButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     Widget content = isLoading
         ? SizedBox(
             width: 20,
@@ -69,10 +69,12 @@ class DeliveroButton extends StatelessWidget {
     );
 
     Widget button = FilledButton(
-      onPressed: isLoading || onPressed == null ? null : () {
-        if (useHaptics) HapticFeedback.mediumImpact();
-        onPressed?.call();
-      },
+      onPressed: isLoading || onPressed == null
+          ? null
+          : () {
+              if (useHaptics) HapticFeedback.mediumImpact();
+              onPressed?.call();
+            },
       style: buttonStyle,
       child: content,
     );
