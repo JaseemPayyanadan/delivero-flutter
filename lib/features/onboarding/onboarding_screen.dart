@@ -38,7 +38,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String? _expandedStepId = 'routes';
-  bool _autoMarked = false;
+  final bool _autoMarked = false;
 
   @override
   Widget build(BuildContext context) {

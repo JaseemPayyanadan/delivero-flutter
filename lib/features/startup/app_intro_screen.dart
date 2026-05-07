@@ -19,7 +19,7 @@ class _AppLauncherScreenState extends ConsumerState<AppLauncherScreen>
   late final AnimationController _pulseController;
   late final Animation<double> _pulse;
   bool _visible = false;
-  bool _showHint = false;
+  final bool _showHint = false;
   Timer? _hintTimer;
 
   @override
