@@ -4,16 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
+import '../../app/router.dart';
 import '../../core/theme/app_colors.dart';
 
-class AppLauncherScreen extends StatefulWidget {
+class AppLauncherScreen extends ConsumerStatefulWidget {
   const AppLauncherScreen({super.key});
 
   @override
-  State<AppLauncherScreen> createState() => _AppLauncherScreenState();
+  ConsumerState<AppLauncherScreen> createState() => _AppLauncherScreenState();
 }
 
-class _AppLauncherScreenState extends State<AppLauncherScreen>
+class _AppLauncherScreenState extends ConsumerState<AppLauncherScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulse;
@@ -32,13 +33,17 @@ class _AppLauncherScreenState extends State<AppLauncherScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
     );
     _pulseController.repeat(reverse: true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       setState(() => _visible = true);
-    });
-    _hintTimer = Timer(const Duration(seconds: 3), () {
+
+      // Minimum display time for splash to avoid flicker
+      await Future.delayed(const Duration(milliseconds: 1500));
+
       if (!mounted) return;
-      setState(() => _showHint = true);
+      // The router will handle the navigation based on state
+      // This trigger ensures the router checks the state again
+      ref.invalidate(routerProvider);
     });
   }
 

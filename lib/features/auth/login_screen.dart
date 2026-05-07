@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/delivero_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -37,6 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     try {
+      HapticFeedback.mediumImpact();
       await ref.read(authProvider.notifier).login(email, password);
     } catch (e) {
       // Error is also handled in authProvider state
@@ -331,22 +335,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                           const SizedBox(height: 40),
-                          ElevatedButton(
-                            onPressed: authState.isLoading
-                                ? null
-                                : _handleLogin,
-                            child: authState.isLoading
-                                ? SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onPrimary,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                : const Text('Login'),
+                          DeliveroButton(
+                            label: 'Login to Workspace',
+                            onPressed: _handleLogin,
+                            isLoading: authState.isLoading,
+                            icon: Icons.login_rounded,
                           ),
                         ],
                       ),
@@ -363,9 +356,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         TextButton(
-                          onPressed: _showSupportDialog,
+                          onPressed: authState.isLoading
+                              ? null
+                              : () => context.go('/register'),
                           child: const Text(
-                            'Contact Support',
+                            'Sign up',
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
                               color: AppColors.primary,
@@ -373,6 +368,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _showSupportDialog,
+                      child: const Text(
+                        'Need access as a driver? Contact Support',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textLight,
+                        ),
+                      ),
                     ),
                   ],
                 ),

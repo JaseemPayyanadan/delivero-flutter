@@ -149,7 +149,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       ref.read(customersProvider.notifier).addCustomer(newCustomer);
     }
 
-    if (mounted) context.pop();
+    if (mounted) {
+      HapticFeedback.mediumImpact();
+      context.pop();
+    }
   }
 
   String? _routeDropdownValue(List<DeliveryRoute> routes) {
@@ -309,7 +312,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           border: const Border(top: BorderSide(color: AppColors.border)),
         ),
         child: ElevatedButton(
-          onPressed: _onSave,
+          onPressed: () {
+            HapticFeedback.heavyImpact();
+            _onSave();
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             padding: const EdgeInsets.symmetric(vertical: 18),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
@@ -34,7 +35,28 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
     final showOrderFab = _selectedIndex == 1 && orders.isNotEmpty;
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: IndexedStack(index: _selectedIndex, children: _screens),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.02, 0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: IndexedStack(
+          key: ValueKey<int>(_selectedIndex),
+          index: _selectedIndex,
+          children: _screens,
+        ),
+      ),
       floatingActionButton: !showOrderFab
           ? null
           : FloatingActionButton(
@@ -96,8 +118,12 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
               ),
               child: NavigationBar(
                 selectedIndex: _selectedIndex,
-                onDestinationSelected: (index) =>
-                    setState(() => _selectedIndex = index),
+                onDestinationSelected: (index) {
+                  if (_selectedIndex != index) {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedIndex = index);
+                  }
+                },
                 destinations: const [
                   NavigationDestination(
                     icon: Icon(CupertinoIcons.house),

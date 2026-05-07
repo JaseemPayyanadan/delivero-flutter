@@ -8,7 +8,11 @@ import 'package:intl/intl.dart';
 import '../../../app/reports_provider.dart';
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/delivero_button.dart';
+import '../../../core/widgets/delivero_empty_state.dart';
+import '../../../core/widgets/delivero_skeleton.dart';
 import '../../../data/models/order.dart';
 
 Future<void> _refreshOwnerDashboard(WidgetRef ref) async {
@@ -95,6 +99,11 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 fulfillmentRate: fulfillmentRate,
               ),
             ),
+            if (user != null && !user.hasFinishedOnboarding && !isLoading)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                sliver: SliverToBoxAdapter(child: _ResumeSetupBanner()),
+              ),
             if (isEmpty && isLoading)
               SliverFillRemaining(
                 hasScrollBody: false,
@@ -183,126 +192,130 @@ class OwnerDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.shadow,
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.dashboard_rounded,
-                    color: AppColors.primary,
-                    size: 36,
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundSecondary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.surface, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.bar_chart_rounded,
-                      color: AppColors.primary,
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'Ready to Build Your Dashboard?',
-              textAlign: TextAlign.center,
-              style: context.appTextStyles.sliverTitle.copyWith(
-                fontSize: 22,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Get started by adding customers, products, routes, and creating your first order',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 40),
-            Row(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 100),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          DeliveroEmptyState(
+            title: 'Ready to Build Your Dashboard?',
+            subtitle:
+                'Get started by adding customers, products, routes, and creating your first order',
+            icon: Icons.dashboard_rounded,
+            actionLabel: 'Add your first customer',
+            onActionPressed: () {
+              context.push('/owner/customers');
+            },
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _EmptyStateFeature(
                   icon: Icons.people_alt_rounded,
                   label: 'Customers',
+                  onTap: () => context.push('/owner/customers'),
                 ),
                 _EmptyStateFeature(
                   icon: Icons.inventory_2_rounded,
                   label: 'Products',
+                  onTap: () => context.push('/owner/food-items'),
                 ),
                 _EmptyStateFeature(
                   icon: Icons.alt_route_rounded,
                   label: 'Routes',
+                  onTap: () => context.push('/owner/routes'),
                 ),
                 _EmptyStateFeature(
                   icon: Icons.receipt_long_rounded,
                   label: 'Orders',
+                  onTap: () => context.push('/owner/orders'),
                 ),
               ],
             ),
-            const SizedBox(height: 28),
-            Text(
-              'Tip: pull down on this screen anytime to refresh data.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textLight.withValues(alpha: 0.95),
-                height: 1.4,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResumeSetupBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        context.push('/onboarding');
+      },
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              AppColors.primary,
+              Color(0xFFFF8C33), // Lighter shade of primary
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.rocket_launch_rounded,
+                color: Colors.white,
+                size: 24,
               ),
             ),
-            const SizedBox(height: 28),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  context.push('/owner/customers');
-                },
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add your first customer'),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Resume Account Setup',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Complete the setup guide to unlock all features and insights.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
               ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white,
+              size: 16,
             ),
           ],
         ),
@@ -484,6 +497,7 @@ class _OwnerDashboardTop extends StatelessWidget {
                       icon: Icons.currency_rupee_rounded,
                       iconTone: AppColors.primary,
                       title: 'Revenue',
+                      isLoading: isLoading,
                       value: isLoading
                           ? '—'
                           : '₹${NumberFormat.compact().format(totalRevenue)}',
@@ -495,6 +509,7 @@ class _OwnerDashboardTop extends StatelessWidget {
                       icon: Icons.today_rounded,
                       iconTone: AppColors.info,
                       title: 'Orders Today',
+                      isLoading: isLoading,
                       value: isLoading ? '—' : todayOrdersCount.toString(),
                     ),
                   ),
@@ -508,6 +523,7 @@ class _OwnerDashboardTop extends StatelessWidget {
                       icon: Icons.people_alt_rounded,
                       iconTone: AppColors.warning,
                       title: 'Customers',
+                      isLoading: isLoading,
                       value: isLoading ? '—' : customersCount.toString(),
                     ),
                   ),
@@ -517,6 +533,7 @@ class _OwnerDashboardTop extends StatelessWidget {
                       icon: Icons.check_circle_rounded,
                       iconTone: AppColors.success,
                       title: 'Fulfillment',
+                      isLoading: isLoading,
                       value: isLoading
                           ? '—'
                           : '${(fulfillmentRate * 100).round()}%',
@@ -630,12 +647,14 @@ class _DashboardKpiCard extends StatelessWidget {
   final Color iconTone;
   final String title;
   final String value;
+  final bool isLoading;
 
   const _DashboardKpiCard({
     required this.icon,
     required this.iconTone,
     required this.title,
     required this.value,
+    this.isLoading = false,
   });
 
   @override
@@ -698,17 +717,20 @@ class _DashboardKpiCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.6,
+                      if (isLoading)
+                        const DeliveroSkeleton(height: 24, width: 80)
+                      else
+                        Text(
+                          value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.6,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -1290,24 +1312,36 @@ class _ProductSaleChart extends StatelessWidget {
 class _EmptyStateFeature extends StatelessWidget {
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
-  const _EmptyStateFeature({required this.icon, required this.label});
+  const _EmptyStateFeature({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: AppColors.textLight, size: 24),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textLight,
-          ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Icon(icon, color: AppColors.textLight, size: 24),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textLight,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

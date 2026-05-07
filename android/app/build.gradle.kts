@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.nio.charset.StandardCharsets
 import java.util.Properties
 
 plugins {
@@ -38,22 +39,34 @@ android {
 
         if (hasKeystoreProperties) {
             val keystoreProperties = Properties().apply {
-                load(keystorePropertiesFile.inputStream())
+                keystorePropertiesFile.reader(StandardCharsets.UTF_8).use { load(it) }
             }
 
-            val storeFilePath = keystoreProperties.getProperty("storeFile")?.takeIf { it.isNotBlank() }
-            val storePassword = keystoreProperties.getProperty("storePassword")?.takeIf { it.isNotBlank() }
-            val keyAlias = keystoreProperties.getProperty("keyAlias")?.takeIf { it.isNotBlank() }
-            val keyPassword = keystoreProperties.getProperty("keyPassword")?.takeIf { it.isNotBlank() }
+            val storeFilePath =
+                keystoreProperties.getProperty("storeFile")?.trim()?.takeIf { it.isNotBlank() }
+            val storePassword =
+                keystoreProperties.getProperty("storePassword")?.trim()?.takeIf { it.isNotBlank() }
+                    ?: System.getenv("DELIVERO_STORE_PASSWORD")?.trim()?.takeIf { it.isNotEmpty() }
+            val keyAlias =
+                keystoreProperties.getProperty("keyAlias")?.trim()?.takeIf { it.isNotBlank() }
+            val keyPasswordExplicit =
+                keystoreProperties.getProperty("keyPassword")?.trim()?.takeIf { it.isNotBlank() }
+                    ?: System.getenv("DELIVERO_KEY_PASSWORD")?.trim()?.takeIf { it.isNotEmpty() }
 
-            if (storeFilePath == null || storePassword == null || keyAlias == null || keyPassword == null) {
+            if (storeFilePath == null || storePassword == null || keyAlias == null) {
                 throw GradleException(
-                    "android/key.properties is missing required fields (storeFile, storePassword, keyAlias, keyPassword). " +
-                        "Copy android/key.properties.example to android/key.properties and fill it in."
+                    "android/key.properties: set storeFile, keyAlias, and storePassword " +
+                        "(or export DELIVERO_STORE_PASSWORD). " +
+                        "Verify: keytool -list -v -keystore android/app/<storeFile> -alias <keyAlias>"
                 )
             }
 
+            val keyPassword = keyPasswordExplicit ?: storePassword
+
             cfg.storeFile = rootProject.file(storeFilePath)
+            val storeType =
+                keystoreProperties.getProperty("storeType")?.trim()?.takeIf { it.isNotBlank() } ?: "pkcs12"
+            cfg.storeType = storeType
             cfg.storePassword = storePassword
             cfg.keyAlias = keyAlias
             cfg.keyPassword = keyPassword

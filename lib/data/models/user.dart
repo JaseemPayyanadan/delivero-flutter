@@ -11,6 +11,7 @@ class User {
   final String? avatar;
   final String? factoryId;
   final String? linkedEntityId;
+  final bool hasFinishedOnboarding;
 
   const User({
     required this.id,
@@ -23,12 +24,14 @@ class User {
     this.avatar,
     this.factoryId,
     this.linkedEntityId,
+    this.hasFinishedOnboarding = false,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'email': email,
+      'password': password,
       'name': name,
       'role': role.name,
       'phone': phone,
@@ -36,6 +39,7 @@ class User {
       'avatar': avatar,
       'factoryId': factoryId,
       'linkedEntityId': linkedEntityId,
+      'hasFinishedOnboarding': hasFinishedOnboarding,
     };
   }
 
@@ -43,7 +47,7 @@ class User {
     return User(
       id: json['id'] as String,
       email: json['email'] as String,
-      password: '', // We don't persist password usually
+      password: (json['password'] as String?) ?? '',
       name: json['name'] as String,
       role: UserRole.values.byName(json['role'] as String),
       phone: json['phone'] as String?,
@@ -51,6 +55,35 @@ class User {
       avatar: json['avatar'] as String?,
       factoryId: json['factoryId'] as String?,
       linkedEntityId: json['linkedEntityId'] as String?,
+      hasFinishedOnboarding: (json['hasFinishedOnboarding'] as bool?) ?? false,
+    );
+  }
+
+  User copyWith({
+    String? id,
+    String? email,
+    String? password,
+    String? name,
+    UserRole? role,
+    String? phone,
+    String? address,
+    String? avatar,
+    String? factoryId,
+    String? linkedEntityId,
+    bool? hasFinishedOnboarding,
+  }) {
+    return User(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      avatar: avatar ?? this.avatar,
+      factoryId: factoryId ?? this.factoryId,
+      linkedEntityId: linkedEntityId ?? this.linkedEntityId,
+      hasFinishedOnboarding: hasFinishedOnboarding ?? this.hasFinishedOnboarding,
     );
   }
 }

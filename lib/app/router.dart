@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../data/models/user.dart';
 import '../features/auth/login_screen.dart';
+import '../features/auth/register_screen.dart';
 import '../features/delivery/delivery_shell.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/owner/owner_shell.dart';
@@ -36,6 +37,7 @@ class RouterNotifier extends ChangeNotifier {
     final isAtSplash = loc == '/splash';
     final isAtIntro = loc == '/intro';
     final isAtLogin = loc == '/login';
+    final isAtRegister = loc == '/register';
     final isAtOnboarding = loc == '/onboarding';
     final isAtOwner = loc.startsWith('/owner');
     final isAtDelivery = loc.startsWith('/delivery');
@@ -51,12 +53,12 @@ class RouterNotifier extends ChangeNotifier {
 
     // 2. Auth check
     if (!authState.isAuthenticated) {
-      return isAtLogin ? null : '/login';
+      return (isAtLogin || isAtRegister) ? null : '/login';
     }
 
     // 3. Onboarding check (Only for Owners)
     if (authState.user!.role == UserRole.owner &&
-        !startupState.hasSeenOnboarding) {
+        !authState.user!.hasFinishedOnboarding) {
       return isAtOnboarding ? null : '/onboarding';
     }
 
@@ -91,6 +93,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AppIntroScreen(),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
