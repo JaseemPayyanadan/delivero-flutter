@@ -22,7 +22,7 @@ class DeliveroButton extends StatelessWidget {
     this.isFullWidth = true,
     this.backgroundColor,
     this.foregroundColor,
-    this.borderRadius = 16,
+    this.borderRadius = 8,
     this.useHaptics = true,
   });
 
@@ -32,8 +32,8 @@ class DeliveroButton extends StatelessWidget {
 
     Widget content = isLoading
         ? SizedBox(
-            width: 20,
-            height: 20,
+            width: 18,
+            height: 18,
             child: CircularProgressIndicator(
               strokeWidth: 2.5,
               color: foregroundColor ?? theme.colorScheme.onPrimary,
@@ -44,14 +44,14 @@ class DeliveroButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 20),
-                const SizedBox(width: 10),
+                Icon(icon, size: 18),
+                const SizedBox(width: 8),
               ],
               Text(
                 label,
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  fontSize: 15,
+                  fontSize: 14,
                   letterSpacing: 0.3,
                 ),
               ),
@@ -61,7 +61,7 @@ class DeliveroButton extends StatelessWidget {
     final buttonStyle = FilledButton.styleFrom(
       backgroundColor: backgroundColor ?? AppColors.primary,
       foregroundColor: foregroundColor ?? theme.colorScheme.onPrimary,
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
       ),
