@@ -59,7 +59,14 @@ class RouterNotifier extends ChangeNotifier {
     // 3. Onboarding check (Only for Owners)
     if (authState.user!.role == UserRole.owner &&
         !authState.user!.hasFinishedOnboarding) {
-      return isAtOnboarding ? null : '/onboarding';
+      // Allow access to the specific setup routes while onboarding is incomplete.
+      // Otherwise users would be redirected back to onboarding immediately.
+      final isAllowedSetupPath =
+          loc.startsWith('/owner/routes') ||
+          loc.startsWith('/owner/customers') ||
+          loc.startsWith('/owner/food-items');
+      if (isAtOnboarding || isAllowedSetupPath) return null;
+      return '/onboarding';
     }
 
     // 4. Role check

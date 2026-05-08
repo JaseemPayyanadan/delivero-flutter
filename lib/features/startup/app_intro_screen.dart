@@ -23,6 +23,7 @@ class _AppLauncherScreenState extends ConsumerState<AppLauncherScreen>
   bool _visible = false;
   final bool _showHint = false;
   Timer? _hintTimer;
+  Timer? _minSplashTimer;
 
   @override
   void initState() {
@@ -39,19 +40,22 @@ class _AppLauncherScreenState extends ConsumerState<AppLauncherScreen>
       if (!mounted) return;
       setState(() => _visible = true);
 
-      // Minimum display time for splash to avoid flicker
-      await Future.delayed(const Duration(milliseconds: 1500));
-
-      if (!mounted) return;
-      // The router will handle the navigation based on state
-      // This trigger ensures the router checks the state again
-      ref.invalidate(routerProvider);
+      // Minimum display time for splash to avoid flicker.
+      // Use a cancellable timer so widget tests don't fail with pending timers.
+      _minSplashTimer?.cancel();
+      _minSplashTimer = Timer(const Duration(milliseconds: 1500), () {
+        if (!mounted) return;
+        // The router will handle the navigation based on state.
+        // This trigger ensures the router checks the state again.
+        ref.invalidate(routerProvider);
+      });
     });
   }
 
   @override
   void dispose() {
     _hintTimer?.cancel();
+    _minSplashTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -222,7 +226,8 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
                 Expanded(
                   child: PageView.builder(
                     controller: _pageController,
-                    onPageChanged: (index) => setState(() => _currentPage = index),
+                    onPageChanged: (index) =>
+                        setState(() => _currentPage = index),
                     itemCount: _slides.length,
                     itemBuilder: (context, index) {
                       final slide = _slides[index];
@@ -309,7 +314,9 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
                                 height: 4,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(3),
-                                  color: isActive ? AppColors.primary : AppColors.border,
+                                  color: isActive
+                                      ? AppColors.primary
+                                      : AppColors.border,
                                 ),
                               ),
                             ),
@@ -453,4 +460,3 @@ class _ArchFramePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

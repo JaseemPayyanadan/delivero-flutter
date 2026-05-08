@@ -62,4 +62,3 @@ class DeliveroGradientBackground extends StatelessWidget {
     );
   }
 }
-
