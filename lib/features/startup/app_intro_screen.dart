@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/delivero_gradient_background.dart';
 
 class AppLauncherScreen extends ConsumerStatefulWidget {
   const AppLauncherScreen({super.key});
@@ -21,6 +23,7 @@ class _AppLauncherScreenState extends ConsumerState<AppLauncherScreen>
   bool _visible = false;
   final bool _showHint = false;
   Timer? _hintTimer;
+  Timer? _minSplashTimer;
 
   @override
   void initState() {
@@ -37,19 +40,22 @@ class _AppLauncherScreenState extends ConsumerState<AppLauncherScreen>
       if (!mounted) return;
       setState(() => _visible = true);
 
-      // Minimum display time for splash to avoid flicker
-      await Future.delayed(const Duration(milliseconds: 1500));
-
-      if (!mounted) return;
-      // The router will handle the navigation based on state
-      // This trigger ensures the router checks the state again
-      ref.invalidate(routerProvider);
+      // Minimum display time for splash to avoid flicker.
+      // Use a cancellable timer so widget tests don't fail with pending timers.
+      _minSplashTimer?.cancel();
+      _minSplashTimer = Timer(const Duration(milliseconds: 1500), () {
+        if (!mounted) return;
+        // The router will handle the navigation based on state.
+        // This trigger ensures the router checks the state again.
+        ref.invalidate(routerProvider);
+      });
     });
   }
 
   @override
   void dispose() {
     _hintTimer?.cancel();
+    _minSplashTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -58,76 +64,72 @@ class _AppLauncherScreenState extends ConsumerState<AppLauncherScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final height = constraints.maxHeight;
-            return Stack(
-              children: [
-                CustomPaint(
-                  size: Size(width, height),
-                  painter: _IntroBackgroundPainter(),
-                ),
-                Center(
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 450),
-                    curve: Curves.easeOut,
-                    opacity: _visible ? 1 : 0,
-                    child: ScaleTransition(
-                      scale: _pulse,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Image.asset(
-                            'assets/images/logo.png',
-                            width: 240,
-                            height: 64,
-                            fit: BoxFit.contain,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Delivery, simplified',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppColors.primary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          AnimatedOpacity(
-                            duration: const Duration(milliseconds: 250),
-                            opacity: _showHint ? 1 : 0,
-                            child: const Text(
-                              'Getting ready…',
-                              style: TextStyle(
-                                color: AppColors.textLight,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ),
-                        ],
+      body: DeliveroGradientBackground(
+        glowTop: 140,
+        child: SafeArea(
+          child: Center(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOut,
+              opacity: _visible ? 1 : 0,
+              child: ScaleTransition(
+                scale: _pulse,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 220,
+                        height: 56,
+                        fit: BoxFit.contain,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Delivery, simplified',
+                      style: TextStyle(
+                        color: AppColors.surface.withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.surface.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 250),
+                      opacity: _showHint ? 1 : 0,
+                      child: Text(
+                        'Getting ready…',
+                        style: TextStyle(
+                          color: AppColors.surface.withValues(alpha: 0.7),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          },
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -173,6 +175,7 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
   }
 
   void _onNext() {
+    HapticFeedback.lightImpact();
     if (_currentPage < _slides.length - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 400),
@@ -184,6 +187,7 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
   }
 
   Future<void> _complete() async {
+    HapticFeedback.mediumImpact();
     await ref.read(appStartupProvider.notifier).markAppIntroSeen();
     if (!mounted) return;
     context.go('/login');
@@ -207,200 +211,167 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
-            final height = constraints.maxHeight;
-            return Stack(
+            return Column(
               children: [
-                CustomPaint(
-                  size: Size(width, height),
-                  painter: _IntroBackgroundPainter(),
+                const SizedBox(height: 18),
+                Center(
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 200,
+                    height: 52,
+                    fit: BoxFit.contain,
+                  ),
                 ),
-                Column(
-                  children: [
-                    const SizedBox(height: 48),
-                    Center(
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        width: 220,
-                        height: 56,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: PageView.builder(
-                        controller: _pageController,
-                        onPageChanged: (index) =>
-                            setState(() => _currentPage = index),
-                        itemCount: _slides.length,
-                        itemBuilder: (context, index) {
-                          final slide = _slides[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Column(
-                              children: [
-                                Expanded(
-                                  child: Center(
-                                    child: _ArchedHero(
-                                      width: width - 80,
-                                      imageAsset: slide.imageAsset,
-                                    ),
-                                  ),
+                const SizedBox(height: 14),
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: (index) =>
+                        setState(() => _currentPage = index),
+                    itemCount: _slides.length,
+                    itemBuilder: (context, index) {
+                      final slide = _slides[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: Center(
+                                child: _ArchedHero(
+                                  width: (width - 80).clamp(240, 360),
+                                  imageAsset: slide.imageAsset,
                                 ),
-                                const SizedBox(height: 20),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      slide.title.characters.first,
-                                      style: const TextStyle(
-                                        fontSize: 34,
-                                        fontWeight: FontWeight.w900,
-                                        color: AppColors.primary,
-                                        height: 1.06,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${slide.title.substring(1)} ${slide.titleRest}',
-                                      style: const TextStyle(
-                                        fontSize: 34,
-                                        fontWeight: FontWeight.w900,
-                                        color: AppColors.textPrimary,
-                                        height: 1.06,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  slide.subtitle,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.textSecondary,
-                                    height: 1.55,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                          );
-                        },
+                            const SizedBox(height: 14),
+                            Text(
+                              '${slide.title} ${slide.titleRest}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 30,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.6,
+                                height: 1.05,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            const SizedBox(height: 10),
+                            Text(
+                              slide.subtitle,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                                height: 1.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 22),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      InkWell(
+                        onTap: _complete,
+                        borderRadius: BorderRadius.circular(12),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
+                          child: Text(
+                            'Skip',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          InkWell(
-                            onTap: _complete,
+                      Row(
+                        children: List.generate(_slides.length, (i) {
+                          final isActive = i == _currentPage;
+                          return InkWell(
+                            onTap: () => _goToIndex(i),
                             borderRadius: BorderRadius.circular(12),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
                                 vertical: 10,
                               ),
-                              child: Text(
-                                'Skip',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                width: isActive ? 28 : 18,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(3),
+                                  color: isActive
+                                      ? AppColors.primary
+                                      : AppColors.border,
                                 ),
                               ),
                             ),
-                          ),
-                          Row(
-                            children: List.generate(_slides.length, (i) {
-                              final isActive = i == _currentPage;
-                              return InkWell(
-                                onTap: () => _goToIndex(i),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 250),
-                                    width: isActive ? 32 : 24,
-                                    height: 3,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(2),
-                                      color: isActive
-                                          ? AppColors.primary
-                                          : AppColors.border,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                          _currentPage < _slides.length - 1
-                              ? InkWell(
-                                  onTap: _onNext,
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 10,
-                                    ),
-                                    child: Row(
-                                      children: const [
-                                        Text(
-                                          'Next',
-                                          style: TextStyle(
-                                            color: AppColors.primary,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Icon(
-                                          Icons.arrow_forward_rounded,
-                                          size: 18,
-                                          color: AppColors.primary,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                              : ElevatedButton(
-                                  onPressed: _complete,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: Theme.of(
-                                      context,
-                                    ).colorScheme.onPrimary,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      Text(
-                                        'Get Started',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 13,
-                                          letterSpacing: 0.2,
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Icon(
-                                        Icons.arrow_forward_rounded,
-                                        size: 18,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                        ],
+                          );
+                        }),
                       ),
-                    ),
-                  ],
+                      _currentPage < _slides.length - 1
+                          ? TextButton(
+                              onPressed: _onNext,
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
+                                ),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Text(
+                                    'Next',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.arrow_forward_rounded, size: 18),
+                                ],
+                              ),
+                            )
+                          : TextButton(
+                              onPressed: _complete,
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
+                                ),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Text(
+                                    'Get started',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.arrow_forward_rounded, size: 18),
+                                ],
+                              ),
+                            ),
+                    ],
+                  ),
                 ),
               ],
             );
@@ -473,9 +444,8 @@ class _ArchFramePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.border
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..color = AppColors.surface.withValues(alpha: 0.12)
+      ..style = PaintingStyle.fill;
 
     final path = Path()
       ..moveTo(0, 80)
@@ -485,64 +455,6 @@ class _ArchFramePainter extends CustomPainter {
       ..close();
 
     canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _IntroBackgroundPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final primary = AppColors.primary;
-    final accent = AppColors.accent;
-    final light = AppColors.primaryLighter;
-
-    void dot(double x, double y, double r, Color color, double opacity) {
-      final p = Paint()..color = color.withValues(alpha: opacity);
-      canvas.drawCircle(Offset(x, y), r, p);
-    }
-
-    dot(size.width - 60, 100, 8, light, 0.3);
-    dot(size.width - 40, 120, 6, light, 0.2);
-    dot(size.width - 80, 140, 4, accent, 0.15);
-
-    dot(40, size.height - 200, 10, light, 0.25);
-    dot(60, size.height - 180, 7, primary, 0.1);
-    dot(20, size.height - 160, 5, accent, 0.15);
-
-    dot(size.width * 0.2, size.height * 0.4, 3, primary, 0.1);
-    dot(size.width * 0.8, size.height * 0.35, 4, light, 0.2);
-    dot(size.width * 0.15, size.height * 0.6, 5, accent, 0.12);
-    dot(size.width * 0.85, size.height * 0.55, 3, primary, 0.15);
-
-    final line1 = Paint()
-      ..color = light.withValues(alpha: 0.15)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final path1 = Path()
-      ..moveTo(0, size.height * 0.3)
-      ..quadraticBezierTo(
-        size.width * 0.3,
-        size.height * 0.25,
-        size.width * 0.6,
-        size.height * 0.3,
-      );
-    canvas.drawPath(path1, line1);
-
-    final line2 = Paint()
-      ..color = accent.withValues(alpha: 0.12)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final path2 = Path()
-      ..moveTo(size.width * 0.4, size.height * 0.7)
-      ..quadraticBezierTo(
-        size.width * 0.7,
-        size.height * 0.75,
-        size.width,
-        size.height * 0.7,
-      );
-    canvas.drawPath(path2, line2);
   }
 
   @override

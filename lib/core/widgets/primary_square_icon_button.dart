@@ -48,4 +48,3 @@ class PrimarySquareIconButton extends StatelessWidget {
     );
   }
 }
-

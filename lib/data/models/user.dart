@@ -83,7 +83,8 @@ class User {
       avatar: avatar ?? this.avatar,
       factoryId: factoryId ?? this.factoryId,
       linkedEntityId: linkedEntityId ?? this.linkedEntityId,
-      hasFinishedOnboarding: hasFinishedOnboarding ?? this.hasFinishedOnboarding,
+      hasFinishedOnboarding:
+          hasFinishedOnboarding ?? this.hasFinishedOnboarding,
     );
   }
 }
