@@ -12,6 +12,8 @@ class User {
   final String? factoryId;
   final String? linkedEntityId;
   final bool hasFinishedOnboarding;
+  /// When true (e.g. new driver accounts), the app prompts for a password change after login.
+  final bool mustChangePassword;
 
   const User({
     required this.id,
@@ -25,6 +27,7 @@ class User {
     this.factoryId,
     this.linkedEntityId,
     this.hasFinishedOnboarding = false,
+    this.mustChangePassword = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -40,6 +43,7 @@ class User {
       'factoryId': factoryId,
       'linkedEntityId': linkedEntityId,
       'hasFinishedOnboarding': hasFinishedOnboarding,
+      'mustChangePassword': mustChangePassword,
     };
   }
 
@@ -56,6 +60,7 @@ class User {
       factoryId: json['factoryId'] as String?,
       linkedEntityId: json['linkedEntityId'] as String?,
       hasFinishedOnboarding: (json['hasFinishedOnboarding'] as bool?) ?? false,
+      mustChangePassword: (json['mustChangePassword'] as bool?) ?? false,
     );
   }
 
@@ -71,6 +76,7 @@ class User {
     String? factoryId,
     String? linkedEntityId,
     bool? hasFinishedOnboarding,
+    bool? mustChangePassword,
   }) {
     return User(
       id: id ?? this.id,
@@ -85,6 +91,7 @@ class User {
       linkedEntityId: linkedEntityId ?? this.linkedEntityId,
       hasFinishedOnboarding:
           hasFinishedOnboarding ?? this.hasFinishedOnboarding,
+      mustChangePassword: mustChangePassword ?? this.mustChangePassword,
     );
   }
 }

@@ -12,6 +12,7 @@ import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/driver.dart';
+import 'widgets/add_edit_driver_sheet.dart';
 import 'widgets/management_search_filters.dart';
 import 'widgets/route_card.dart';
 import 'widgets/routes_hub_overview.dart';
@@ -143,7 +144,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
                   drivers: drivers,
                   driversLoaded: driversLoaded,
                   onRefresh: _refreshLists,
-                  onEmptyAddDriver: () => _showAddEditDriverDialog(context, ref),
+                  onEmptyAddDriver: () => showAddEditDriverSheet(context),
                 ),
               ],
             ),
@@ -157,7 +158,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
     if (_tabController.index == 0) {
       _showRouteDialog();
     } else {
-      _showAddEditDriverDialog(context, ref);
+      showAddEditDriverSheet(context);
     }
   }
 
@@ -635,8 +636,10 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                                     id: driver.id,
                                     factoryId: driver.factoryId,
                                     name: driver.name,
+                                    email: driver.email,
                                     phone: driver.phone,
                                     vehicleType: driver.vehicleType,
+                                    licenseNumber: driver.licenseNumber,
                                     isActive: driver.isActive,
                                     currentRoute: route.id,
                                     createdAt: driver.createdAt,
@@ -842,8 +845,10 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                     id: driver.id,
                     factoryId: driver.factoryId,
                     name: driver.name,
+                    email: driver.email,
                     phone: driver.phone,
                     vehicleType: driver.vehicleType,
+                    licenseNumber: driver.licenseNumber,
                     isActive: driver.isActive,
                     currentRoute: null,
                     createdAt: driver.createdAt,
@@ -1297,8 +1302,7 @@ class _DriverListTabState extends ConsumerState<_DriverListTab> {
               borderRadius: BorderRadius.circular(20),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
-                onTap: () =>
-                    _showAddEditDriverDialog(context, ref, driver: driver),
+                onTap: () => showAddEditDriverSheet(context, driver: driver),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -1388,6 +1392,13 @@ class _DriverListTabState extends ConsumerState<_DriverListTab> {
                                 Icons.edit_rounded,
                                 'Edit driver',
                               ),
+                              if (driver.email != null &&
+                                  driver.email!.trim().isNotEmpty)
+                                _menuItem(
+                                  'share_login',
+                                  Icons.chat_rounded,
+                                  'Share login (WhatsApp)',
+                                ),
                               _menuItem(
                                 'toggle',
                                 driver.isActive
@@ -1406,9 +1417,15 @@ class _DriverListTabState extends ConsumerState<_DriverListTab> {
                             ],
                             onSelected: (val) async {
                               if (val == 'edit') {
-                                _showAddEditDriverDialog(
+                                showAddEditDriverSheet(
                                   context,
-                                  ref,
+                                  driver: driver,
+                                );
+                                return;
+                              }
+                              if (val == 'share_login') {
+                                showReshareDriverLoginDialog(
+                                  context,
                                   driver: driver,
                                 );
                                 return;
@@ -1418,8 +1435,10 @@ class _DriverListTabState extends ConsumerState<_DriverListTab> {
                                   id: driver.id,
                                   factoryId: driver.factoryId,
                                   name: driver.name,
+                                  email: driver.email,
                                   phone: driver.phone,
                                   vehicleType: driver.vehicleType,
+                                  licenseNumber: driver.licenseNumber,
                                   isActive: !driver.isActive,
                                   currentRoute: driver.currentRoute,
                                   createdAt: driver.createdAt,
@@ -1684,167 +1703,3 @@ String _vehicleAsset(VehicleType type) {
   }
 }
 
-void _showAddEditDriverDialog(
-  BuildContext context,
-  WidgetRef ref, {
-  Driver? driver,
-}) {
-  final isEdit = driver != null;
-  final nameController = TextEditingController(text: driver?.name);
-  final phoneController = TextEditingController(text: driver?.phone);
-  VehicleType selectedVehicle = driver?.vehicleType ?? VehicleType.bike;
-
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: Text(
-          isEdit ? 'Edit driver' : 'New driver',
-          style: context.appTextStyles.sectionHeader,
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Image.asset(
-                    _vehicleAsset(selectedVehicle),
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Vehicle type sets the icon on route cards and driver lists.',
-                style: context.appTextStyles.caption.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  height: 1.35,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: nameController,
-                textCapitalization: TextCapitalization.words,
-                decoration: _mgmtInputDecoration(
-                  label: 'Full name',
-                  hint: 'e.g. Rahul Kumar',
-                ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: phoneController,
-                decoration: _mgmtInputDecoration(
-                  label: 'Phone',
-                  hint: '+91 00000 00000',
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 14),
-              DropdownButtonFormField<VehicleType>(
-                initialValue: selectedVehicle,
-                items: VehicleType.values
-                    .map(
-                      (v) => DropdownMenuItem(
-                        value: v,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: AppColors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: Image.asset(
-                                _vehicleAsset(v),
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              v.name.isEmpty
-                                  ? v.name
-                                  : '${v.name[0].toUpperCase()}${v.name.substring(1)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (val) => setState(() => selectedVehicle = val!),
-                decoration: _mgmtInputDecoration(label: 'Vehicle'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: context.appTextStyles.caption.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.textLight,
-              ),
-            ),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final factoryId =
-                  await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
-
-              final newDriver = Driver(
-                id: isEdit ? driver.id : const Uuid().v4(),
-                factoryId: factoryId,
-                name: nameController.text.trim(),
-                phone: phoneController.text.trim(),
-                vehicleType: selectedVehicle,
-                isActive: driver?.isActive ?? true,
-                currentRoute: driver?.currentRoute,
-                createdAt: driver?.createdAt ?? DateTime.now(),
-                updatedAt: DateTime.now(),
-              );
-              if (isEdit) {
-                ref.read(driversProvider.notifier).updateDriver(newDriver);
-              } else {
-                ref.read(driversProvider.notifier).addDriver(newDriver);
-              }
-              if (context.mounted) Navigator.pop(context);
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: Text(
-              isEdit ? 'Save changes' : 'Add driver',
-              style: const TextStyle(fontWeight: FontWeight.w900),
-            ),
-          ),
-        ],
-      ),
-    ),
-  ).whenComplete(() {
-    nameController.dispose();
-    phoneController.dispose();
-  });
-}
