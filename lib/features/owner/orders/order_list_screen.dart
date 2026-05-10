@@ -30,11 +30,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   String _searchQuery = '';
   String? _selectedRouteId;
   PaymentStatus? _selectedPaymentStatus;
-  final _rupee = NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-    decimalDigits: 2,
-  );
+
+  String _formatRupee(double amount) {
+    final whole = amount == amount.roundToDouble();
+    return NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: whole ? 0 : 2,
+    ).format(amount);
+  }
 
   @override
   void dispose() {
@@ -809,163 +813,374 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         ? 'Unknown'
         : order.customerName.trim();
     final statusText = _humanStatus(order.status);
-    final statusBg = _statusChipBg(order.status);
-    final statusFg = _statusChipFg(order.status);
-
-    final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
-    final isPaid = paymentStatus == PaymentStatus.paid;
-    final paymentLabel = isPaid ? 'PAID' : 'UNPAID';
-    final paymentFg = isPaid ? AppColors.success : AppColors.error;
-    final paymentBg = isPaid
-        ? AppColors.successLighter.withValues(alpha: 0.85)
-        : AppColors.errorLighter.withValues(alpha: 0.85);
 
     final displayId = _displayOrderId(order.id);
 
-    final itemsPreview = order.items
-        .take(3)
-        .map((i) => '${i.quantity}x ${i.foodItemName}')
-        .join(', ');
+    final typeLabel = order.orderType == OrderType.daily
+        ? 'Daily'
+        : 'One-time';
 
-    final leading = switch (order.status) {
-      OrderStatus.delivered => Icons.location_on_rounded,
-      OrderStatus.confirmed => Icons.lunch_dining_rounded,
-      _ => Icons.restaurant_rounded,
+    final statusChipBg = switch (order.status) {
+      OrderStatus.pending => const Color(0xFF6D5EF6),
+      _ => _getStatusColor(order.status),
     };
 
+    const statusChipFg = Colors.white;
+
+    final lineTypes = order.items.length;
+    final unitCount =
+        order.items.fold<int>(0, (sum, i) => sum + i.quantity);
+    final metaParts = <String>[
+      DateFormat('EEE, d MMM').format(order.orderDate),
+      if (lineTypes > 0)
+        '$lineTypes ${lineTypes == 1 ? 'product' : 'products'}',
+      if (unitCount > 0) '$unitCount units',
+    ];
+    final metaLine = metaParts.join(' · ');
+
+    final payment = order.paymentStatus ?? PaymentStatus.unpaid;
+    final paymentColor = _getPaymentColor(payment);
+    final paymentLabel = switch (payment) {
+      PaymentStatus.paid => 'Paid',
+      PaymentStatus.partial => 'Partial',
+      PaymentStatus.unpaid => 'Unpaid',
+    };
+
+    const previewMax = 3;
+    final previewItems = order.items.take(previewMax).toList();
+    final moreLines = order.items.length - previewItems.length;
+    final detailsBody = previewItems.isEmpty
+        ? '—'
+        : previewItems
+            .map(
+              (i) =>
+                  '${i.foodItemName} · ${_formatRupee(i.totalPrice)}',
+            )
+            .join('\n');
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 22,
-            offset: Offset(0, 8),
+            blurRadius: 18,
+            offset: Offset(0, 6),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          borderRadius: BorderRadius.circular(24),
           onTap: () => context.push('/owner/orders/${order.id}'),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        customerName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _Pill(
-                          label: statusText.toUpperCase(),
-                          bg: statusBg,
-                          fg: statusFg,
-                        ),
-                        const SizedBox(height: 6),
-                        _Pill(
-                          label: paymentLabel,
-                          bg: paymentBg,
-                          fg: paymentFg,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  displayId,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 10, 10),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 34,
-                      height: 34,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryLighter.withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                        ),
                       ),
-                      child: Icon(leading, size: 18, color: AppColors.primary),
+                      child: const Icon(
+                        Icons.receipt_long_rounded,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            itemsPreview,
-                            maxLines: 2,
+                            displayId,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                              height: 1.35,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.45,
                             ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.backgroundSecondary,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                  ),
+                                ),
+                                child: Text(
+                                  typeLabel,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 10,
+                                    letterSpacing: 0.15,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  metaLine,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.textLight,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1, color: AppColors.divider),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
+                    const SizedBox(width: 6),
                     Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Text(
-                          'Total Amount',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
                           ),
+                          decoration: BoxDecoration(
+                            color: statusChipBg,
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: [
+                              BoxShadow(
+                                color: statusChipBg.withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            statusText,
+                            style: const TextStyle(
+                              color: statusChipFg,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 10,
+                              height: 1.1,
+                              letterSpacing: 0.05,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 22,
+                          color: AppColors.textLight.withValues(alpha: 0.85),
                         ),
                       ],
                     ),
-                    const Spacer(),
-                    Text(
-                      _rupee.format(order.totalAmount),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Customer',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    customerName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 15,
+                                      color: AppColors.textPrimary,
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                const Text(
+                                  'Total',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  _formatRupee(order.totalAmount),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16,
+                                    color: AppColors.primary,
+                                    letterSpacing: -0.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Text(
+                              'Payment',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: paymentColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: paymentColor.withValues(alpha: 0.35),
+                                ),
+                              ),
+                              child: Text(
+                                paymentLabel,
+                                style: TextStyle(
+                                  color: paymentColor,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 11,
+                                  letterSpacing: 0.1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: AppColors.border.withValues(alpha: 0.65),
+                          ),
+                        ),
+                        Text(
+                          'LINE ITEMS',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 10,
+                            color: AppColors.textLight,
+                            letterSpacing: 0.9,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        previewItems.isEmpty
+                            ? Text(
+                                detailsBody,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: -0.1,
+                                  height: 1.35,
+                                ),
+                              )
+                            : moreLines > 0
+                            ? Text.rich(
+                                TextSpan(
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: -0.1,
+                                    height: 1.35,
+                                  ),
+                                  children: [
+                                    TextSpan(text: detailsBody),
+                                    TextSpan(
+                                      text: '\n+$moreLines more',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 12,
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.95),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                maxLines: 5,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : Text(
+                                detailsBody,
+                                maxLines: 4,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: -0.1,
+                                  height: 1.35,
+                                ),
+                              ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

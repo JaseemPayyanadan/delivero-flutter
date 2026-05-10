@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../app/reports_provider.dart';
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_skeleton.dart';
 import '../../../data/models/order.dart';
@@ -81,8 +82,14 @@ class OwnerDashboardScreen extends ConsumerWidget {
       backgroundColor: AppColors.backgroundPrimary,
       body: RefreshIndicator(
         color: AppColors.primary,
-        displacement: 56,
-        onRefresh: () => _refreshOwnerDashboard(ref),
+        displacement: 64,
+        strokeWidth: 2.5,
+        onRefresh: () async {
+          await _refreshOwnerDashboard(ref);
+          if (context.mounted) {
+            HapticFeedback.lightImpact();
+          }
+        },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
@@ -101,8 +108,13 @@ class OwnerDashboardScreen extends ConsumerWidget {
             ),
             if (isEmpty && isLoading)
               SliverFillRemaining(
-                hasScrollBody: false,
-                child: _LoadingState(),
+                hasScrollBody: true,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  child: const _DashboardLoadingSkeleton(),
+                ),
               )
             else if (isEmpty)
               SliverFillRemaining(
@@ -111,19 +123,19 @@ class OwnerDashboardScreen extends ConsumerWidget {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.fromLTRB(20, 44, 20, 0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     if (showOnboardingBanner) ...[
-                      const SizedBox(height: 20),
                       const _ResumeSetupBanner(),
+                      const SizedBox(height: 20),
                     ],
-                    const SizedBox(height: 24),
                     const _SectionHeader(
-                      eyebrow: 'GO TO',
+                      eyebrow: 'Shortcuts',
                       title: 'Quick actions',
+                      subtitle: 'Jump to the workflows you use most',
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     _QuickActionsGrid(
                       actions: const [
                         _QuickAction(
@@ -152,31 +164,31 @@ class OwnerDashboardScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 28),
-                    _SectionHeader(
-                      eyebrow: 'THIS WEEK',
+                    const SizedBox(height: 32),
+                    const _SectionHeader(
+                      eyebrow: 'This week',
                       title: 'Sales revenue',
                       subtitle: 'Daily revenue across the last 7 days',
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     _SalesTrendCard(dailySales: reports.dailySales),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 32),
                     _SectionHeader(
-                      eyebrow: 'LATEST',
+                      eyebrow: 'Latest',
                       title: 'Recent orders',
-                      subtitle: 'Tap a row to open order details',
+                      subtitle: 'Tap a card to open details',
                       trailingLabel: 'View all',
                       onTrailingTap: () => context.push('/owner/orders'),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     _RecentOrdersList(orders: orders),
-                    const SizedBox(height: 28),
-                    _SectionHeader(
-                      eyebrow: 'CATALOG',
+                    const SizedBox(height: 32),
+                    const _SectionHeader(
+                      eyebrow: 'Catalog',
                       title: 'Product mix',
                       subtitle: 'Top sellers by revenue',
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     _ProductSaleCard(productSales: reports.productSales),
                     SizedBox(height: bottomInset),
                   ]),
@@ -308,25 +320,11 @@ class _DashboardHero extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _HeroTopRow(
-                greeting: _greeting(),
-                name: displayName,
-              ),
-              const SizedBox(height: 22),
-              const Text(
-                'Dashboard',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.1,
-                  height: 1.0,
-                ),
-              ),
-              const SizedBox(height: 6),
+              _HeroTopRow(greeting: _greeting(), name: displayName),
+              const SizedBox(height: 16),
               Text(
                 dateStr,
-                style: TextStyle(
+                style: context.appTextStyles.sliverSubtitle.copyWith(
                   color: Colors.white.withValues(alpha: 0.78),
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -371,11 +369,12 @@ class _HeroTopRow extends StatelessWidget {
             children: [
               Text(
                 greeting,
-                style: TextStyle(
+                style: context.appTextStyles.caption.copyWith(
                   color: Colors.white.withValues(alpha: 0.72),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.4,
+                  height: 1.2,
                 ),
               ),
               const SizedBox(height: 2),
@@ -386,10 +385,9 @@ class _HeroTopRow extends StatelessWidget {
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: context.appTextStyles.sectionHeader.copyWith(
                         color: Colors.white,
                         fontSize: 17,
-                        fontWeight: FontWeight.w900,
                         letterSpacing: -0.3,
                       ),
                     ),
@@ -407,13 +405,14 @@ class _HeroTopRow extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.25),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'OWNER',
-                      style: TextStyle(
+                      style: context.appTextStyles.caption.copyWith(
                         color: Colors.white,
                         fontSize: 9,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.0,
+                        height: 1.0,
                       ),
                     ),
                   ),
@@ -429,9 +428,12 @@ class _HeroTopRow extends StatelessWidget {
             HapticFeedback.lightImpact();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text(
+                content: Text(
                   'Notifications coming soon',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                  style: context.appTextStyles.body.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 behavior: SnackBarBehavior.floating,
                 backgroundColor: AppColors.secondary,
@@ -465,9 +467,7 @@ class _HeroIconButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.14),
             shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.22),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
           ),
           child: Icon(icon, color: Colors.white, size: 21),
         ),
@@ -494,11 +494,12 @@ class _HeroRevenue extends StatelessWidget {
       children: [
         Text(
           'TOTAL REVENUE',
-          style: TextStyle(
+          style: context.appTextStyles.caption.copyWith(
             color: Colors.white.withValues(alpha: 0.7),
             fontSize: 10,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.4,
+            height: 1.0,
           ),
         ),
         const SizedBox(height: 8),
@@ -516,10 +517,9 @@ class _HeroRevenue extends StatelessWidget {
             '₹${NumberFormat.decimalPattern('en_IN').format(totalRevenue.round())}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: context.appTextStyles.sliverTitle.copyWith(
               color: Colors.white,
               fontSize: 36,
-              fontWeight: FontWeight.w900,
               letterSpacing: -1.4,
               height: 1.0,
             ),
@@ -530,9 +530,7 @@ class _HeroRevenue extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -547,7 +545,7 @@ class _HeroRevenue extends StatelessWidget {
                 isLoading
                     ? '—'
                     : '$todayOrdersCount ${todayOrdersCount == 1 ? 'order' : 'orders'} today',
-                style: const TextStyle(
+                style: context.appTextStyles.sliverSubtitle.copyWith(
                   color: Colors.white,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
@@ -714,11 +712,12 @@ class _KpiPill extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: context.appTextStyles.caption.copyWith(
                     color: AppColors.textLight,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.4,
+                    height: 1.0,
                   ),
                 ),
               ),
@@ -732,10 +731,9 @@ class _KpiPill extends StatelessWidget {
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: context.appTextStyles.sliverTitle.copyWith(
                 color: AppColors.textPrimary,
                 fontSize: 20,
-                fontWeight: FontWeight.w900,
                 letterSpacing: -0.6,
                 height: 1.0,
               ),
@@ -767,83 +765,109 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                eyebrow,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.4,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  subtitle!,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (trailingLabel != null) ...[
-          const SizedBox(width: 12),
-          TextButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              onTrailingTap?.call();
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-              minimumSize: const Size(44, 36),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+    return Semantics(
+      header: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 4,
+            height: 46,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.primaryLight, AppColors.primary],
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  trailingLabel!,
-                  style: const TextStyle(
-                    fontSize: 12,
+                  eyebrow.toUpperCase(),
+                  style: context.appTextStyles.caption.copyWith(
+                    color: AppColors.primary.withValues(alpha: 0.9),
+                    fontSize: 10,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 0.2,
+                    letterSpacing: 1.25,
+                    height: 1.2,
                   ),
                 ),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_forward_rounded, size: 14),
+                const SizedBox(height: 5),
+                Text(
+                  title,
+                  style: context.appTextStyles.sliverTitle.copyWith(
+                    fontSize: 22,
+                    letterSpacing: -0.55,
+                    height: 1.05,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    subtitle!,
+                    style: context.appTextStyles.body.copyWith(
+                      color: AppColors.textSecondary.withValues(alpha: 0.92),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
+          if (trailingLabel != null) ...[
+            const SizedBox(width: 8),
+            Semantics(
+              button: true,
+              label: '${trailingLabel!}, orders list',
+              child: TextButton(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  onTrailingTap?.call();
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  minimumSize: const Size(48, 44),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  backgroundColor: AppColors.primaryLighter.withValues(
+                    alpha: 0.45,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      trailingLabel!,
+                      style: context.appTextStyles.caption.copyWith(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.15,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_forward_rounded, size: 15),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -867,13 +891,18 @@ class _SurfaceCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
+        boxShadow: [
           BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+          const BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 18,
-            offset: Offset(0, 10),
+            blurRadius: 14,
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -891,79 +920,95 @@ class _ResumeSetupBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.mediumImpact();
-          context.push('/onboarding');
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-          decoration: BoxDecoration(
-            color: AppColors.primaryLighter.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.18),
+    return Semantics(
+      button: true,
+      label: 'Finish account setup',
+      hint: 'Opens setup steps',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            context.push('/onboarding');
+          },
+          borderRadius: BorderRadius.circular(22),
+          child: Ink(
+            padding: const EdgeInsets.fromLTRB(18, 17, 16, 17),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.22),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.35),
-                      blurRadius: 14,
-                      offset: const Offset(0, 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.primaryGradientStart,
+                        AppColors.primaryGradientEnd,
+                      ],
                     ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.rocket_launch_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Finish account setup',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 14,
-                        letterSpacing: -0.2,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.28),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Complete a few steps to unlock all features and insights.',
-                      style: TextStyle(
-                        color: AppColors.textSecondary.withValues(alpha: 0.95),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.rocket_launch_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: AppColors.primary.withValues(alpha: 0.85),
-                size: 14,
-              ),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Finish account setup',
+                        style: context.appTextStyles.sectionHeader.copyWith(
+                          fontSize: 15,
+                          letterSpacing: -0.25,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'A few quick steps unlock the full workspace.',
+                        style: context.appTextStyles.body.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.primary.withValues(alpha: 0.75),
+                  size: 26,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -996,7 +1041,7 @@ class _QuickActionsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1008,8 +1053,8 @@ class _QuickActionsGrid extends StatelessWidget {
                   width: 1,
                   thickness: 1,
                   color: AppColors.divider,
-                  indent: 8,
-                  endIndent: 8,
+                  indent: 6,
+                  endIndent: 6,
                 ),
             ],
           ],
@@ -1025,46 +1070,58 @@ class _QuickActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          context.push(action.path);
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: action.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(action.icon, color: action.color, size: 20),
-              ),
-              const SizedBox(height: 8),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  action.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.1,
-                    height: 1.1,
+    return Tooltip(
+      message: action.label,
+      waitDuration: const Duration(milliseconds: 500),
+      child: Semantics(
+        button: true,
+        label: action.label,
+        hint: 'Opens this section',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              context.push(action.path);
+            },
+            borderRadius: BorderRadius.circular(16),
+            splashColor: action.color.withValues(alpha: 0.08),
+            highlightColor: action.color.withValues(alpha: 0.04),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: action.color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Icon(action.icon, color: action.color, size: 20),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      action.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: context.appTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.05,
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1082,6 +1139,7 @@ class _SalesTrendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.appTextStyles;
     final last = dailySales.length > 7
         ? dailySales.sublist(dailySales.length - 7)
         : dailySales;
@@ -1104,6 +1162,7 @@ class _SalesTrendCard extends StatelessWidget {
     final maxY = (maxValue <= 0 ? 1.0 : maxValue) * 1.22;
     final yInterval = maxY > 0 ? maxY / 4 : 1.0;
     final highlightIndex = _pickHighlightIndex(last);
+    final chartMaxX = last.length <= 1 ? 1.0 : (last.length - 1).toDouble();
     final weekTotal = last.fold<double>(0, (s, d) => s + d.amount);
     final weekOrders = last.fold<int>(0, (s, d) => s + d.count);
     final best = last[highlightIndex];
@@ -1116,8 +1175,26 @@ class _SalesTrendCard extends StatelessWidget {
         ? DateFormat('EEE, MMM d').format(rangeStart)
         : '${DateFormat('MMM d').format(rangeStart)} – ${DateFormat('MMM d').format(rangeEnd)}';
 
+    final chartAxisMoneyStyle = t.caption.copyWith(
+      color: AppColors.textLight,
+      fontSize: 9,
+      fontWeight: FontWeight.w900,
+      height: 1.0,
+    );
+    final tooltipLeadStyle = t.sectionHeader.copyWith(
+      color: Colors.white,
+      fontSize: 12,
+      height: 1.25,
+    );
+    final tooltipSpanStyle = t.caption.copyWith(
+      color: Colors.white.withValues(alpha: 0.7),
+      fontSize: 11,
+      fontWeight: FontWeight.w800,
+      height: 1.35,
+    );
+
     return _SurfaceCard(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1132,202 +1209,245 @@ class _SalesTrendCard extends StatelessWidget {
                       '₹${NumberFormat.compact().format(weekTotal)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.8,
+                      style: t.sliverTitle.copyWith(
+                        fontSize: 28,
+                        letterSpacing: -0.85,
                         height: 1.0,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(
                       '$weekOrders ${weekOrders == 1 ? 'order' : 'orders'} · $rangeLabel',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: t.body.copyWith(
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
+                        color: AppColors.textSecondary.withValues(alpha: 0.92),
                       ),
                     ),
                   ],
                 ),
               ),
-              _BestDayChip(best: best),
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: _BestDayChip(best: best),
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 18),
-          SizedBox(
-            height: 180,
-            child: BarChart(
-              BarChartData(
-                maxY: maxY,
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: yInterval,
-                  getDrawingHorizontalLine: (_) =>
-                      const FlLine(color: AppColors.divider, strokeWidth: 1),
+          const SizedBox(height: 10),
+          Semantics(
+            label: 'Chart hint',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.touch_app_outlined,
+                  size: 16,
+                  color: AppColors.textLight.withValues(alpha: 0.9),
                 ),
-                borderData: FlBorderData(show: false),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  handleBuiltInTouches: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    direction: TooltipDirection.top,
-                    tooltipPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Tap the chart for daily revenue, share of the week, and order count.',
+                    style: t.caption.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textLight.withValues(alpha: 0.95),
+                      height: 1.35,
                     ),
-                    tooltipBorderRadius: BorderRadius.circular(12),
-                    tooltipMargin: 8,
-                    maxContentWidth: 220,
-                    fitInsideHorizontally: true,
-                    fitInsideVertically: true,
-                    getTooltipColor: (_) =>
-                        AppColors.textPrimary.withValues(alpha: 0.94),
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      if (groupIndex < 0 || groupIndex >= last.length) {
-                        return null;
-                      }
-                      final d = last[groupIndex];
-                      final val = rod.toY;
-                      final label = '₹${NumberFormat.compact().format(val)}';
-                      final dayLine = DateFormat(
-                        'EEEE, MMM d',
-                      ).format(d.date);
-                      final share = weekTotal <= 0
-                          ? 0.0
-                          : (val / weekTotal) * 100;
-                      return BarTooltipItem(
-                        '$dayLine\n',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12,
-                          height: 1.25,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: '$label · ${share.round()}% of week\n',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontWeight: FontWeight.w800,
-                              fontSize: 11,
-                              height: 1.35,
-                            ),
-                          ),
-                          TextSpan(
-                            text:
-                                '${d.count} ${d.count == 1 ? 'order' : 'orders'}',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontWeight: FontWeight.w800,
-                              fontSize: 11,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
                   ),
                 ),
-                titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: SizedBox(
+              height: 188,
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: chartMaxX,
+                  minY: 0,
+                  maxY: maxY,
+                  clipData: const FlClipData.all(),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: yInterval,
+                    getDrawingHorizontalLine: (_) =>
+                        const FlLine(color: AppColors.divider, strokeWidth: 1),
                   ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      interval: yInterval,
-                      getTitlesWidget: (value, meta) {
-                        final label = value == 0
-                            ? '0'
-                            : '₹${NumberFormat.compact().format(value)}';
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: Text(
-                            label,
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              color: AppColors.textLight,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        );
+                  borderData: FlBorderData(show: false),
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    handleBuiltInTouches: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      tooltipPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      tooltipBorderRadius: BorderRadius.circular(12),
+                      tooltipMargin: 8,
+                      maxContentWidth: 220,
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      getTooltipColor: (_) =>
+                          AppColors.textPrimary.withValues(alpha: 0.94),
+                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final i = spot.x.round();
+                          if (i < 0 || i >= last.length) return null;
+                          final d = last[i];
+                          final val = d.amount;
+                          final label =
+                              '₹${NumberFormat.compact().format(val)}';
+                          final dayLine = DateFormat(
+                            'EEEE, MMM d',
+                          ).format(d.date);
+                          final share = weekTotal <= 0
+                              ? 0.0
+                              : (val / weekTotal) * 100;
+                          return LineTooltipItem(
+                            '$dayLine\n',
+                            tooltipLeadStyle,
+                            children: [
+                              TextSpan(
+                                text: '$label · ${share.round()}% of week\n',
+                                style: tooltipSpanStyle,
+                              ),
+                              TextSpan(
+                                text:
+                                    '${d.count} ${d.count == 1 ? 'order' : 'orders'}',
+                                style: tooltipSpanStyle,
+                              ),
+                            ],
+                          );
+                        }).toList();
                       },
                     ),
                   ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 30,
-                      getTitlesWidget: (value, meta) {
-                        final i = value.toInt();
-                        if (i < 0 || i >= last.length) {
-                          return const SizedBox.shrink();
-                        }
-                        final isHighlight = i == highlightIndex;
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            DateFormat('EEE')
-                                .format(last[i].date)
-                                .toUpperCase(),
-                            style: TextStyle(
-                              color: isHighlight
-                                  ? AppColors.primary
-                                  : AppColors.textLight,
-                              fontSize: 10,
-                              fontWeight: isHighlight
-                                  ? FontWeight.w900
-                                  : FontWeight.w800,
+                  titlesData: FlTitlesData(
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        interval: yInterval,
+                        getTitlesWidget: (value, meta) {
+                          final label = value == 0
+                              ? '0'
+                              : '₹${NumberFormat.compact().format(value)}';
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: Text(
+                              label,
+                              textAlign: TextAlign.right,
+                              style: chartAxisMoneyStyle,
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        interval: 1,
+                        getTitlesWidget: (value, meta) {
+                          final i = value.round();
+                          if (i < 0 || i >= last.length) {
+                            return const SizedBox.shrink();
+                          }
+                          final isHighlight = i == highlightIndex;
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              DateFormat(
+                                'EEE',
+                              ).format(last[i].date).toUpperCase(),
+                              style: t.caption.copyWith(
+                                color: isHighlight
+                                    ? AppColors.primary
+                                    : AppColors.textLight,
+                                fontSize: 10,
+                                fontWeight: isHighlight
+                                    ? FontWeight.w900
+                                    : FontWeight.w800,
+                                height: 1.0,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
-                barGroups: [
-                  for (var i = 0; i < last.length; i++)
-                    BarChartGroupData(
-                      x: i,
-                      showingTooltipIndicators:
-                          i == highlightIndex ? const [0] : const [],
-                      barRods: [
-                        BarChartRodData(
-                          toY: last[i].amount,
-                          width: i == highlightIndex ? 16 : 13,
-                          borderRadius: BorderRadius.circular(8),
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: i == highlightIndex
-                                ? [
-                                    AppColors.primary.withValues(alpha: 0.7),
-                                    AppColors.primary,
-                                  ]
-                                : [
-                                    AppColors.primary.withValues(alpha: 0.10),
-                                    AppColors.primary.withValues(alpha: 0.22),
-                                  ],
-                          ),
-                          color: null,
-                        ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: [
+                        for (var i = 0; i < last.length; i++)
+                          FlSpot(i.toDouble(), last[i].amount),
                       ],
+                      isCurved: true,
+                      curveSmoothness: 0.35,
+                      preventCurveOverShooting: true,
+                      barWidth: 3,
+                      isStrokeCapRound: true,
+                      isStrokeJoinRound: true,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withValues(alpha: 0.85),
+                          AppColors.primary,
+                        ],
+                      ),
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, bar, index) {
+                          final isHighlight = index == highlightIndex;
+                          return FlDotCirclePainter(
+                            radius: isHighlight ? 5.5 : 3.5,
+                            color: isHighlight
+                                ? AppColors.primary
+                                : AppColors.primary.withValues(alpha: 0.5),
+                            strokeWidth: isHighlight ? 2 : 1,
+                            strokeColor: Colors.white,
+                          );
+                        },
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.20),
+                            AppColors.primary.withValues(alpha: 0.02),
+                          ],
+                        ),
+                      ),
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 6),
         ],
       ),
     );
@@ -1355,27 +1475,31 @@ class _BestDayChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.primaryLighter.withValues(alpha: 0.7),
+        color: AppColors.primaryLighter.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.star_rounded,
-            size: 14,
-            color: AppColors.primary,
+          Icon(
+            Icons.auto_graph_rounded,
+            size: 15,
+            color: AppColors.primary.withValues(alpha: 0.95),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Text(
             'Best ${DateFormat('EEE').format(best.date)} · ₹${NumberFormat.compact().format(best.amount)}',
-            style: const TextStyle(
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.appTextStyles.caption.copyWith(
               color: AppColors.primary,
               fontSize: 11,
               fontWeight: FontWeight.w900,
-              letterSpacing: 0.1,
+              letterSpacing: 0.05,
+              height: 1.0,
             ),
           ),
         ],
@@ -1403,11 +1527,12 @@ class _EmptyChartPlaceholder extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 56,
-          height: 56,
+          width: 60,
+          height: 60,
           decoration: BoxDecoration(
             color: tone.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: tone.withValues(alpha: 0.12)),
           ),
           child: Icon(icon, color: tone, size: 28),
         ),
@@ -1415,10 +1540,8 @@ class _EmptyChartPlaceholder extends StatelessWidget {
         Text(
           title,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: context.appTextStyles.sectionHeader.copyWith(
             fontSize: 15,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
             letterSpacing: -0.3,
           ),
         ),
@@ -1426,7 +1549,7 @@ class _EmptyChartPlaceholder extends StatelessWidget {
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: context.appTextStyles.body.copyWith(
             fontSize: 13,
             height: 1.45,
             fontWeight: FontWeight.w600,
@@ -1454,45 +1577,46 @@ class _RecentOrdersList extends StatelessWidget {
 
     if (displayOrders.isEmpty) {
       return _SurfaceCard(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+        padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
         child: Column(
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 60,
+              height: 60,
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                ),
               ),
               child: Icon(
                 Icons.shopping_bag_outlined,
-                color: AppColors.primary.withValues(alpha: 0.85),
-                size: 26,
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'No orders yet',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.2,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Create an order to see it show up here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textSecondary.withValues(alpha: 0.9),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                height: 1.4,
+                color: AppColors.primary.withValues(alpha: 0.88),
+                size: 28,
               ),
             ),
             const SizedBox(height: 18),
+            Text(
+              'No orders yet',
+              textAlign: TextAlign.center,
+              style: context.appTextStyles.sectionHeader.copyWith(
+                fontSize: 16,
+                letterSpacing: -0.25,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Create an order and it will appear in this list.',
+              textAlign: TextAlign.center,
+              style: context.appTextStyles.body.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                height: 1.45,
+                color: AppColors.textSecondary.withValues(alpha: 0.92),
+              ),
+            ),
+            const SizedBox(height: 22),
             SizedBox(
               width: double.infinity,
               child: FilledButton.tonalIcon(
@@ -1501,18 +1625,21 @@ class _RecentOrdersList extends StatelessWidget {
                   context.push('/owner/orders/create');
                 },
                 icon: const Icon(Icons.add_rounded, size: 20),
-                label: const Text(
+                label: Text(
                   'New order',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                  style: context.appTextStyles.buttonLabel.copyWith(
+                    fontSize: 14,
+                    letterSpacing: 0.2,
+                  ),
                 ),
                 style: FilledButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   backgroundColor: AppColors.primaryLighter.withValues(
                     alpha: 0.65,
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
@@ -1522,20 +1649,17 @@ class _RecentOrdersList extends StatelessWidget {
       );
     }
 
-    return _SurfaceCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          for (var i = 0; i < displayOrders.length; i++) ...[
-            _RecentOrderTile(order: displayOrders[i]),
-            if (i != displayOrders.length - 1)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 18),
-                child: Divider(height: 1, color: AppColors.divider),
-              ),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < displayOrders.length; i++) ...[
+          _SurfaceCard(
+            padding: EdgeInsets.zero,
+            child: _RecentOrderTile(order: displayOrders[i]),
+          ),
+          if (i != displayOrders.length - 1) const SizedBox(height: 10),
         ],
-      ),
+      ],
     );
   }
 }
@@ -1544,16 +1668,33 @@ class _RecentOrderTile extends StatelessWidget {
   final Order order;
   const _RecentOrderTile({required this.order});
 
-  Color _statusColor(OrderStatus status) {
+  Color _getStatusColor(OrderStatus status) {
     switch (status) {
-      case OrderStatus.delivered:
-        return AppColors.success;
       case OrderStatus.pending:
         return AppColors.warning;
+      case OrderStatus.delivered:
+        return AppColors.success;
       case OrderStatus.cancelled:
         return AppColors.error;
       default:
         return AppColors.info;
+    }
+  }
+
+  String _humanStatus(OrderStatus status) {
+    switch (status) {
+      case OrderStatus.pending:
+        return 'Pending';
+      case OrderStatus.confirmed:
+        return 'Out for delivery';
+      case OrderStatus.preparing:
+        return 'Preparing';
+      case OrderStatus.ready:
+        return 'Ready';
+      case OrderStatus.delivered:
+        return 'Delivered';
+      case OrderStatus.cancelled:
+        return 'Cancelled';
     }
   }
 
@@ -1567,121 +1708,144 @@ class _RecentOrderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(order.status);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          context.push('/owner/orders/${order.id}');
-        },
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-          child: Row(
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundSecondary,
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _initials(order.customerName),
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: Container(
-                      width: 12,
-                      height: 12,
+    final statusColor = _getStatusColor(order.status);
+    final statusChipBg = switch (order.status) {
+      OrderStatus.pending => const Color(0xFF6D5EF6),
+      _ => statusColor,
+    };
+    final amountLabel =
+        '₹${NumberFormat.decimalPattern('en_IN').format(order.totalAmount)}';
+    return Semantics(
+      button: true,
+      label:
+          '${order.customerName}, $amountLabel, ${_humanStatus(order.status)}',
+      hint: 'Opens order details',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            context.push('/owner/orders/${order.id}');
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 15, 12, 15),
+            child: Row(
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
                       decoration: BoxDecoration(
-                        color: statusColor,
-                        shape: BoxShape.circle,
+                        color: AppColors.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(15),
                         border: Border.all(
-                          color: AppColors.surface,
-                          width: 2,
+                          color: AppColors.border.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _initials(order.customerName),
+                        style: context.appTextStyles.sectionHeader.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      order.customerName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      DateFormat('MMM d, hh:mm a').format(order.orderDate),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w700,
+                    Positioned(
+                      right: -1,
+                      bottom: -1,
+                      child: Container(
+                        width: 13,
+                        height: 13,
+                        decoration: BoxDecoration(
+                          color: statusChipBg,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.surface,
+                            width: 2,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '₹${NumberFormat.decimalPattern('en_IN').format(order.totalAmount)}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      fontSize: 14,
-                      letterSpacing: -0.3,
-                    ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.customerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.appTextStyles.sectionHeader.copyWith(
+                          fontSize: 15,
+                          letterSpacing: -0.25,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('MMM d · hh:mm a').format(order.orderDate),
+                        style: context.appTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary.withValues(
+                            alpha: 0.95,
+                          ),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      order.status.name.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        color: statusColor,
-                        letterSpacing: 0.6,
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      amountLabel,
+                      style: context.appTextStyles.sectionHeader.copyWith(
+                        fontSize: 15,
+                        letterSpacing: -0.35,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusChipBg.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: statusChipBg.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Text(
+                        _humanStatus(order.status),
+                        style: context.appTextStyles.caption.copyWith(
+                          color: statusChipBg,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          height: 1.1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textLight.withValues(alpha: 0.85),
+                  size: 22,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1730,33 +1894,48 @@ class _ProductSaleCard extends StatelessWidget {
     );
 
     return _SurfaceCard(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (sortedSales.length > 5)
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 14,
-                    color: AppColors.textLight.withValues(alpha: 0.95),
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundSecondary.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.border.withValues(alpha: 0.45),
                   ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Top 5 by revenue · ${sortedSales.length} products in catalog',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textLight,
-                        height: 1.35,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.insights_rounded,
+                      size: 18,
+                      color: AppColors.info.withValues(alpha: 0.9),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Showing top 5 by revenue · ${sortedSales.length} products total',
+                        style: context.appTextStyles.caption.copyWith(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary.withValues(
+                            alpha: 0.95,
+                          ),
+                          height: 1.35,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           for (var i = 0; i < displaySales.length; i++)
@@ -1769,8 +1948,9 @@ class _ProductSaleCard extends StatelessWidget {
                 color: _palette[i % _palette.length],
                 item: displaySales[i],
                 catalogTotal: catalogTotal,
-                topRevenue:
-                    displaySales.isEmpty ? 0 : displaySales.first.revenue,
+                topRevenue: displaySales.isEmpty
+                    ? 0
+                    : displaySales.first.revenue,
               ),
             ),
         ],
@@ -1797,10 +1977,12 @@ class _ProductMixRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pct = catalogTotal <= 0 ? 0.0 : (item.revenue / catalogTotal) * 100;
-    final pctLabel =
-        pct >= 10 ? '${pct.round()}%' : '${pct.toStringAsFixed(1)}%';
-    final progress =
-        topRevenue <= 0 ? 0.0 : (item.revenue / topRevenue).clamp(0.0, 1.0);
+    final pctLabel = pct >= 10
+        ? '${pct.round()}%'
+        : '${pct.toStringAsFixed(1)}%';
+    final progress = topRevenue <= 0
+        ? 0.0
+        : (item.revenue / topRevenue).clamp(0.0, 1.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1808,50 +1990,48 @@ class _ProductMixRow extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 22,
-              height: 22,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(7),
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: color.withValues(alpha: 0.28)),
               ),
               alignment: Alignment.center,
               child: Text(
                 '$rank',
-                style: TextStyle(
+                style: context.appTextStyles.caption.copyWith(
                   color: color,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w900,
+                  height: 1.0,
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 item.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                style: context.appTextStyles.sectionHeader.copyWith(
+                  fontSize: 14,
                   height: 1.25,
-                  letterSpacing: -0.1,
+                  letterSpacing: -0.15,
                 ),
               ),
             ),
             const SizedBox(width: 10),
             Text(
               '₹${NumberFormat.compact().format(item.revenue)}',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.2,
+              style: context.appTextStyles.sectionHeader.copyWith(
+                fontSize: 14,
+                letterSpacing: -0.25,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -1859,19 +2039,20 @@ class _ProductMixRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
                 child: LinearProgressIndicator(
                   value: progress,
-                  minHeight: 6,
-                  backgroundColor: color.withValues(alpha: 0.10),
+                  minHeight: 8,
+                  backgroundColor: color.withValues(alpha: 0.08),
                   color: color,
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Text(
               '$pctLabel · ${item.quantity} qty',
-              style: const TextStyle(
-                fontSize: 10,
+              style: context.appTextStyles.caption.copyWith(
+                fontSize: 11,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textLight,
+                height: 1.2,
               ),
             ),
           ],
@@ -1885,42 +2066,156 @@ class _ProductMixRow extends StatelessWidget {
 // Loading + empty-state helpers
 // ---------------------------------------------------------------------------
 
-class _LoadingState extends StatelessWidget {
+/// Layout-aware placeholders so the dashboard “shape” appears while data loads.
+class _DashboardLoadingSkeleton extends StatelessWidget {
+  const _DashboardLoadingSkeleton();
+
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Semantics(
+      label: 'Loading dashboard, please wait',
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.fromLTRB(0, 8, 0, 48),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(
-              width: 36,
-              height: 36,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                color: AppColors.primary,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const DeliveroSkeleton(width: 4, height: 44, borderRadius: 2),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const DeliveroSkeleton(
+                        width: 72,
+                        height: 10,
+                        borderRadius: 4,
+                      ),
+                      const SizedBox(height: 8),
+                      const DeliveroSkeleton(
+                        width: double.infinity,
+                        height: 22,
+                        borderRadius: 8,
+                      ),
+                      const SizedBox(height: 8),
+                      const DeliveroSkeleton(
+                        width: double.infinity,
+                        height: 14,
+                        borderRadius: 6,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            Text(
-              'Loading your workspace…',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textSecondary.withValues(alpha: 0.95),
-                height: 1.35,
-              ),
+            const SizedBox(height: 18),
+            DeliveroSkeleton(height: 92, borderRadius: 24),
+            const SizedBox(height: 36),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const DeliveroSkeleton(width: 4, height: 44, borderRadius: 2),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const DeliveroSkeleton(
+                        width: 64,
+                        height: 10,
+                        borderRadius: 4,
+                      ),
+                      const SizedBox(height: 8),
+                      const DeliveroSkeleton(
+                        width: double.infinity,
+                        height: 22,
+                        borderRadius: 8,
+                      ),
+                      const SizedBox(height: 8),
+                      DeliveroSkeleton(
+                        width: MediaQuery.sizeOf(context).width * 0.55,
+                        height: 14,
+                        borderRadius: 6,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Pull down anytime to refresh.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textLight.withValues(alpha: 0.9),
+            const SizedBox(height: 18),
+            const DeliveroSkeleton(height: 220, borderRadius: 24),
+            const SizedBox(height: 36),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const DeliveroSkeleton(width: 4, height: 44, borderRadius: 2),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const DeliveroSkeleton(
+                        width: 56,
+                        height: 10,
+                        borderRadius: 4,
+                      ),
+                      const SizedBox(height: 8),
+                      const DeliveroSkeleton(
+                        width: double.infinity,
+                        height: 22,
+                        borderRadius: 8,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const DeliveroSkeleton(height: 88, borderRadius: 24),
+            const SizedBox(height: 10),
+            const DeliveroSkeleton(height: 88, borderRadius: 24),
+            const SizedBox(height: 10),
+            const DeliveroSkeleton(height: 88, borderRadius: 24),
+            const SizedBox(height: 36),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const DeliveroSkeleton(width: 4, height: 44, borderRadius: 2),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const DeliveroSkeleton(
+                        width: 52,
+                        height: 10,
+                        borderRadius: 4,
+                      ),
+                      const SizedBox(height: 8),
+                      const DeliveroSkeleton(
+                        width: double.infinity,
+                        height: 22,
+                        borderRadius: 8,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const DeliveroSkeleton(height: 160, borderRadius: 24),
+            const SizedBox(height: 28),
+            Center(
+              child: Text(
+                'Loading your workspace…',
+                textAlign: TextAlign.center,
+                style: context.appTextStyles.body.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textSecondary.withValues(alpha: 0.9),
+                ),
               ),
             ),
           ],
@@ -1954,10 +2249,11 @@ class _EmptyStateFeature extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               label,
-              style: const TextStyle(
+              style: context.appTextStyles.caption.copyWith(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textLight,
+                height: 1.2,
               ),
             ),
           ],

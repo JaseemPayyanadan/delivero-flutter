@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
@@ -142,6 +143,183 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// Creates a login for a driver without signing out the current user.
+  /// Uses a secondary Firebase app for Auth when Firebase is enabled.
+  Future<void> registerDriverAccount({
+    required String name,
+    required String email,
+    required String password,
+    required String driverId,
+    required String factoryId,
+    String? phone,
+  }) async {
+    final normalizedEmail = email.toLowerCase().trim();
+
+    await _registerDriverWithFirebase(
+          name: name,
+          email: normalizedEmail,
+          password: password,
+          driverId: driverId,
+          factoryId: factoryId,
+          phone: phone,
+        ) ??
+        await _registerDriverWithLocalFallback(
+          name: name,
+          email: normalizedEmail,
+          password: password,
+          driverId: driverId,
+          factoryId: factoryId,
+          phone: phone,
+        );
+  }
+
+  Future<String?> _registerDriverWithFirebase({
+    required String name,
+    required String email,
+    required String password,
+    required String driverId,
+    required String factoryId,
+    required String? phone,
+  }) async {
+    if (!FirebaseService.isInitialized) return null;
+
+    try {
+      late FirebaseApp regApp;
+      try {
+        regApp = Firebase.app('driver_registration');
+      } catch (_) {
+        regApp = await Firebase.initializeApp(
+          name: 'driver_registration',
+          options: Firebase.app().options,
+        );
+      }
+      final regAuth = fb.FirebaseAuth.instanceFor(app: regApp);
+      if (regAuth.currentUser != null) {
+        await regAuth.signOut();
+      }
+
+      final cred = await regAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final uid = cred.user?.uid;
+      if (uid == null) {
+        throw Exception('Registration failed');
+      }
+      await regAuth.signOut();
+
+      final user = User(
+        id: uid,
+        email: email,
+        password: '',
+        name: name,
+        role: UserRole.delivery,
+        phone: phone,
+        address: null,
+        factoryId: factoryId,
+        linkedEntityId: driverId,
+        mustChangePassword: true,
+      );
+      await _saveUserToFirestore(uid: uid, user: user);
+      return uid;
+    } on fb.FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        throw Exception('Email is already in use');
+      }
+      if (e.code == 'invalid-email') {
+        throw Exception('Invalid email');
+      }
+      if (e.code == 'weak-password') {
+        throw Exception('Password is too weak (use at least 6 characters)');
+      }
+      throw Exception(e.message ?? 'Registration failed');
+    }
+  }
+
+  Future<String> _registerDriverWithLocalFallback({
+    required String name,
+    required String email,
+    required String password,
+    required String driverId,
+    required String factoryId,
+    required String? phone,
+  }) async {
+    final users = await _getLocalUsers();
+    final exists = users.any(
+      (u) => u.email.toLowerCase().trim() == email.trim(),
+    );
+    if (exists) {
+      throw Exception('Email is already in use');
+    }
+
+    final id = 'USR_${_uuid.v4().substring(0, 8).toUpperCase()}';
+    final user = User(
+      id: id,
+      email: email,
+      password: password,
+      name: name,
+      role: UserRole.delivery,
+      phone: phone,
+      address: null,
+      factoryId: factoryId,
+      linkedEntityId: driverId,
+      mustChangePassword: true,
+    );
+
+    await _saveLocalUsers([...users, user]);
+    return id;
+  }
+
+  /// After first login for new driver accounts ([User.mustChangePassword]).
+  Future<void> completeMandatoryPasswordChange(String newPassword) async {
+    final u = state.user;
+    if (u == null || !u.mustChangePassword) return;
+    if (newPassword.length < 6) {
+      throw Exception('Password must be at least 6 characters');
+    }
+
+    final isLocalId = u.id.startsWith('USR_');
+    if (FirebaseService.isInitialized && !isLocalId) {
+      final cu = FirebaseService.auth.currentUser;
+      if (cu == null || cu.uid != u.id) {
+        throw Exception('Session error. Please sign in again.');
+      }
+      try {
+        await cu.updatePassword(newPassword);
+      } on fb.FirebaseAuthException catch (e) {
+        if (e.code == 'weak-password') {
+          throw Exception('Password is too weak');
+        }
+        if (e.code == 'requires-recent-login') {
+          throw Exception('Please sign out and sign in again, then change your password.');
+        }
+        throw Exception(e.message ?? 'Could not update password');
+      }
+      final updated = u.copyWith(mustChangePassword: false, password: '');
+      await _saveUserToFirestore(uid: u.id, user: updated);
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs!.setString(_kUserKey, jsonEncode(updated.toJson()));
+      state = state.copyWith(user: updated);
+      return;
+    }
+
+    final users = await _getLocalUsers();
+    final idx = users.indexWhere((x) => x.id == u.id);
+    if (idx < 0) {
+      throw Exception('Cannot update password for this account type.');
+    }
+    final row = users[idx].copyWith(
+      password: newPassword,
+      mustChangePassword: false,
+    );
+    users[idx] = row;
+    await _saveLocalUsers(users);
+    final sessionUser = row.copyWith(password: '');
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setString(_kUserKey, jsonEncode(sessionUser.toJson()));
+    state = state.copyWith(user: sessionUser);
+  }
+
   Future<void> completeOnboarding() async {
     if (state.user == null) return;
 
@@ -256,6 +434,8 @@ class AuthNotifier extends Notifier<AuthState> {
       avatar: user.avatar,
       factoryId: user.factoryId,
       linkedEntityId: user.linkedEntityId,
+      hasFinishedOnboarding: user.hasFinishedOnboarding,
+      mustChangePassword: user.mustChangePassword,
     );
   }
 
@@ -382,6 +562,8 @@ class AuthNotifier extends Notifier<AuthState> {
       avatar: user.avatar,
       factoryId: user.factoryId,
       linkedEntityId: user.linkedEntityId,
+      hasFinishedOnboarding: user.hasFinishedOnboarding,
+      mustChangePassword: user.mustChangePassword,
     );
   }
 
