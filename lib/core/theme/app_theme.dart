@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 
@@ -15,17 +17,13 @@ class AppTheme {
 
   static ThemeData light() {
     final baseTextTheme = ThemeData(useMaterial3: true).textTheme;
-    final appText = AppTextStyles.light(baseTextTheme);
+    final textTheme = GoogleFonts.figtreeTextTheme(baseTextTheme);
+    final appText = AppTextStyles.light(textTheme);
+    final figtree = GoogleFonts.figtree();
     return ThemeData(
       useMaterial3: true,
-      fontFamily: 'Geist',
-      fontFamilyFallback: const [
-        '.SF Pro Text',
-        '.SF Pro Display',
-        'Roboto',
-        'Segoe UI',
-        'Arial',
-      ],
+      fontFamily: figtree.fontFamily,
+      fontFamilyFallback: figtree.fontFamilyFallback,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         primary: AppColors.primary,
@@ -47,23 +45,23 @@ class AppTheme {
         iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 22),
         titleTextStyle: appText.appBarTitle,
       ),
-      textTheme: baseTextTheme.copyWith(
-        displayLarge: baseTextTheme.displayLarge?.copyWith(
+      textTheme: textTheme.copyWith(
+        displayLarge: textTheme.displayLarge?.copyWith(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
         ),
-        headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+        headlineMedium: textTheme.headlineMedium?.copyWith(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
         ),
-        titleLarge: baseTextTheme.titleLarge?.copyWith(
+        titleLarge: textTheme.titleLarge?.copyWith(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w600,
         ),
-        bodyLarge: baseTextTheme.bodyLarge?.copyWith(
+        bodyLarge: textTheme.bodyLarge?.copyWith(
           color: AppColors.textPrimary,
         ),
-        bodyMedium: baseTextTheme.bodyMedium?.copyWith(
+        bodyMedium: textTheme.bodyMedium?.copyWith(
           color: AppColors.textSecondary,
         ),
       ),
@@ -177,7 +175,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titleTextStyle: appText.sectionHeader,
-        contentTextStyle: baseTextTheme.bodyMedium?.copyWith(
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
           color: AppColors.textSecondary,
           height: 1.5,
         ),

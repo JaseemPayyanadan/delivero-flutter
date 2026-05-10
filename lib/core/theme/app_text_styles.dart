@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 
+String? _fontFamily(TextTheme base) => base.bodyMedium?.fontFamily;
+
 @immutable
 class AppTextStyles extends ThemeExtension<AppTextStyles> {
   final TextStyle appBarTitle;
@@ -23,40 +25,46 @@ class AppTextStyles extends ThemeExtension<AppTextStyles> {
   });
 
   factory AppTextStyles.light(TextTheme base) {
+    final ff = _fontFamily(base);
     return AppTextStyles(
-      appBarTitle: const TextStyle(
+      appBarTitle: TextStyle(
+        fontFamily: ff,
         color: AppColors.textPrimary,
         fontSize: 20,
         fontWeight: FontWeight.w900,
         letterSpacing: -0.5,
       ),
-      sliverTitle: const TextStyle(
+      sliverTitle: TextStyle(
+        fontFamily: ff,
         color: AppColors.textPrimary,
         fontSize: 24,
         fontWeight: FontWeight.w900,
         letterSpacing: -1,
       ),
-      sliverSubtitle: const TextStyle(
+      sliverSubtitle: TextStyle(
+        fontFamily: ff,
         color: AppColors.textSecondary,
         fontSize: 11,
         fontWeight: FontWeight.w600,
       ),
-      sectionHeader: const TextStyle(
+      sectionHeader: TextStyle(
+        fontFamily: ff,
         fontSize: 14,
         fontWeight: FontWeight.w900,
         color: AppColors.textPrimary,
         letterSpacing: -0.2,
       ),
-      body:
-          base.bodyMedium?.copyWith(color: AppColors.textSecondary) ??
-          const TextStyle(color: AppColors.textSecondary),
-      caption: const TextStyle(
+      body: base.bodyMedium?.copyWith(color: AppColors.textSecondary) ??
+          TextStyle(color: AppColors.textSecondary, fontFamily: ff),
+      caption: TextStyle(
+        fontFamily: ff,
         fontSize: 12,
         fontWeight: FontWeight.w600,
         color: AppColors.textLight,
         height: 1.4,
       ),
-      buttonLabel: const TextStyle(
+      buttonLabel: TextStyle(
+        fontFamily: ff,
         fontSize: 16,
         fontWeight: FontWeight.w800,
         letterSpacing: 0.5,

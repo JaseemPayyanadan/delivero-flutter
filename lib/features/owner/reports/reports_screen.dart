@@ -7,10 +7,20 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_skeleton.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/driver.dart';
+
+String _formatInsightRupee(double amount) {
+  final whole = amount == amount.roundToDouble();
+  return NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: '₹',
+    decimalDigits: whole ? 0 : 2,
+  ).format(amount);
+}
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -274,253 +284,285 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       backgroundColor: AppColors.backgroundPrimary,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 100),
-          children: [
-            const Text(
-              'Performance Insights',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.8,
-              ),
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          displacement: 48,
+          onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
             ),
-            const SizedBox(height: 6),
-            const Text(
-              'Analyze your delivery metrics and financial trends',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-                fontSize: 13,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _PresetPill(
-                    label: 'Today',
-                    selected: _preset == _kPresetToday,
-                    onTap: () => _applyPreset(_kPresetToday),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _PresetPill(
-                    label: 'Last 7 Days',
-                    selected: _preset == _kPresetLast7,
-                    onTap: () => _applyPreset(_kPresetLast7),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _PresetPill(
-                    label: 'This Month',
-                    selected: _preset == _kPresetThisMonth,
-                    onTap: () => _applyPreset(_kPresetThisMonth),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                _ExportChip(
-                  label: 'CSV',
-                  icon: Icons.table_chart_rounded,
-                  onTap: () =>
-                      _toast('CSV export coming soon', color: AppColors.info),
-                ),
-                const SizedBox(width: 10),
-                _ExportChip(
-                  label: 'PDF',
-                  icon: Icons.picture_as_pdf_rounded,
-                  onTap: () =>
-                      _toast('PDF export coming soon', color: AppColors.info),
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _selectDateRange,
-                  icon: const Icon(Icons.date_range_rounded, size: 18),
-                  label: Text(
-                    rangeLabel,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _InsightStatCard(
-              icon: Icons.payments_rounded,
-              iconBg: AppColors.primaryLighter.withValues(alpha: 0.7),
-              title: 'Total sales',
-              isLoading: isLoading,
-              value:
-                  '₹${NumberFormat.decimalPattern().format(reports.totalRevenue)}',
-            ),
-            const SizedBox(height: 12),
-            _InsightStatCard(
-              icon: Icons.account_balance_wallet_rounded,
-              iconBg: AppColors.warningLighter.withValues(alpha: 0.8),
-              title: 'Pending payments',
-              isLoading: isLoading,
-              value:
-                  '₹${NumberFormat.decimalPattern().format(reports.totalPendingRevenue)}',
-            ),
-            const SizedBox(height: 12),
-            _InsightStatCard(
-              icon: Icons.check_circle_rounded,
-              iconBg: AppColors.successLighter.withValues(alpha: 0.8),
-              title: 'Order success rate',
-              isLoading: isLoading,
-              value: successRateLabel,
-              trailing: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLighter.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Text(
-                  'Stable',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _ReportCard(
-              title: 'Sales Trend',
-              trailing: TextButton(
-                onPressed: () => _toast('Detailed view coming soon'),
-                child: const Text('Detailed View'),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                child: _SalesBarChart(dailySales: reports.dailySales),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _ReportCard(
-              title: 'Top Delivery Staff',
-              trailing: IconButton(
-                tooltip: 'Filter',
-                onPressed: () => _toast('Filter coming soon'),
-                icon: const Icon(Icons.tune_rounded),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                child: driversLoaded && topStaff.isEmpty
-                    ? const Text(
-                        'No staff performance data yet.',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      )
-                    : Column(
-                        children: [
-                          for (final s in topStaff.take(3)) ...[
-                            _StaffRow(stat: s),
-                            if (s != topStaff.take(3).last)
-                              const Divider(
-                                height: 18,
-                                color: AppColors.divider,
-                              ),
-                          ],
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton(
-                              onPressed: () => _toast('Coming soon'),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppColors.border),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                              ),
-                              child: const Text(
-                                'View all staff performance',
-                                style: TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                            ),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    Text(
+                      'Insights',
+                      style: context.appTextStyles.sliverTitle,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Revenue, fulfillment, and team performance for any date range.',
+                      style: context.appTextStyles.sliverSubtitle,
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: AppColors.border),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: AppColors.shadow,
+                            blurRadius: 16,
+                            offset: Offset(0, 8),
                           ),
                         ],
                       ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: const [
-                  BoxShadow(
-                    color: AppColors.shadowDeep,
-                    blurRadius: 24,
-                    offset: Offset(0, 14),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Optimize Your Fleet',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-                      letterSpacing: -0.2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Reporting period',
+                            style: context.appTextStyles.sectionHeader,
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _PresetPill(
+                                  label: 'Today',
+                                  selected: _preset == _kPresetToday,
+                                  onTap: () => _applyPreset(_kPresetToday),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _PresetPill(
+                                  label: '7 days',
+                                  selected: _preset == _kPresetLast7,
+                                  onTap: () => _applyPreset(_kPresetLast7),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _PresetPill(
+                                  label: 'Month',
+                                  selected: _preset == _kPresetThisMonth,
+                                  onTap: () => _applyPreset(_kPresetThisMonth),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton.icon(
+                                    onPressed: _selectDateRange,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.primary,
+                                      visualDensity: VisualDensity.compact,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.date_range_rounded,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      rangeLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _ExportChip(
+                                    label: 'CSV',
+                                    icon: Icons.table_chart_rounded,
+                                    onTap: () => _toast(
+                                      'CSV export coming soon',
+                                      color: AppColors.info,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _ExportChip(
+                                    label: 'PDF',
+                                    icon: Icons.picture_as_pdf_rounded,
+                                    onTap: () => _toast(
+                                      'PDF export coming soon',
+                                      color: AppColors.info,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Our AI suggests actions in 2 minutes for the upcoming weekend — just to maintain your 98% success rate.',
-                    style: TextStyle(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onPrimary.withValues(alpha: 0.9),
-                      height: 1.4,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _InsightKpiTile(
+                            icon: Icons.payments_rounded,
+                            iconColor: AppColors.primary,
+                            iconBg: AppColors.primary.withValues(alpha: 0.12),
+                            label: 'Paid sales',
+                            value: _formatInsightRupee(reports.totalRevenue),
+                            isLoading: isLoading,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _InsightKpiTile(
+                            icon: Icons.schedule_rounded,
+                            iconColor: AppColors.warning,
+                            iconBg: AppColors.warningLighter.withValues(
+                              alpha: 0.65,
+                            ),
+                            label: 'Outstanding',
+                            value: _formatInsightRupee(
+                              reports.totalPendingRevenue,
+                            ),
+                            isLoading: isLoading,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => _toast('Upgrade coming soon'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.surface,
-                        foregroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                    const SizedBox(height: 12),
+                    _InsightKpiTile(
+                      icon: Icons.verified_rounded,
+                      iconColor: AppColors.success,
+                      iconBg: AppColors.successLighter.withValues(alpha: 0.75),
+                      label: 'Delivered ÷ total (in range)',
+                      value: successRateLabel,
+                      isLoading: isLoading,
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundSecondary,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          '${reports.completedOrders}/${reports.totalOrders} orders',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
-                      child: const Text(
-                        'Upgrade logistics',
-                        style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 20),
+                    _ReportCard(
+                      title: 'Sales trend',
+                      trailing: TextButton(
+                        onPressed: () => _toast('Detailed view coming soon'),
+                        child: Text(
+                          'Details',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+                        child: _SalesBarChart(dailySales: reports.dailySales),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    _ReportCard(
+                      title: 'Delivery team',
+                      trailing: IconButton(
+                        tooltip: 'Filter',
+                        onPressed: () => _toast('Filter coming soon'),
+                        icon: const Icon(Icons.tune_rounded, size: 20),
+                        color: AppColors.textSecondary,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                        child: driversLoaded && topStaff.isEmpty
+                            ? Text(
+                                'Assign drivers to routes to see delivery stats here.',
+                                style: context.appTextStyles.body.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                            : Column(
+                                children: [
+                                  for (final s in topStaff.take(3)) ...[
+                                    _StaffRow(stat: s),
+                                    if (s != topStaff.take(3).last)
+                                      const Divider(
+                                        height: 18,
+                                        color: AppColors.divider,
+                                      ),
+                                  ],
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton(
+                                      onPressed: () => _toast('Coming soon'),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(
+                                          color: AppColors.border,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'View all staff',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _InsightsFooterTip(
+                      onLearnMore: () => _toast(
+                        'Exports and scheduled reports are on the roadmap.',
+                        color: AppColors.info,
+                      ),
+                    ),
+                  ]),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -544,9 +586,9 @@ class _PresetPill extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.textPrimary : AppColors.surface,
+          color: selected ? AppColors.primary : AppColors.backgroundSecondary,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected ? Colors.transparent : AppColors.border,
@@ -559,8 +601,8 @@ class _PresetPill extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: selected ? onPrimary : AppColors.textSecondary,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
             ),
           ),
         ),
@@ -583,12 +625,12 @@ class _ExportChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
         ),
         child: Row(
@@ -610,18 +652,20 @@ class _ExportChip extends StatelessWidget {
   }
 }
 
-class _InsightStatCard extends StatelessWidget {
+class _InsightKpiTile extends StatelessWidget {
   final IconData icon;
+  final Color iconColor;
   final Color iconBg;
-  final String title;
+  final String label;
   final String value;
   final Widget? trailing;
   final bool isLoading;
 
-  const _InsightStatCard({
+  const _InsightKpiTile({
     required this.icon,
+    required this.iconColor,
     required this.iconBg,
-    required this.title,
+    required this.label,
     required this.value,
     this.trailing,
     this.isLoading = false,
@@ -630,61 +674,118 @@ class _InsightStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 18,
-            offset: Offset(0, 10),
+            blurRadius: 14,
+            offset: Offset(0, 6),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: AppColors.textPrimary, size: 20),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const Spacer(),
+              if (trailing != null && !isLoading) trailing!,
+            ],
           ),
-          const SizedBox(width: 14),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: context.appTextStyles.caption.copyWith(
+              color: AppColors.textLight,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (isLoading)
+            const DeliveroSkeleton(height: 24, width: 120)
+          else
+            Text(
+              value,
+              style: context.appTextStyles.sectionHeader.copyWith(
+                fontSize: 19,
+                letterSpacing: -0.5,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InsightsFooterTip extends StatelessWidget {
+  final VoidCallback onLearnMore;
+
+  const _InsightsFooterTip({required this.onLearnMore});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: AppColors.primary.withValues(alpha: 0.85),
+            size: 22,
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textLight,
-                    letterSpacing: 0.8,
+                  'Reports',
+                  style: context.appTextStyles.sectionHeader.copyWith(
+                    fontSize: 14,
                   ),
                 ),
-                const SizedBox(height: 6),
-                if (isLoading)
-                  const DeliveroSkeleton(height: 20, width: 100)
-                else
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.4,
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  'CSV and PDF exports and deeper breakdowns will appear here as they ship.',
+                  style: context.appTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
                   ),
+                ),
+                TextButton(
+                  onPressed: onLearnMore,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    foregroundColor: AppColors.primary,
+                  ),
+                  child: const Text(
+                    'Learn more',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+                  ),
+                ),
               ],
             ),
           ),
-          if (trailing != null && !isLoading) trailing!,
         ],
       ),
     );
@@ -998,16 +1099,16 @@ class _ReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 18,
-            offset: Offset(0, 10),
+            blurRadius: 16,
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -1015,24 +1116,20 @@ class _ReportCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Text(
-                  title.toUpperCase(),
+                  title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textLight,
-                    letterSpacing: 1.2,
-                  ),
+                  style: context.appTextStyles.sectionHeader,
                 ),
               ),
-              if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+              if (trailing != null) ...[const SizedBox(width: 8), trailing!],
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           child,
         ],
       ),

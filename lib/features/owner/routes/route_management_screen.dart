@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import 'package:collection/collection.dart';
 
@@ -7,12 +9,37 @@ import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
-import '../../../core/widgets/primary_square_icon_button.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/driver.dart';
 import 'widgets/management_search_filters.dart';
 import 'widgets/route_card.dart';
+import 'widgets/routes_hub_overview.dart';
+
+InputDecoration _mgmtInputDecoration({
+  required String label,
+  String? hint,
+}) {
+  return InputDecoration(
+    labelText: label,
+    hintText: hint,
+    filled: true,
+    fillColor: AppColors.backgroundSecondary,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide.none,
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  );
+}
 
 class RouteManagementScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
@@ -35,6 +62,9 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
       vsync: this,
       initialIndex: widget.initialTabIndex.clamp(0, 1),
     );
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -43,84 +73,82 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
     super.dispose();
   }
 
+  Future<void> _refreshLists() async {
+    await Future.wait([
+      ref.read(routesProvider.notifier).refresh(),
+      ref.read(driversProvider.notifier).refresh(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final routes = ref.watch(routesProvider);
     final drivers = ref.watch(driversProvider);
     final routesLoaded = ref.watch(routesLoadedProvider);
     final driversLoaded = ref.watch(driversLoadedProvider);
+    final onDuty = drivers.where((d) => d.isActive).length;
+    final unassignedRoutes = routes
+        .where(
+          (r) =>
+              r.assignedDriver == null || r.assignedDriver!.trim().isEmpty,
+        )
+        .length;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.wait([
-            ref.read(routesProvider.notifier).refresh(),
-            ref.read(driversProvider.notifier).refresh(),
-          ]);
-        },
-        child: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            DeliveroSliverHeader(
-              title: 'Routes & drivers',
-              subtitle:
-                  '${routes.length} routes • ${drivers.where((d) => d.isActive).length} drivers on duty',
-              expandedHeight: 140,
-              floating: true,
-              pinned: true,
-              actions: [
-                PrimarySquareIconButton(
-                  icon: Icons.add_rounded,
-                  onPressed: () => _showAddDialog(),
+      appBar: DeliveroAppBar(
+        title: 'Routes & drivers',
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => context.pop(),
+              )
+            : null,
+        actions: [
+          IconButton(
+            tooltip:
+                _tabController.index == 0 ? 'Add route' : 'Add driver',
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              _showAddDialog();
+            },
+            icon: const Icon(
+              Icons.add_rounded,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          RoutesHubOverviewCard(
+            routesCount: routes.length,
+            driversOnDuty: onDuty,
+            routesWithoutDriver: unassignedRoutes,
+          ),
+          RoutesHubSegmentedControl(controller: _tabController),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _RouteListTab(
+                  routes: routes,
+                  drivers: drivers,
+                  routesLoaded: routesLoaded,
+                  onRefresh: _refreshLists,
+                  onEmptyAddRoute: () => _showRouteDialog(),
                 ),
-                const SizedBox(width: 16),
+                _DriverListTab(
+                  drivers: drivers,
+                  driversLoaded: driversLoaded,
+                  onRefresh: _refreshLists,
+                  onEmptyAddDriver: () => _showAddEditDriverDialog(context, ref),
+                ),
               ],
             ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 8,
-                ),
-                child: Container(
-                  height: 60,
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    tabs: [
-                      Tab(
-                        icon: const Icon(Icons.alt_route_rounded, size: 18),
-                        text: 'Routes',
-                      ),
-                      Tab(
-                        icon: const Icon(
-                          Icons.person_pin_circle_rounded,
-                          size: 18,
-                        ),
-                        text: 'Drivers',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-          body: TabBarView(
-            controller: _tabController,
-            children: [
-              _RouteListTab(
-                routes: routes,
-                drivers: drivers,
-                routesLoaded: routesLoaded,
-              ),
-              _DriverListTab(drivers: drivers, driversLoaded: driversLoaded),
-            ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -143,42 +171,57 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: Text(
-          isEdit ? 'Edit route' : 'Add route',
-          style: const TextStyle(fontWeight: FontWeight.w900),
+          isEdit ? 'Edit route' : 'New route',
+          style: context.appTextStyles.sectionHeader,
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Route name',
-                hintText: 'e.g. Downtown Express',
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                isEdit
+                    ? 'Update how this route appears when assigning orders.'
+                    : 'Create a route, then assign an available driver.',
+                style: context.appTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: areaController,
-              decoration: const InputDecoration(
-                labelText: 'Area',
-                hintText: 'e.g. Central Business District',
+              const SizedBox(height: 18),
+              TextField(
+                controller: nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: _mgmtInputDecoration(
+                  label: 'Route name',
+                  hint: 'e.g. Downtown Express',
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 14),
+              TextField(
+                controller: areaController,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: _mgmtInputDecoration(
+                  label: 'Area / zone',
+                  hint: 'e.g. Central Business District',
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
+              style: context.appTextStyles.caption.copyWith(
+                fontWeight: FontWeight.w800,
                 color: AppColors.textLight,
-                letterSpacing: 0.2,
               ),
             ),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () async {
               final factoryId =
                   await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
@@ -186,8 +229,8 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
               final newRoute = DeliveryRoute(
                 id: isEdit ? route.id : const Uuid().v4(),
                 factoryId: factoryId,
-                name: nameController.text,
-                area: areaController.text,
+                name: nameController.text.trim(),
+                area: areaController.text.trim(),
                 description: route?.description ?? '',
                 isActive: route?.isActive ?? true,
                 estimatedDeliveryTime: route?.estimatedDeliveryTime ?? 30,
@@ -204,7 +247,16 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
               }
               if (context.mounted) Navigator.pop(context);
             },
-            child: Text(isEdit ? 'Save' : 'Add route'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: Text(
+              isEdit ? 'Save changes' : 'Create route',
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
           ),
         ],
       ),
@@ -216,19 +268,24 @@ class _RouteListTab extends ConsumerWidget {
   final List<DeliveryRoute> routes;
   final List<Driver> drivers;
   final bool routesLoaded;
+  final Future<void> Function() onRefresh;
+  final VoidCallback onEmptyAddRoute;
   const _RouteListTab({
     required this.routes,
     required this.drivers,
     required this.routesLoaded,
+    required this.onRefresh,
+    required this.onEmptyAddRoute,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Local search/filter state kept in widget tree to avoid global providers.
     return _RouteListTabBody(
       routes: routes,
       drivers: drivers,
       routesLoaded: routesLoaded,
+      onRefresh: onRefresh,
+      onEmptyAddRoute: onEmptyAddRoute,
     );
   }
 }
@@ -237,10 +294,14 @@ class _RouteListTabBody extends ConsumerStatefulWidget {
   final List<DeliveryRoute> routes;
   final List<Driver> drivers;
   final bool routesLoaded;
+  final Future<void> Function() onRefresh;
+  final VoidCallback onEmptyAddRoute;
   const _RouteListTabBody({
     required this.routes,
     required this.drivers,
     required this.routesLoaded,
+    required this.onRefresh,
+    required this.onEmptyAddRoute,
   });
 
   @override
@@ -277,13 +338,43 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
     final routesLoaded = widget.routesLoaded;
 
     if (!routesLoaded && routes.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: widget.onRefresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: const [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ],
+        ),
+      );
     }
     if (routes.isEmpty) {
-      return _buildEmptyState(
-        Icons.alt_route_rounded,
-        'No routes yet',
-        'Add a route so you can assign drivers and deliveries.',
+      return RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: widget.onRefresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _buildEmptyState(
+                Icons.alt_route_rounded,
+                'No routes yet',
+                'Create a route to organize deliveries and assign drivers.',
+                actionLabel: 'Add route',
+                onAction: widget.onEmptyAddRoute,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -303,30 +394,50 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
       }
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 4, 24, 72),
-      children: [
-        ManagementSearchFilters(
-          controller: _search,
-          onChanged: (v) => setState(() => _q = v),
-          chips: [
-            ManagementFilterChip(
-              label: 'All',
-              selected: _filter == _RouteFilter.all,
-              onTap: () => setState(() => _filter = _RouteFilter.all),
-            ),
-            ManagementFilterChip(
-              label: 'Active',
-              selected: _filter == _RouteFilter.active,
-              onTap: () => setState(() => _filter = _RouteFilter.active),
-            ),
-            ManagementFilterChip(
-              label: 'Inactive',
-              selected: _filter == _RouteFilter.inactive,
-              onTap: () => setState(() => _filter = _RouteFilter.inactive),
-            ),
-          ],
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: widget.onRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
         ),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
+        children: [
+          ManagementSearchFilters(
+            controller: _search,
+            onChanged: (v) => setState(() => _q = v),
+            hintText: 'Search routes, areas, drivers…',
+            chips: [
+              ManagementFilterChip(
+                label: 'All',
+                selected: _filter == _RouteFilter.all,
+                onTap: () => setState(() => _filter = _RouteFilter.all),
+              ),
+              ManagementFilterChip(
+                label: 'Active',
+                selected: _filter == _RouteFilter.active,
+                onTap: () => setState(() => _filter = _RouteFilter.active),
+              ),
+              ManagementFilterChip(
+                label: 'Inactive',
+                selected: _filter == _RouteFilter.inactive,
+                onTap: () => setState(() => _filter = _RouteFilter.inactive),
+              ),
+            ],
+          ),
+          Text(
+            'Your routes',
+            style: context.appTextStyles.sectionHeader,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${visible.length} shown',
+            style: context.appTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
         ...visible.map((e) {
           final route = e.route;
           final driverName = e.driverName;
@@ -341,8 +452,8 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                 ? null
                 : '${driver.vehicleType.name[0].toUpperCase()}${driver.vehicleType.name.substring(1)}',
             vehicleType: driver?.vehicleType,
-            onTap: () => _showRouteDetails(context, route, driverName),
-            onAssign: () => _showAssignDialog(context, ref, route),
+            onTap: () => _showRouteDetails(context, ref, route, driverName),
+            onAssign: () => _showAssignSheet(context, ref, route),
             trailingMenu: _buildActionMenu(context, ref, route),
           );
         }),
@@ -355,7 +466,8 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
               'Try a different keyword or filter.',
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -384,14 +496,14 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
         ),
       ],
       onSelected: (val) {
-        if (val == 'assign') _showAssignDialog(context, ref, route);
+        if (val == 'assign') _showAssignSheet(context, ref, route);
         if (val == 'edit') _showEditRouteDialog(context, ref, route);
         if (val == 'delete') _confirmDeleteRoute(context, ref, route);
       },
     );
   }
 
-  void _showAssignDialog(
+  void _showAssignSheet(
     BuildContext context,
     WidgetRef ref,
     DeliveryRoute route,
@@ -401,104 +513,209 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
         .where((d) => d.isActive && d.currentRoute == null)
         .toList();
 
-    showDialog(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text(
-          'Choose a driver',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
-        content: availableDrivers.isEmpty
-            ? const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text('No free drivers right now. Add a driver first.'),
-              )
-            : SizedBox(
-                width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: availableDrivers.length,
-                  itemBuilder: (context, index) {
-                    final driver = availableDrivers[index];
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      leading: CircleAvatar(
-                        backgroundColor: AppColors.backgroundSecondary,
-                        child: Text(
-                          driver.name.trim().isNotEmpty
-                              ? driver.name.trim()[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.primary,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.55,
+          minChildSize: 0.35,
+          maxChildSize: 0.92,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(top: BorderSide(color: AppColors.border)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 12, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Assign driver',
+                                style: sheetContext.appTextStyles.sectionHeader,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                route.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: sheetContext.appTextStyles.caption
+                                    .copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close_rounded),
+                          color: AppColors.textLight,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (availableDrivers.isEmpty)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
+                        child: Center(
+                          child: Text(
+                            'No available drivers without a route. Add a driver or set someone to available.',
+                            textAlign: TextAlign.center,
+                            style: sheetContext.appTextStyles.body.copyWith(
+                              fontWeight: FontWeight.w600,
+                              height: 1.45,
+                            ),
                           ),
                         ),
                       ),
-                      title: Text(
-                        driver.name,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      subtitle: Text(
-                        driver.vehicleType.name.toUpperCase(),
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                      onTap: () {
-                        final updatedRoute = DeliveryRoute(
-                          id: route.id,
-                          factoryId: route.factoryId,
-                          name: route.name,
-                          description: route.description,
-                          area: route.area,
-                          assignedDriver: driver.id,
-                          isActive: route.isActive,
-                          estimatedDeliveryTime: route.estimatedDeliveryTime,
-                          maxOrders: route.maxOrders,
-                          currentOrders: route.currentOrders,
-                          createdAt: route.createdAt,
-                          updatedAt: DateTime.now(),
-                        );
-                        ref
-                            .read(routesProvider.notifier)
-                            .updateRoute(updatedRoute);
+                    )
+                  else
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        itemCount: availableDrivers.length,
+                        itemBuilder: (context, index) {
+                          final driver = availableDrivers[index];
+                          final initial = driver.name.trim().isNotEmpty
+                              ? driver.name.trim()[0].toUpperCase()
+                              : '?';
+                          final vehicleLabel =
+                              '${driver.vehicleType.name[0].toUpperCase()}${driver.vehicleType.name.substring(1)}';
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Material(
+                              color: AppColors.backgroundSecondary,
+                              borderRadius: BorderRadius.circular(16),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () {
+                                  final updatedRoute = DeliveryRoute(
+                                    id: route.id,
+                                    factoryId: route.factoryId,
+                                    name: route.name,
+                                    description: route.description,
+                                    area: route.area,
+                                    assignedDriver: driver.id,
+                                    isActive: route.isActive,
+                                    estimatedDeliveryTime:
+                                        route.estimatedDeliveryTime,
+                                    maxOrders: route.maxOrders,
+                                    currentOrders: route.currentOrders,
+                                    createdAt: route.createdAt,
+                                    updatedAt: DateTime.now(),
+                                  );
+                                  ref
+                                      .read(routesProvider.notifier)
+                                      .updateRoute(updatedRoute);
 
-                        final updatedDriver = Driver(
-                          id: driver.id,
-                          factoryId: driver.factoryId,
-                          name: driver.name,
-                          phone: driver.phone,
-                          vehicleType: driver.vehicleType,
-                          isActive: driver.isActive,
-                          currentRoute: route.id,
-                          createdAt: driver.createdAt,
-                          updatedAt: DateTime.now(),
-                        );
-                        ref
-                            .read(driversProvider.notifier)
-                            .updateDriver(updatedDriver);
+                                  final updatedDriver = Driver(
+                                    id: driver.id,
+                                    factoryId: driver.factoryId,
+                                    name: driver.name,
+                                    phone: driver.phone,
+                                    vehicleType: driver.vehicleType,
+                                    isActive: driver.isActive,
+                                    currentRoute: route.id,
+                                    createdAt: driver.createdAt,
+                                    updatedAt: DateTime.now(),
+                                  );
+                                  ref
+                                      .read(driversProvider.notifier)
+                                      .updateDriver(updatedDriver);
 
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
+                                  HapticFeedback.mediumImpact();
+                                  Navigator.pop(sheetContext);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: AppColors.primary
+                                            .withValues(alpha: 0.12),
+                                        child: Text(
+                                          initial,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              driver.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w900,
+                                                fontSize: 15,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '$vehicleLabel · ${driver.phone}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const Icon(
+                                        Icons.chevron_right_rounded,
+                                        color: AppColors.textLight,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
               ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Close',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.textLight,
-              ),
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -513,37 +730,41 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text(
+        title: Text(
           'Edit route',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          style: context.appTextStyles.sectionHeader,
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Route name'),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: areaController,
-              decoration: const InputDecoration(labelText: 'Area'),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: _mgmtInputDecoration(label: 'Route name'),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: areaController,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: _mgmtInputDecoration(label: 'Area / zone'),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
+              style: context.appTextStyles.caption.copyWith(
+                fontWeight: FontWeight.w800,
                 color: AppColors.textLight,
-                letterSpacing: 0.2,
               ),
             ),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () {
               final updated = DeliveryRoute(
                 id: route.id,
@@ -562,9 +783,15 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
               ref.read(routesProvider.notifier).updateRoute(updated);
               Navigator.pop(context);
             },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
             child: const Text(
               'Save',
-              style: TextStyle(fontWeight: FontWeight.w800),
+              style: TextStyle(fontWeight: FontWeight.w900),
             ),
           ),
         ],
@@ -645,99 +872,245 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
 
   void _showRouteDetails(
     BuildContext context,
+    WidgetRef ref,
     DeliveryRoute route,
     String driverName,
   ) {
-    showModalBottomSheet(
+    final hasDriver =
+        route.assignedDriver != null && route.assignedDriver!.isNotEmpty;
+    final statusLabel = route.isActive ? 'Active' : 'Inactive';
+    final statusColor =
+        route.isActive ? AppColors.success : AppColors.textSecondary;
+
+    showModalBottomSheet<void>(
       context: context,
-      useSafeArea: true,
-      builder: (context) {
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(16),
+          padding: EdgeInsets.only(
+            left: 12,
+            right: 12,
+            bottom: 12 + bottomInset,
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 24,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 12, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.alt_route_rounded,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          route.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.appTextStyles.sectionHeader.copyWith(
-                            fontSize: 16,
-                            letterSpacing: -0.3,
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                          ),
+                          child: const Icon(
+                            Icons.alt_route_rounded,
+                            color: AppColors.primary,
+                            size: 24,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          route.area,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.appTextStyles.body.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                route.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.appTextStyles.sectionHeader,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                route.area.trim().isEmpty
+                                    ? 'No area set'
+                                    : route.area.trim(),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.appTextStyles.caption.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        IconButton(
+                          tooltip: 'Close',
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close_rounded),
+                          color: AppColors.textLight,
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Divider(height: 1, color: AppColors.divider),
-              const SizedBox(height: 14),
-              _detailRow('Driver', driverName),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        children: [
+                          _routeDetailTile(
+                            context,
+                            label: 'Status',
+                            value: statusLabel,
+                            valueColor: statusColor,
+                          ),
+                          const Divider(height: 20, color: AppColors.divider),
+                          _routeDetailTile(
+                            context,
+                            label: 'Driver',
+                            value: driverName,
+                          ),
+                          const Divider(height: 20, color: AppColors.divider),
+                          _routeDetailTile(
+                            context,
+                            label: 'Capacity',
+                            value:
+                                'Up to ${route.maxOrders} orders · ~${route.estimatedDeliveryTime} min',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (!hasDriver)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                Navigator.pop(sheetContext);
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  if (!context.mounted) return;
+                                  _showAssignSheet(context, ref, route);
+                                });
+                              },
+                              style: OutlinedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                side: const BorderSide(color: AppColors.primary),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                'Assign driver',
+                                style: TextStyle(fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () => Navigator.pop(sheetContext),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                'Close',
+                                style: TextStyle(fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      FilledButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text(
+                          'Done',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _detailRow(String label, String value) {
+  Widget _routeDetailTile(
+    BuildContext context, {
+    required String label,
+    required String value,
+    Color? valueColor,
+  }) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
+          flex: 4,
           child: Text(
             label,
             style: context.appTextStyles.caption.copyWith(
-              fontSize: 11,
               fontWeight: FontWeight.w800,
-              letterSpacing: 0.4,
+              color: AppColors.textSecondary,
             ),
           ),
         ),
-        const SizedBox(width: 12),
         Expanded(
+          flex: 7,
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: context.appTextStyles.sectionHeader.copyWith(fontSize: 12),
+            style: context.appTextStyles.body.copyWith(
+              fontWeight: FontWeight.w900,
+              color: valueColor ?? AppColors.textPrimary,
+              height: 1.25,
+            ),
           ),
         ),
       ],
@@ -749,173 +1122,467 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
 
 // Filter chips extracted to widgets/management_search_filters.dart
 
-class _DriverListTab extends ConsumerWidget {
+enum _DriverFilter { all, available, offDuty }
+
+class _DriverListTab extends ConsumerStatefulWidget {
   final List<Driver> drivers;
   final bool driversLoaded;
-  const _DriverListTab({required this.drivers, required this.driversLoaded});
+  final Future<void> Function() onRefresh;
+  final VoidCallback onEmptyAddDriver;
+  const _DriverListTab({
+    required this.drivers,
+    required this.driversLoaded,
+    required this.onRefresh,
+    required this.onEmptyAddDriver,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DriverListTab> createState() => _DriverListTabState();
+}
+
+class _DriverListTabState extends ConsumerState<_DriverListTab> {
+  final TextEditingController _driverSearch = TextEditingController();
+  String _driverQ = '';
+  _DriverFilter _driverFilter = _DriverFilter.all;
+
+  @override
+  void dispose() {
+    _driverSearch.dispose();
+    super.dispose();
+  }
+
+  bool _matchesDriverFilter(Driver d) {
+    return switch (_driverFilter) {
+      _DriverFilter.all => true,
+      _DriverFilter.available => d.isActive,
+      _DriverFilter.offDuty => !d.isActive,
+    };
+  }
+
+  bool _driverMatchesSearch(Driver d) {
+    if (!_matchesDriverFilter(d)) return false;
+    final q = _driverQ.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    final vt =
+        '${d.vehicleType.name[0].toUpperCase()}${d.vehicleType.name.substring(1)}';
+    return d.name.toLowerCase().contains(q) ||
+        d.phone.contains(_driverQ.trim()) ||
+        vt.toLowerCase().contains(q);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final routes = ref.watch(routesProvider);
     final routesLoaded = ref.watch(routesLoadedProvider);
-    if (!driversLoaded && drivers.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+    if (!widget.driversLoaded && widget.drivers.isEmpty) {
+      return RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: widget.onRefresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: const [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ],
+        ),
+      );
     }
-    if (drivers.isEmpty) {
-      return _buildEmptyState(
-        Icons.person_off_rounded,
-        'No drivers yet',
-        'Add drivers here, then you can assign them to routes.',
+    if (widget.drivers.isEmpty) {
+      return RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: widget.onRefresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _buildEmptyState(
+                Icons.groups_outlined,
+                'Build your delivery team',
+                'Add drivers, set their vehicle, then assign them to routes from the Routes tab.',
+                actionLabel: 'Add driver',
+                onAction: widget.onEmptyAddDriver,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(24, 4, 24, 72),
-      itemCount: drivers.length,
-      itemBuilder: (context, index) {
-        final driver = drivers[index];
-        final routeName = !routesLoaded || driver.currentRoute == null
-            ? null
-            : routes.firstWhereOrNull((r) => r.id == driver.currentRoute)?.name;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.border),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadow,
-                blurRadius: 20,
-                offset: Offset(0, 10),
+    final visible =
+        widget.drivers.where(_driverMatchesSearch).toList();
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: widget.onRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
+        children: [
+          ManagementSearchFilters(
+            controller: _driverSearch,
+            onChanged: (v) => setState(() => _driverQ = v),
+            hintText: 'Search drivers, phone, vehicle…',
+            chips: [
+              ManagementFilterChip(
+                label: 'All',
+                selected: _driverFilter == _DriverFilter.all,
+                onTap: () => setState(() => _driverFilter = _DriverFilter.all),
+              ),
+              ManagementFilterChip(
+                label: 'Available',
+                selected: _driverFilter == _DriverFilter.available,
+                onTap: () =>
+                    setState(() => _driverFilter = _DriverFilter.available),
+              ),
+              ManagementFilterChip(
+                label: 'Off duty',
+                selected: _driverFilter == _DriverFilter.offDuty,
+                onTap: () =>
+                    setState(() => _driverFilter = _DriverFilter.offDuty),
               ),
             ],
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(20),
-            leading: SizedBox(
-              width: 60,
-              height: 60,
-              child: Image.asset(
-                _vehicleAsset(driver.vehicleType),
-                fit: BoxFit.contain,
-              ),
+          Text(
+            'Your team',
+            style: context.appTextStyles.sectionHeader,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${visible.length} shown',
+            style: context.appTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
             ),
-            onTap: () => _showAddEditDriverDialog(context, ref, driver: driver),
-            title: Text(
-              driver.name,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 17,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.5,
-              ),
+          ),
+          const SizedBox(height: 8),
+          ...visible.map((driver) {
+          final routeName = !routesLoaded || driver.currentRoute == null
+              ? null
+              : routes
+                  .firstWhereOrNull((r) => r.id == driver.currentRoute)
+                  ?.name;
+          final vehicleLabel =
+              '${driver.vehicleType.name[0].toUpperCase()}${driver.vehicleType.name.substring(1)}';
+
+          final statusBg =
+              driver.isActive ? AppColors.success : AppColors.backgroundSecondary;
+          final statusFg =
+              driver.isActive ? Colors.white : AppColors.textSecondary;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 18,
+                  offset: Offset(0, 6),
+                ),
+              ],
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Row(
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () =>
+                    _showAddEditDriverDialog(context, ref, driver: driver),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(
-                      Icons.phone_rounded,
-                      size: 12,
-                      color: AppColors.textLight,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                              color: AppColors.backgroundSecondary,
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(7),
+                              child: Image.asset(
+                                _vehicleAsset(driver.vehicleType),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  driver.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: -0.45,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  vehicleLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 11,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusBg,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              driver.isActive ? 'Available' : 'Off duty',
+                              style: TextStyle(
+                                color: statusFg,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                          PopupMenuButton<String>(
+                            icon: const Icon(
+                              Icons.more_vert_rounded,
+                              size: 20,
+                              color: AppColors.textLight,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            itemBuilder: (context) => [
+                              _menuItem(
+                                'edit',
+                                Icons.edit_rounded,
+                                'Edit driver',
+                              ),
+                              _menuItem(
+                                'toggle',
+                                driver.isActive
+                                    ? Icons.pause_circle_outline_rounded
+                                    : Icons.play_circle_outline_rounded,
+                                driver.isActive
+                                    ? 'Set unavailable'
+                                    : 'Set available',
+                              ),
+                              _menuItem(
+                                'delete',
+                                Icons.delete_outline_rounded,
+                                'Delete driver',
+                                isDestructive: true,
+                              ),
+                            ],
+                            onSelected: (val) async {
+                              if (val == 'edit') {
+                                _showAddEditDriverDialog(
+                                  context,
+                                  ref,
+                                  driver: driver,
+                                );
+                                return;
+                              }
+                              if (val == 'toggle') {
+                                final updated = Driver(
+                                  id: driver.id,
+                                  factoryId: driver.factoryId,
+                                  name: driver.name,
+                                  phone: driver.phone,
+                                  vehicleType: driver.vehicleType,
+                                  isActive: !driver.isActive,
+                                  currentRoute: driver.currentRoute,
+                                  createdAt: driver.createdAt,
+                                  updatedAt: DateTime.now(),
+                                );
+                                ref
+                                    .read(driversProvider.notifier)
+                                    .updateDriver(updated);
+                                return;
+                              }
+                              if (val == 'delete') {
+                                final confirmed =
+                                    await _confirmDeleteDriver(context);
+                                if (confirmed == true) {
+                                  ref
+                                      .read(driversProvider.notifier)
+                                      .deleteDriver(driver.id);
+                                }
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      driver.phone,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundSecondary,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Phone',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          driver.phone,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 15,
+                                            color: AppColors.textPrimary,
+                                            letterSpacing: -0.3,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        const Text(
+                                          'Current route',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          routeName ?? 'Unassigned',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.right,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 15,
+                                            letterSpacing: -0.3,
+                                            color: routeName == null
+                                                ? AppColors.textLight
+                                                : AppColors.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                child: Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  color: AppColors.border.withValues(
+                                    alpha: 0.65,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                'Summary',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  color: AppColors.textLight,
+                                  letterSpacing: 0.35,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                [
+                                  vehicleLabel,
+                                  if (routeName != null) 'Route: $routeName',
+                                  driver.isActive
+                                      ? 'On duty'
+                                      : 'Not taking orders',
+                                ].join(' · '),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: -0.12,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                if (routeName != null) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.alt_route_rounded,
-                        size: 12,
-                        color: AppColors.textLight,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          routeName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-            trailing: PopupMenuButton<String>(
-              icon: const Icon(
-                Icons.more_vert_rounded,
-                size: 20,
-                color: AppColors.textLight,
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              itemBuilder: (context) => [
-                _menuItem('edit', Icons.edit_rounded, 'Edit driver'),
-                _menuItem(
-                  'toggle',
-                  driver.isActive
-                      ? Icons.pause_circle_outline_rounded
-                      : Icons.play_circle_outline_rounded,
-                  driver.isActive ? 'Set unavailable' : 'Set available',
-                ),
-                _menuItem(
-                  'delete',
-                  Icons.delete_outline_rounded,
-                  'Delete driver',
-                  isDestructive: true,
-                ),
-              ],
-              onSelected: (val) async {
-                if (val == 'edit') {
-                  _showAddEditDriverDialog(context, ref, driver: driver);
-                  return;
-                }
-                if (val == 'toggle') {
-                  final updated = Driver(
-                    id: driver.id,
-                    factoryId: driver.factoryId,
-                    name: driver.name,
-                    phone: driver.phone,
-                    vehicleType: driver.vehicleType,
-                    isActive: !driver.isActive,
-                    currentRoute: driver.currentRoute,
-                    createdAt: driver.createdAt,
-                    updatedAt: DateTime.now(),
-                  );
-                  ref.read(driversProvider.notifier).updateDriver(updated);
-                  return;
-                }
-                if (val == 'delete') {
-                  final confirmed = await _confirmDeleteDriver(context);
-                  if (confirmed == true) {
-                    ref.read(driversProvider.notifier).deleteDriver(driver.id);
-                  }
-                }
-              },
             ),
-          ),
-        );
-      },
+          );
+          }),
+          if (visible.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 48),
+              child: _buildEmptyState(
+                Icons.search_off_rounded,
+                'No matches',
+                'Try another search or filter.',
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -959,8 +1626,20 @@ class _DriverListTab extends ConsumerWidget {
   }
 }
 
-Widget _buildEmptyState(IconData icon, String title, String subtitle) {
-  return DeliveroEmptyState(title: title, subtitle: subtitle, icon: icon);
+Widget _buildEmptyState(
+  IconData icon,
+  String title,
+  String subtitle, {
+  String? actionLabel,
+  VoidCallback? onAction,
+}) {
+  return DeliveroEmptyState(
+    title: title,
+    subtitle: subtitle,
+    icon: icon,
+    actionLabel: actionLabel,
+    onActionPressed: onAction,
+  );
 }
 
 PopupMenuItem<String> _menuItem(
@@ -1021,99 +1700,113 @@ void _showAddEditDriverDialog(
       builder: (context, setState) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: Text(
-          isEdit ? 'Edit driver' : 'Add driver',
-          style: const TextStyle(fontWeight: FontWeight.w800),
+          isEdit ? 'Edit driver' : 'New driver',
+          style: context.appTextStyles.sectionHeader,
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundSecondary,
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: AppColors.border),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Image.asset(
+                    _vehicleAsset(selectedVehicle),
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
-              child: Image.asset(
-                _vehicleAsset(selectedVehicle),
-                fit: BoxFit.contain,
+              const SizedBox(height: 18),
+              Text(
+                'Vehicle type sets the icon on route cards and driver lists.',
+                style: context.appTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Rahul Kumar',
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: _mgmtInputDecoration(
+                  label: 'Full name',
+                  hint: 'e.g. Rahul Kumar',
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Phone',
-                hintText: '+91 00000 00000',
+              const SizedBox(height: 14),
+              TextField(
+                controller: phoneController,
+                decoration: _mgmtInputDecoration(
+                  label: 'Phone',
+                  hint: '+91 00000 00000',
+                ),
+                keyboardType: TextInputType.phone,
               ),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 20),
-            DropdownButtonFormField<VehicleType>(
-              initialValue: selectedVehicle,
-              items: VehicleType.values
-                  .map(
-                    (v) => DropdownMenuItem(
-                      value: v,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: AppColors.backgroundSecondary,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppColors.border),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<VehicleType>(
+                initialValue: selectedVehicle,
+                items: VehicleType.values
+                    .map(
+                      (v) => DropdownMenuItem(
+                        value: v,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.backgroundSecondary,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Image.asset(
+                                _vehicleAsset(v),
+                                fit: BoxFit.contain,
+                              ),
                             ),
-                            child: Image.asset(
-                              _vehicleAsset(v),
-                              fit: BoxFit.contain,
+                            const SizedBox(width: 10),
+                            Text(
+                              v.name.isEmpty
+                                  ? v.name
+                                  : '${v.name[0].toUpperCase()}${v.name.substring(1)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            v.name.isEmpty
-                                ? v.name
-                                : '${v.name[0].toUpperCase()}${v.name.substring(1)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (val) => setState(() => selectedVehicle = val!),
-              decoration: const InputDecoration(labelText: 'Vehicle'),
-            ),
-          ],
+                    )
+                    .toList(),
+                onChanged: (val) => setState(() => selectedVehicle = val!),
+                decoration: _mgmtInputDecoration(label: 'Vehicle'),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
+              style: context.appTextStyles.caption.copyWith(
+                fontWeight: FontWeight.w800,
                 color: AppColors.textLight,
-                letterSpacing: 0.2,
               ),
             ),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () async {
               final factoryId =
                   await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
@@ -1121,8 +1814,8 @@ void _showAddEditDriverDialog(
               final newDriver = Driver(
                 id: isEdit ? driver.id : const Uuid().v4(),
                 factoryId: factoryId,
-                name: nameController.text,
-                phone: phoneController.text,
+                name: nameController.text.trim(),
+                phone: phoneController.text.trim(),
                 vehicleType: selectedVehicle,
                 isActive: driver?.isActive ?? true,
                 currentRoute: driver?.currentRoute,
@@ -1136,15 +1829,15 @@ void _showAddEditDriverDialog(
               }
               if (context.mounted) Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(
+            style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
             child: Text(
-              isEdit ? 'Save' : 'Add driver',
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              isEdit ? 'Save changes' : 'Add driver',
+              style: const TextStyle(fontWeight: FontWeight.w900),
             ),
           ),
         ],

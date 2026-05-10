@@ -979,6 +979,36 @@ class _DeliveryTile extends StatelessWidget {
   final Order order;
   const _DeliveryTile({required this.order});
 
+  Color _getStatusColor(OrderStatus status) {
+    switch (status) {
+      case OrderStatus.pending:
+        return AppColors.warning;
+      case OrderStatus.delivered:
+        return AppColors.success;
+      case OrderStatus.cancelled:
+        return AppColors.error;
+      default:
+        return AppColors.info;
+    }
+  }
+
+  String _humanStatus(OrderStatus status) {
+    switch (status) {
+      case OrderStatus.pending:
+        return 'Pending';
+      case OrderStatus.confirmed:
+        return 'Out for delivery';
+      case OrderStatus.preparing:
+        return 'Preparing';
+      case OrderStatus.ready:
+        return 'Ready';
+      case OrderStatus.delivered:
+        return 'Delivered';
+      case OrderStatus.cancelled:
+        return 'Cancelled';
+    }
+  }
+
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts.first.isEmpty) return '?';
@@ -989,7 +1019,11 @@ class _DeliveryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(order.status);
+    final statusColor = _getStatusColor(order.status);
+    final statusChipBg = switch (order.status) {
+      OrderStatus.pending => const Color(0xFF6D5EF6),
+      _ => statusColor,
+    };
     final amount = '₹${NumberFormat.compact().format(order.totalAmount)}';
     final payLabel = order.paymentStatus?.name.toUpperCase() ?? 'UNKNOWN';
 
@@ -1025,7 +1059,7 @@ class _DeliveryTile extends StatelessWidget {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: statusColor,
+                    color: statusChipBg,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: AppColors.surface,
@@ -1056,13 +1090,15 @@ class _DeliveryTile extends StatelessWidget {
                 Row(
                   children: [
                     _StatusChip(
-                      text: order.status.name.toUpperCase(),
-                      color: statusColor,
+                      text: _humanStatus(order.status),
+                      color: statusChipBg,
+                      solid: true,
                     ),
                     const SizedBox(width: 6),
                     _StatusChip(
                       text: payLabel,
-                      color: AppColors.textLight,
+                      color: AppColors.textSecondary,
+                      solid: false,
                     ),
                   ],
                 ),
@@ -1088,40 +1124,32 @@ class _DeliveryTile extends StatelessWidget {
 class _StatusChip extends StatelessWidget {
   final String text;
   final Color color;
-  const _StatusChip({required this.text, required this.color});
+  final bool solid;
+
+  const _StatusChip({
+    required this.text,
+    required this.color,
+    this.solid = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(6),
+        color: solid ? color : color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.6,
+          color: solid ? Colors.white : color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          height: solid ? 1.1 : null,
         ),
       ),
     );
-  }
-}
-
-Color _statusColor(OrderStatus status) {
-  switch (status) {
-    case OrderStatus.delivered:
-      return AppColors.success;
-    case OrderStatus.pending:
-    case OrderStatus.confirmed:
-    case OrderStatus.preparing:
-    case OrderStatus.ready:
-      return AppColors.warning;
-    case OrderStatus.cancelled:
-      return AppColors.error;
   }
 }
 

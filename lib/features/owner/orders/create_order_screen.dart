@@ -8,11 +8,21 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/food_item.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
+
+String _formatRupee(double amount) {
+  final whole = amount == amount.roundToDouble();
+  return NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: '₹',
+    decimalDigits: whole ? 0 : 2,
+  ).format(amount);
+}
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   final String? orderId;
@@ -22,19 +32,25 @@ class CreateOrderScreen extends ConsumerStatefulWidget {
   ConsumerState<CreateOrderScreen> createState() => _CreateOrderScreenState();
 }
 
-enum _DeliveryScheduleMode { daily, weekly, custom }
-
 class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
+  static const int _stepCount = 4;
+  static const List<String> _stepTitles = [
+    'Customer',
+    'Order type',
+    'Menu items',
+    'Order details',
+  ];
+
   Customer? _selectedCustomer;
-  OrderType _orderType = OrderType.daily; // persisted model field
-  _DeliveryScheduleMode _scheduleMode = _DeliveryScheduleMode.daily;
-  final Set<int> _selectedWeekdays = {DateTime.monday};
+  OrderType _orderType = OrderType.daily;
   Map<String, int> _selectedItems = {}; // foodItemId -> quantity
   Map<String, double> _customUnitPrices = {}; // foodItemId -> unit price
   bool _isSubmitting = false;
   bool _initializedFromOrder = false;
   Order? _editingOrder;
   final Map<String, TextEditingController> _qtyControllers = {};
+  /// 0 = customer, 1 = order type, 2 = menu, 3 = review.
+  int _step = 0;
 
   void _removeQtyController(String id) {
     final c = _qtyControllers.remove(id);
@@ -51,13 +67,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final routesLoaded = ref.watch(routesLoadedProvider);
     final hasSelectedUnits = _selectedItems.values.any((v) => v > 0);
     final selection = _computeSelectionSummary(foodItems);
-    final discount = _computePartnerDiscount(selection.subtotal);
-    final total = (selection.subtotal - discount)
-        .clamp(0, double.infinity)
-        .toDouble();
-
-    final canSubmit =
-        !_isSubmitting && _selectedCustomer != null && hasSelectedUnits;
+    final canPrimaryProceed = !_isSubmitting && _canGoNextFromStep(
+      hasSelectedUnits: hasSelectedUnits,
+    );
+    final total = selection.subtotal.clamp(0, double.infinity).toDouble();
 
     if (widget.orderId != null && !_initializedFromOrder) {
       final existing = ref
@@ -85,161 +98,217 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       }
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: DeliveroAppBar(
-        title: widget.orderId == null ? 'Create Order' : 'Edit Order',
-      ),
-      body: SafeArea(
-        bottom: false,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.orderId == null ? 'Create Order' : 'Edit Order',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -1.0,
-                      ),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      widget.orderId == null
-                          ? 'Configure your recurring delivery schedule'
-                          : 'Update items, pricing and schedule',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
+    final stepSubtitle = switch (_step) {
+      0 => widget.orderId == null
+          ? 'Step 1 of 4 — Search and choose who this order is for.'
+          : 'Step 1 of 4 — Customer for this order.',
+      1 => 'Step 2 of 4 — Daily recurring or a single one-time delivery.',
+      2 => 'Step 3 of 4 — Add products and set quantities.',
+      _ => 'Step 4 of 4 — Check everything before you save.',
+    };
+
+    return PopScope(
+      canPop: _step == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        setState(() => _step -= 1);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundPrimary,
+        appBar: DeliveroAppBar(
+          title: widget.orderId == null ? 'Create order' : 'Edit order',
+          leading:
+              (Navigator.of(context).canPop() || _step > 0)
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () {
+                    if (_step > 0) {
+                      setState(() => _step -= 1);
+                    } else if (Navigator.of(context).canPop()) {
+                      context.pop();
+                    }
+                  },
+                )
+              : null,
+        ),
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: _CreateOrderStepProgress(
+                  stepIndex: _step,
+                  stepCount: _stepCount,
+                  labels: _stepTitles,
                 ),
               ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SectionLabel(label: 'Customer details'),
-                    const SizedBox(height: 12),
-                    _buildCustomerPicker(
-                      customers,
-                      routes,
-                      customersLoaded: customersLoaded,
-                      routesLoaded: routesLoaded,
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: _SectionLabel(label: 'Menu items'),
+              Expanded(
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        _stepTitles[_step],
+                        style: context.appTextStyles.appBarTitle,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        stepSubtitle,
+                        style: context.appTextStyles.sliverSubtitle,
+                      ),
+                      const SizedBox(height: 20),
+                      switch (_step) {
+                        0 => _buildCustomerPicker(
+                          customers,
+                          routes,
+                          customersLoaded: customersLoaded,
+                          routesLoaded: routesLoaded,
                         ),
-                        TextButton.icon(
-                          onPressed: foodItemsLoaded
-                              ? () => _openItemsSheet(foodItems)
+                        1 => _FormSectionCard(
+                          title: 'Order type',
+                          child: _buildSchedulePicker(),
+                        ),
+                        2 => _FormSectionCard(
+                          title: 'Menu items',
+                          subtitle: !foodItemsLoaded && foodItems.isEmpty
+                              ? 'Loading your catalog…'
                               : null,
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.primary,
-                            padding: EdgeInsets.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          trailing: TextButton.icon(
+                            onPressed: foodItemsLoaded
+                                ? () => _openItemsSheet(foodItems)
+                                : null,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              padding: EdgeInsets.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            icon: const Icon(
+                              Icons.add_circle_outline_rounded,
+                              size: 18,
+                            ),
+                            label: Text(
+                              'Add items',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.appTextStyles.caption.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ),
-                          icon: const Icon(
-                            Icons.add_circle_outline_rounded,
-                            size: 18,
-                          ),
-                          label: const Text(
-                            'Add More',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontWeight: FontWeight.w900),
+                          child: _buildSelectedItemsList(
+                            foodItems,
+                            catalogLoaded: foodItemsLoaded,
+                            onBrowseCatalog: foodItemsLoaded
+                                ? () => _openItemsSheet(foodItems)
+                                : null,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSelectedItemsList(foodItems),
-                    const SizedBox(height: 18),
-                    const _SectionLabel(label: 'Delivery schedule'),
-                    const SizedBox(height: 12),
-                    _buildSchedulePicker(),
-                    const SizedBox(height: 18),
-                    const _SectionLabel(label: 'Order summary'),
-                    const SizedBox(height: 12),
-                    _OrderSummaryCard(
-                      subtotal: selection.subtotal,
-                      discount: discount,
+                        _ => _buildReviewStep(
+                          foodItems: foodItems,
+                          routes: routes,
+                          routesLoaded: routesLoaded,
+                          selection: selection,
+                          orderTotal: total,
+                        ),
+                      },
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              border: const Border(top: BorderSide(color: AppColors.border)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadow.withValues(alpha: 0.35),
+                  blurRadius: 20,
+                  offset: const Offset(0, -6),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    _primaryBarLeftCaption(
+                      hasSelectedUnits: hasSelectedUnits,
+                      selection: selection,
                       total: total,
                     ),
-                    const SizedBox(height: 120),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(top: BorderSide(color: AppColors.border)),
-          ),
-          child: FilledButton(
-            onPressed: canSubmit
-                ? () {
-                    HapticFeedback.heavyImpact();
-                    _submitOrder();
-                  }
-                : null,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-            ),
-            child: _isSubmitting
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  )
-                : FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.center,
-                    child: Text(
-                      widget.orderId == null
-                          ? 'Confirm & Schedule Delivery'
-                          : 'Update Order',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.2,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.start,
+                    style: context.appTextStyles.caption.copyWith(
+                      color: canPrimaryProceed
+                          ? AppColors.textSecondary
+                          : AppColors.textLight,
+                      fontWeight: FontWeight.w700,
+                      height: 1.35,
                     ),
                   ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: !canPrimaryProceed
+                      ? null
+                      : () => _onPrimaryStepAction(
+                          hasSelectedUnits: hasSelectedUnits,
+                        ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    disabledBackgroundColor: AppColors.backgroundSecondary,
+                    disabledForegroundColor: AppColors.textLight,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    minimumSize: const Size(0, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: _isSubmitting
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        )
+                      : Text(
+                          _step < 3
+                              ? 'Continue'
+                              : (widget.orderId == null
+                                    ? 'Confirm'
+                                    : 'Update'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.appTextStyles.buttonLabel.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -261,18 +330,119 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     super.dispose();
   }
 
-  double _computePartnerDiscount(double subtotal) {
-    if (_selectedCustomer == null) return 0;
-    if (subtotal <= 0) return 0;
-    // Matches the sample UI (e.g. 600 -> 60). Keep simple for now.
-    return subtotal * 0.10;
+  bool _canGoNextFromStep({required bool hasSelectedUnits}) {
+    return switch (_step) {
+      0 => _selectedCustomer != null,
+      1 => true,
+      2 => hasSelectedUnits,
+      _ => true,
+    };
+  }
+
+  String _primaryBarLeftCaption({
+    required bool hasSelectedUnits,
+    required _SelectionSummary selection,
+    required double total,
+  }) {
+    switch (_step) {
+      case 0:
+        final c = _selectedCustomer;
+        if (c == null) return 'Choose a customer to enable Continue.';
+        return '${c.name} · ${c.phone}';
+      case 1:
+        return _orderType == OrderType.daily
+            ? 'Daily order is selected.'
+            : 'One-time order is selected.';
+      case 2:
+        if (!hasSelectedUnits) {
+          return 'Add at least one menu item to enable Continue.';
+        }
+        return '${selection.distinctItems} products · ${selection.totalUnits} units.';
+      case 3:
+        final name = _selectedCustomer?.name ?? '';
+        return name.isEmpty
+            ? 'Total ${_formatRupee(total)}'
+            : 'Total ${_formatRupee(total)} · $name';
+      default:
+        return '';
+    }
+  }
+
+  void _onPrimaryStepAction({required bool hasSelectedUnits}) {
+    if (_step < 3) {
+      if (!_canGoNextFromStep(hasSelectedUnits: hasSelectedUnits)) return;
+      HapticFeedback.lightImpact();
+      setState(() => _step += 1);
+      return;
+    }
+    HapticFeedback.heavyImpact();
+    _submitOrder();
+  }
+
+  String _routeLabel(Customer c, List<DeliveryRoute> routes, bool routesLoaded) {
+    if (!routesLoaded) return 'Loading route…';
+    return routes
+            .firstWhereOrNull(
+              (r) =>
+                  r.id == c.assignedRoute || r.name == c.assignedRoute,
+            )
+            ?.name ??
+        (c.assignedRoute ?? 'Unassigned');
+  }
+
+  Widget _buildReviewStep({
+    required List<FoodItem> foodItems,
+    required List<DeliveryRoute> routes,
+    required bool routesLoaded,
+    required _SelectionSummary selection,
+    required double orderTotal,
+  }) {
+    final c = _selectedCustomer!;
+    final selectedLines =
+        _selectedItems.entries
+            .where((e) => e.value > 0)
+            .map((e) {
+              final item = foodItems.firstWhereOrNull((f) => f.id == e.key);
+              return item == null ? null : (item, e.value);
+            })
+            .whereType<(FoodItem, int)>()
+            .toList()
+          ..sort((a, b) => a.$1.name.compareTo(b.$1.name));
+
+    final reportLines = <_ReportLineItem>[
+      for (final (item, qty) in selectedLines)
+        _ReportLineItem(
+          name: item.name,
+          quantity: qty,
+          unitPrice: _effectiveUnitPrice(item),
+          lineTotal: _effectiveUnitPrice(item) * qty,
+          isCustomRate: _customUnitPrices.containsKey(item.id),
+        ),
+    ];
+
+    return _OrderReviewReport(
+      customerName: c.name,
+      customerPhone: c.phone,
+      customerRoute: _routeLabel(c, routes, routesLoaded),
+      orderTypeLabel: _orderType == OrderType.daily
+          ? 'Daily order'
+          : 'One-time order',
+      generatedAt: DateTime.now(),
+      lines: reportLines,
+      orderTotal: orderTotal,
+      lineCount: selection.distinctItems,
+      unitCount: selection.totalUnits,
+    );
   }
 
   double _effectiveUnitPrice(FoodItem item) {
     return _customUnitPrices[item.id] ?? item.price;
   }
 
-  void _showCustomPriceDialog(FoodItem item) {
+  void _showCustomPriceDialog(
+    FoodItem item, {
+    VoidCallback? onApplied,
+  }) {
     final messenger = ScaffoldMessenger.of(context);
     final current = _customUnitPrices[item.id];
     final controller = TextEditingController(
@@ -309,8 +479,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   decimal: true,
                 ),
                 decoration: InputDecoration(
-                  hintText:
-                      'Default: ₹${NumberFormat.decimalPattern().format(item.price)}',
+                  hintText: 'Default: ${_formatRupee(item.price)}',
                   prefixIcon: const Icon(
                     Icons.currency_rupee_rounded,
                     size: 20,
@@ -324,6 +493,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               TextButton(
                 onPressed: () {
                   setState(() => _customUnitPrices.remove(item.id));
+                  onApplied?.call();
                   Navigator.pop(context);
                 },
                 child: const Text(
@@ -349,6 +519,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 final raw = controller.text.trim().replaceAll(',', '');
                 if (raw.isEmpty) {
                   setState(() => _customUnitPrices.remove(item.id));
+                  onApplied?.call();
                   Navigator.pop(context);
                   return;
                 }
@@ -370,6 +541,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   return;
                 }
                 setState(() => _customUnitPrices[item.id] = parsed);
+                onApplied?.call();
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -431,24 +603,49 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
     final showRouteLoading = !routesLoaded && routes.isEmpty;
 
-    final filteredCustomers = customers.where((c) {
-      final matchesSearch =
-          c.name.toLowerCase().contains(_customerSearchQuery.toLowerCase()) ||
-          c.phone.contains(_customerSearchQuery);
-      return matchesSearch;
-    }).toList();
+    final q = _customerSearchQuery.trim().toLowerCase();
+    final filteredCustomers =
+        customers.where((c) {
+          if (q.isEmpty) return true;
+          return c.name.toLowerCase().contains(q) || c.phone.contains(q);
+        }).toList()
+          ..sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
 
     final selected = _selectedCustomer;
 
+    void onCustomerChosen(Customer customer) {
+      setState(() {
+        FocusScope.of(context).unfocus();
+        _selectedCustomer = customer;
+        _selectedItems = {};
+        _customUnitPrices = {};
+        _itemSearchQuery = '';
+        _itemSearchController?.clear();
+        if (customer.products != null) {
+          for (final p in customer.products!) {
+            _selectedItems[p.id] = p.quantity;
+          }
+        }
+      });
+    }
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextField(
           controller: _customerSearchController ??= TextEditingController(
             text: _customerSearchQuery,
           ),
           onChanged: (val) => setState(() => _customerSearchQuery = val),
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: AppColors.textPrimary,
+          ),
           decoration: InputDecoration(
-            hintText: 'Search customer name or phone…',
+            hintText: 'Search by name or phone (optional)',
             prefixIcon: const Icon(
               Icons.search_rounded,
               color: AppColors.textLight,
@@ -456,8 +653,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             filled: true,
             fillColor: AppColors.backgroundSecondary,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
             ),
           ),
         ),
@@ -477,27 +678,41 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 : 'Loading route…',
             onChange: () => setState(() => _selectedCustomer = null),
           )
-        else if (_customerSearchQuery.trim().isNotEmpty)
+        else if (customers.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'No customers yet — add one in Customers first.',
+              style: const TextStyle(
+                color: AppColors.textLight,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'All customers (${filteredCustomers.length})',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+            ),
+          ),
           _CustomerSuggestions(
-            customers: filteredCustomers.take(6).toList(),
+            customers: filteredCustomers,
             showRouteLoading: showRouteLoading,
             routes: routes,
-            onSelect: (customer) {
-              setState(() {
-                FocusScope.of(context).unfocus();
-                _selectedCustomer = customer;
-                _selectedItems = {};
-                _customUnitPrices = {};
-                _itemSearchQuery = '';
-                _itemSearchController?.clear();
-                if (customer.products != null) {
-                  for (final p in customer.products!) {
-                    _selectedItems[p.id] = p.quantity;
-                  }
-                }
-              });
-            },
+            emptyHint: q.isEmpty
+                ? 'No customers to show.'
+                : 'No customers match that search. Try a different name or phone.',
+            onSelect: onCustomerChosen,
           ),
+        ],
       ],
     );
   }
@@ -507,98 +722,172 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.82,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          builder: (context, controller) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-              child: Column(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            void refreshSheet() => setModalState(() {});
+
+            final sheetLineCount = _selectedItems.entries
+                .where((e) => e.value > 0)
+                .length;
+            final sheetUnitCount = _selectedItems.entries
+                .where((e) => e.value > 0)
+                .fold<int>(0, (sum, e) => sum + e.value);
+
+            return DraggableScrollableSheet(
+              initialChildSize: 0.86,
+              minChildSize: 0.45,
+              maxChildSize: 0.96,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                   ),
-                  const SizedBox(height: 14),
-                  Row(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Column(
                     children: [
-                      const Expanded(
-                        child: Text(
-                          'Add items',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            color: AppColors.textPrimary,
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(999),
                           ),
                         ),
                       ),
-                      IconButton(
-                        tooltip: 'Close',
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Menu',
+                                  style: context.appTextStyles.sectionHeader,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  sheetLineCount == 0
+                                      ? 'Nothing selected yet — use + to add.'
+                                      : '$sheetLineCount line${sheetLineCount == 1 ? '' : 's'} · $sheetUnitCount units in this order',
+                                  style: context.appTextStyles.caption.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Close',
+                            onPressed: () => Navigator.pop(sheetContext),
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _itemSearchController ??=
+                            TextEditingController(text: _itemSearchQuery),
+                        onChanged: (val) {
+                          setState(() => _itemSearchQuery = val);
+                          refreshSheet();
+                        },
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: AppColors.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search by item name',
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            color: AppColors.textLight,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.backgroundSecondary,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: _CatalogList(
+                          controller: scrollController,
+                          items: _filterCatalog(foodItems),
+                          getQty: (id) => _selectedItems[id] ?? 0,
+                          getUnitPrice: _effectiveUnitPrice,
+                          isCustom: (id) => _customUnitPrices.containsKey(id),
+                          onCustomPrice: (item) => _showCustomPriceDialog(
+                            item,
+                            onApplied: refreshSheet,
+                          ),
+                          onInc: (id) {
+                            setState(
+                              () => _selectedItems[id] =
+                                  (_selectedItems[id] ?? 0) + 1,
+                            );
+                            refreshSheet();
+                          },
+                          onDec: (id) {
+                            final qty = _selectedItems[id] ?? 0;
+                            if (qty <= 0) return;
+                            setState(() {
+                              final next = qty - 1;
+                              if (next <= 0) {
+                                _selectedItems.remove(id);
+                                _customUnitPrices.remove(id);
+                              } else {
+                                _selectedItems[id] = next;
+                              }
+                            });
+                            refreshSheet();
+                          },
+                        ),
+                      ),
+                      SafeArea(
+                        top: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 8, 0, 12),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: () => Navigator.pop(sheetContext),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: Text(
+                                'Done',
+                                style: context.appTextStyles.buttonLabel
+                                    .copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _itemSearchController ??= TextEditingController(
-                      text: _itemSearchQuery,
-                    ),
-                    onChanged: (val) => setState(() => _itemSearchQuery = val),
-                    decoration: InputDecoration(
-                      hintText: 'Search catalog',
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        color: AppColors.textLight,
-                      ),
-                      filled: true,
-                      fillColor: AppColors.backgroundSecondary,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: _CatalogList(
-                      controller: controller,
-                      items: _filterCatalog(foodItems),
-                      getQty: (id) => _selectedItems[id] ?? 0,
-                      getUnitPrice: _effectiveUnitPrice,
-                      isCustom: (id) => _customUnitPrices.containsKey(id),
-                      onCustomPrice: _showCustomPriceDialog,
-                      onInc: (id) => setState(
-                        () =>
-                            _selectedItems[id] = (_selectedItems[id] ?? 0) + 1,
-                      ),
-                      onDec: (id) {
-                        final qty = _selectedItems[id] ?? 0;
-                        if (qty <= 0) return;
-                        setState(() {
-                          final next = qty - 1;
-                          if (next <= 0) {
-                            _selectedItems.remove(id);
-                            _customUnitPrices.remove(id);
-                          } else {
-                            _selectedItems[id] = next;
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             );
           },
         );
@@ -612,7 +901,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return foodItems.where((i) => i.name.toLowerCase().contains(q)).toList();
   }
 
-  Widget _buildSelectedItemsList(List<FoodItem> foodItems) {
+  Widget _buildSelectedItemsList(
+    List<FoodItem> foodItems, {
+    required bool catalogLoaded,
+    VoidCallback? onBrowseCatalog,
+  }) {
     final selected =
         _selectedItems.entries
             .where((e) => e.value > 0)
@@ -627,18 +920,63 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     if (selected.isEmpty) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
+          color: AppColors.backgroundSecondary,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
         ),
-        child: const Text(
-          'Add items to continue',
-          style: TextStyle(
-            color: AppColors.textLight,
-            fontWeight: FontWeight.w700,
-          ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.restaurant_rounded,
+              size: 32,
+              color: AppColors.textLight.withValues(alpha: 0.85),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              catalogLoaded ? 'No items yet' : 'Loading catalog…',
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+                letterSpacing: -0.45,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              catalogLoaded
+                  ? 'Browse your menu and set quantities — you can search inside the sheet.'
+                  : 'Hang tight while products load.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textLight,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+            if (catalogLoaded && onBrowseCatalog != null) ...[
+              const SizedBox(height: 14),
+              FilledButton.tonalIcon(
+                onPressed: onBrowseCatalog,
+                icon: const Icon(Icons.open_in_new_rounded, size: 20),
+                label: const Text(
+                  'Browse menu',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       );
     }
@@ -725,12 +1063,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             child: Center(
               child: Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: selected
                       ? Theme.of(context).colorScheme.onPrimary
                       : AppColors.textPrimary,
                   fontWeight: FontWeight.w900,
-                  fontSize: 12,
+                  fontSize: 13,
+                  letterSpacing: -0.1,
                 ),
               ),
             ),
@@ -739,53 +1080,35 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       );
     }
 
-    final showWeekdays = _scheduleMode != _DeliveryScheduleMode.daily;
-
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
             pill(
-              'Daily',
-              _scheduleMode == _DeliveryScheduleMode.daily,
-              () => setState(() {
-                _scheduleMode = _DeliveryScheduleMode.daily;
-                _orderType = OrderType.daily;
-              }),
+              'Daily order',
+              _orderType == OrderType.daily,
+              () => setState(() => _orderType = OrderType.daily),
             ),
             const SizedBox(width: 10),
             pill(
-              'Weekly',
-              _scheduleMode == _DeliveryScheduleMode.weekly,
-              () => setState(() {
-                _scheduleMode = _DeliveryScheduleMode.weekly;
-                _orderType = OrderType.daily;
-              }),
-            ),
-            const SizedBox(width: 10),
-            pill(
-              'Custom',
-              _scheduleMode == _DeliveryScheduleMode.custom,
-              () => setState(() {
-                _scheduleMode = _DeliveryScheduleMode.custom;
-                _orderType = OrderType.daily;
-              }),
+              'One-time',
+              _orderType == OrderType.oneTime,
+              () => setState(() => _orderType = OrderType.oneTime),
             ),
           ],
         ),
-        if (showWeekdays) ...[
-          const SizedBox(height: 14),
-          _WeekdayPicker(
-            selected: _selectedWeekdays,
-            onToggle: (day) => setState(() {
-              if (_selectedWeekdays.contains(day)) {
-                if (_selectedWeekdays.length > 1) _selectedWeekdays.remove(day);
-              } else {
-                _selectedWeekdays.add(day);
-              }
-            }),
+        const SizedBox(height: 10),
+        Text(
+          _orderType == OrderType.daily
+              ? 'Shows as a recurring daily order on your lists and dashboards.'
+              : 'A single delivery — labeled as a one-time order everywhere.',
+          style: context.appTextStyles.caption.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+            height: 1.4,
           ),
-        ],
+        ),
       ],
     );
   }
@@ -832,10 +1155,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ? _selectedCustomer!.assignedRoute!.trim()
             : null);
     final assignedDriver = route?.assignedDriver;
-    final discountAmount = _computePartnerDiscount(subtotal);
-    final totalAmount = (subtotal - discountAmount)
-        .clamp(0, double.infinity)
-        .toDouble();
+    const discountAmount = 0.0;
+    final totalAmount = subtotal.clamp(0, double.infinity).toDouble();
 
     final now = DateTime.now();
     final existing = _editingOrder;
@@ -910,6 +1231,502 @@ class _SelectionSummary {
   });
 }
 
+class _CreateOrderStepProgress extends StatelessWidget {
+  final int stepIndex;
+  final int stepCount;
+  final List<String> labels;
+
+  const _CreateOrderStepProgress({
+    required this.stepIndex,
+    required this.stepCount,
+    required this.labels,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            for (var i = 0; i < stepCount; i++) ...[
+              Expanded(
+                child: Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: i <= stepIndex
+                        ? AppColors.primary
+                        : AppColors.border,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              if (i < stepCount - 1) const SizedBox(width: 6),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${labels[stepIndex]} · ${stepIndex + 1}/$stepCount',
+          style: context.appTextStyles.caption.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReportLineItem {
+  final String name;
+  final int quantity;
+  final double unitPrice;
+  final double lineTotal;
+  final bool isCustomRate;
+
+  const _ReportLineItem({
+    required this.name,
+    required this.quantity,
+    required this.unitPrice,
+    required this.lineTotal,
+    required this.isCustomRate,
+  });
+}
+
+class _OrderReviewReport extends StatelessWidget {
+  final String customerName;
+  final String customerPhone;
+  final String customerRoute;
+  final String orderTypeLabel;
+  final DateTime generatedAt;
+  final List<_ReportLineItem> lines;
+  final double orderTotal;
+  final int lineCount;
+  final int unitCount;
+
+  const _OrderReviewReport({
+    required this.customerName,
+    required this.customerPhone,
+    required this.customerRoute,
+    required this.orderTypeLabel,
+    required this.generatedAt,
+    required this.lines,
+    required this.orderTotal,
+    required this.lineCount,
+    required this.unitCount,
+  });
+
+  static TextStyle _label(BuildContext context) => const TextStyle(
+        color: AppColors.textLight,
+        fontWeight: FontWeight.w900,
+        fontSize: 11,
+        letterSpacing: 1.2,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final prepared = DateFormat('EEE, d MMM yyyy · HH:mm').format(generatedAt);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 22,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            color: AppColors.backgroundSecondary,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.receipt_long_rounded,
+                      size: 22,
+                      color: AppColors.primary.withValues(alpha: 0.9),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Order summary',
+                        style: context.appTextStyles.sectionHeader,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Prepared $prepared · $lineCount line${lineCount == 1 ? '' : 's'} · $unitCount units',
+                  style: context.appTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'All amounts in INR',
+                  style: context.appTextStyles.caption.copyWith(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: AppColors.divider),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('BILL TO', style: _label(context)),
+                const SizedBox(height: 10),
+                _ReportKvRow(label: 'Customer', value: customerName),
+                _ReportKvRow(label: 'Phone', value: customerPhone),
+                _ReportKvRow(label: 'Route', value: customerRoute),
+                const SizedBox(height: 14),
+                Text('ORDER TYPE', style: _label(context)),
+                const SizedBox(height: 6),
+                Text(
+                  orderTypeLabel,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    letterSpacing: -0.3,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.divider),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Text(
+                    'LINE ITEMS',
+                    style: _label(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const _ReportTableHeaderRow(),
+                for (var i = 0; i < lines.length; i++) ...[
+                  _ReportTableDataRow(line: lines[i]),
+                  if (i < lines.length - 1)
+                    const Divider(
+                      height: 1,
+                      indent: 18,
+                      endIndent: 18,
+                      color: AppColors.divider,
+                    ),
+                ],
+              ],
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            height: 2,
+            color: AppColors.border,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('AMOUNT SUMMARY', style: _label(context)),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Order total',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      _formatRupee(orderTotal),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        letterSpacing: -0.3,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportKvRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ReportKvRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 76,
+            child: Text(
+              label,
+              style: context.appTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 15,
+                letterSpacing: -0.3,
+                color: AppColors.textPrimary,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportTableHeaderRow extends StatelessWidget {
+  const _ReportTableHeaderRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.appTextStyles.caption.copyWith(
+      fontWeight: FontWeight.w900,
+      fontSize: 11,
+      color: AppColors.textSecondary,
+      letterSpacing: 0.35,
+    );
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      color: AppColors.backgroundSecondary,
+      child: Row(
+        children: [
+          Expanded(
+            flex: 11,
+            child: Text('ITEM', style: s),
+          ),
+          Expanded(
+            flex: 4,
+            child: Text('QTY', style: s, textAlign: TextAlign.right),
+          ),
+          Expanded(
+            flex: 5,
+            child: Text('RATE', style: s, textAlign: TextAlign.right),
+          ),
+          Expanded(
+            flex: 6,
+            child: Text('AMOUNT', style: s, textAlign: TextAlign.right),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportTableDataRow extends StatelessWidget {
+  final _ReportLineItem line;
+
+  const _ReportTableDataRow({required this.line});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 11,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  line.name,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                    height: 1.25,
+                  ),
+                ),
+                if (line.isCustomRate)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Custom rate',
+                      style: context.appTextStyles.caption.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Text(
+              '${line.quantity}',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 5,
+            child: Text(
+              _formatRupee(line.unitPrice),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 6,
+            child: Text(
+              _formatRupee(line.lineTotal),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FormSectionCard extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final Widget child;
+
+  const _FormSectionCard({
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: context.appTextStyles.sectionHeader,
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle!,
+                          style: context.appTextStyles.caption.copyWith(
+                            color: AppColors.textLight,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (trailing != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 2),
+                    child: trailing!,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SelectedPartnerCard extends StatelessWidget {
   final Customer customer;
   final String routeName;
@@ -924,27 +1741,20 @@ class _SelectedPartnerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 16,
-            offset: Offset(0, 10),
-          ),
-        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
               Icons.business_rounded,
@@ -964,7 +1774,8 @@ class _SelectedPartnerCard extends StatelessWidget {
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: -0.2,
+                    fontSize: 16,
+                    letterSpacing: -0.45,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -973,9 +1784,9 @@ class _SelectedPartnerCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppColors.textLight,
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w700,
-                    fontSize: 12,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -999,92 +1810,81 @@ class _SelectedPartnerCard extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      style: const TextStyle(
-        fontWeight: FontWeight.w900,
-        fontSize: 10,
-        color: AppColors.textLight,
-        letterSpacing: 1.2,
-      ),
-    );
-  }
-}
-
 class _CustomerSuggestions extends StatelessWidget {
   final List<Customer> customers;
   final bool showRouteLoading;
   final List<DeliveryRoute> routes;
   final ValueChanged<Customer> onSelect;
+  final String emptyHint;
 
   const _CustomerSuggestions({
     required this.customers,
     required this.showRouteLoading,
     required this.routes,
     required this.onSelect,
+    this.emptyHint = 'No matching customers',
   });
 
   @override
   Widget build(BuildContext context) {
     if (customers.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 14),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Text(
-          'No matching customers',
-          style: TextStyle(
+          emptyHint,
+          style: const TextStyle(
             color: AppColors.textLight,
             fontWeight: FontWeight.w700,
+            fontSize: 12,
           ),
         ),
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          for (var i = 0; i < customers.length; i++) ...[
-            ListTile(
-              dense: true,
-              onTap: () => onSelect(customers[i]),
-              leading: const CircleAvatar(
-                backgroundColor: AppColors.backgroundSecondary,
-                child: Icon(Icons.person_rounded, color: AppColors.primary),
-              ),
-              title: Text(
-                customers[i].name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              subtitle: Text(
-                '${showRouteLoading ? 'Loading route…' : (routes.firstWhereOrNull((r) => r.id == customers[i].assignedRoute || r.name == customers[i].assignedRoute)?.name ?? 'No Route')} • ${customers[i].phone}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < customers.length; i++) ...[
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            visualDensity: VisualDensity.compact,
+            onTap: () => onSelect(customers[i]),
+            leading: CircleAvatar(
+              radius: 18,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+              child: const Icon(
+                Icons.person_rounded,
+                color: AppColors.primary,
+                size: 20,
               ),
             ),
-            if (i != customers.length - 1)
-              const Divider(height: 1, color: AppColors.divider),
-          ],
+            title: Text(
+              customers[i].name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+                letterSpacing: -0.45,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            subtitle: Text(
+              '${showRouteLoading ? 'Loading route…' : (routes.firstWhereOrNull((r) => r.id == customers[i].assignedRoute || r.name == customers[i].assignedRoute)?.name ?? 'No Route')} • ${customers[i].phone}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          if (i != customers.length - 1)
+            const Divider(height: 1, color: AppColors.divider),
         ],
-      ),
+      ],
     );
   }
 }
@@ -1115,17 +1915,11 @@ class _SelectedMenuItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 16,
-            offset: Offset(0, 10),
-          ),
-        ],
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -1140,19 +1934,22 @@ class _SelectedMenuItemCard extends StatelessWidget {
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    letterSpacing: -0.45,
+                    height: 1.15,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     Text(
-                      '₹${NumberFormat.decimalPattern().format(unitPrice)}.00',
+                      _formatRupee(unitPrice),
                       style: TextStyle(
                         color: isCustom
                             ? AppColors.primary
                             : AppColors.textLight,
                         fontWeight: FontWeight.w900,
-                        fontSize: 12,
+                        fontSize: 13,
                       ),
                     ),
                     if (isCustom) ...[
@@ -1246,19 +2043,21 @@ class _QtyStepper extends StatelessWidget {
         children: [
           IconButton(
             onPressed: qty > 0 ? onDec : null,
-            icon: const Icon(Icons.remove_rounded, size: 18),
+            icon: const Icon(Icons.remove_rounded, size: 16),
             color: AppColors.textPrimary,
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
           ),
           SizedBox(
-            width: 42,
+            width: 32,
             child: controller == null || onQtyChanged == null
                 ? Center(
                     child: Text(
-                      qty.toString().padLeft(2, '0'),
+                      qty.toString(),
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
+                        fontSize: 13,
                         color: AppColors.textPrimary,
                       ),
                     ),
@@ -1269,12 +2068,13 @@ class _QtyStepper extends StatelessWidget {
                     keyboardType: TextInputType.number,
                     style: const TextStyle(
                       fontWeight: FontWeight.w900,
+                      fontSize: 13,
                       color: AppColors.textPrimary,
                     ),
                     decoration: const InputDecoration(
                       isDense: true,
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(vertical: 4),
                     ),
                     onEditingComplete: () {
                       final raw = controller!.text.trim();
@@ -1294,155 +2094,14 @@ class _QtyStepper extends StatelessWidget {
           ),
           IconButton(
             onPressed: onInc,
-            icon: const Icon(Icons.add_rounded, size: 18),
+            icon: const Icon(Icons.add_rounded, size: 16),
             color: AppColors.textPrimary,
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
           ),
         ],
       ),
-    );
-  }
-}
-
-class _WeekdayPicker extends StatelessWidget {
-  final Set<int> selected;
-  final ValueChanged<int> onToggle;
-  const _WeekdayPicker({required this.selected, required this.onToggle});
-
-  static const _days = <int, String>{
-    DateTime.monday: 'M',
-    DateTime.tuesday: 'T',
-    DateTime.wednesday: 'W',
-    DateTime.thursday: 'T',
-    DateTime.friday: 'F',
-    DateTime.saturday: 'S',
-    DateTime.sunday: 'S',
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: _days.entries.map((e) {
-        final isSelected = selected.contains(e.key);
-        return InkWell(
-          onTap: () => onToggle(e.key),
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.primary
-                  : AppColors.backgroundSecondary,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: isSelected ? Colors.transparent : AppColors.border,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                e.value,
-                style: TextStyle(
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : AppColors.textLight,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _OrderSummaryCard extends StatelessWidget {
-  final double subtotal;
-  final double discount;
-  final double total;
-
-  const _OrderSummaryCard({
-    required this.subtotal,
-    required this.discount,
-    required this.total,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLighter.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          _summaryRow(
-            'Subtotal',
-            '₹${NumberFormat.decimalPattern().format(subtotal)}.00',
-          ),
-          const SizedBox(height: 10),
-          _summaryRow(
-            'Partner Discount',
-            '- ₹${NumberFormat.decimalPattern().format(discount)}.00',
-            valueColor: AppColors.success,
-          ),
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: AppColors.border),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Total Amount',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              Text(
-                '₹${NumberFormat.decimalPattern().format(total)}.00',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.primary,
-                  fontSize: 18,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _summaryRow(
-    String label,
-    String value, {
-    Color valueColor = AppColors.textPrimary,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(color: valueColor, fontWeight: FontWeight.w900),
-        ),
-      ],
     );
   }
 }
@@ -1492,11 +2151,11 @@ class _CatalogList extends StatelessWidget {
         final unitPrice = getUnitPrice(item);
         final custom = isCustom(item.id);
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
+            color: AppColors.backgroundSecondary,
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.border),
           ),
           child: Row(
@@ -1511,15 +2170,18 @@ class _CatalogList extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        letterSpacing: -0.45,
                         color: AppColors.textPrimary,
+                        height: 1,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Row(
                       children: [
                         Expanded(
                           child: Text(
-                            '₹${NumberFormat.decimalPattern().format(unitPrice)} / unit',
+                            '${_formatRupee(unitPrice)} / unit',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
