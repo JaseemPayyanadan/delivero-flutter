@@ -13,6 +13,7 @@ import '../data/models/delivery_route.dart';
 import '../data/models/driver.dart';
 import '../core/services/firebase_service.dart';
 import '../core/services/factory_service.dart';
+import '../core/services/local_notifications_service.dart';
 
 CollectionReference<Map<String, dynamic>> _mapCollection(String path) {
   return FirebaseService.firestore
@@ -92,10 +93,59 @@ class _LoadedFlagNotifier extends Notifier<bool> {
   bool build() => false;
 }
 
+String _humanizeStatus(OrderStatus status) {
+  final name = status.name;
+  if (name.isEmpty) return name;
+  return name[0].toUpperCase() + name.substring(1);
+}
+
+String _formatOrderShortId(String id) {
+  final trimmed = id.trim();
+  if (trimmed.isEmpty) return '#ORD';
+  final upper = trimmed.toUpperCase();
+  if (upper.startsWith('ORD-') || upper.startsWith('#ORD-')) {
+    return upper.startsWith('#') ? upper : '#$upper';
+  }
+  final short = upper.length > 6 ? upper.substring(0, 6) : upper;
+  return '#$short';
+}
+
+String _formatOrderAlertBody(Order order, {required String suffix}) {
+  final id = _formatOrderShortId(order.id);
+  final name = order.customerName.trim();
+  if (name.isEmpty) return '$id $suffix';
+  return '$id · $name $suffix';
+}
+
 class OrdersNotifier extends Notifier<List<Order>> {
   StreamSubscription? _subscription;
   String? _activeFactoryId;
   bool _isListening = false;
+
+  /// Tracks the last seen status for each order so we can diff against the
+  /// next Firestore snapshot and fire notifications only on real changes.
+  Map<String, OrderStatus> _prevStatusById = {};
+  bool _firstSnapshotProcessed = false;
+
+  /// Order ids that were just mutated locally by this device. We suppress
+  /// notifications for these so users don't get pinged for their own taps.
+  /// Each entry expires after [_selfMutationTtl].
+  final Map<String, DateTime> _selfMutationsAt = {};
+  static const Duration _selfMutationTtl = Duration(seconds: 4);
+
+  void _markSelfMutation(String orderId) {
+    _selfMutationsAt[orderId] = DateTime.now();
+  }
+
+  bool _isFreshSelfMutation(String orderId) {
+    final at = _selfMutationsAt[orderId];
+    if (at == null) return false;
+    if (DateTime.now().difference(at) > _selfMutationTtl) {
+      _selfMutationsAt.remove(orderId);
+      return false;
+    }
+    return true;
+  }
 
   @override
   List<Order> build() {
@@ -104,6 +154,9 @@ class OrdersNotifier extends Notifier<List<Order>> {
       _subscription = null;
       _activeFactoryId = null;
       _isListening = false;
+      _prevStatusById = {};
+      _firstSnapshotProcessed = false;
+      _selfMutationsAt.clear();
     });
 
     if (!_isListening) {
@@ -123,6 +176,8 @@ class OrdersNotifier extends Notifier<List<Order>> {
       _subscription?.cancel();
       _subscription = null;
       _activeFactoryId = null;
+      _prevStatusById = {};
+      _firstSnapshotProcessed = false;
       state = [];
       Future.microtask(() {
         ref.read(ordersLoadedProvider.notifier).state = false;
@@ -134,6 +189,8 @@ class OrdersNotifier extends Notifier<List<Order>> {
 
     _subscription?.cancel();
     _activeFactoryId = factoryId;
+    _prevStatusById = {};
+    _firstSnapshotProcessed = false;
     Future.microtask(() {
       ref.read(ordersLoadedProvider.notifier).state = false;
     });
@@ -184,7 +241,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
             return route == null ? k : route.id;
           }
 
-          state = snapshot.docs
+          final nextOrders = snapshot.docs
               .where((doc) {
                 final data = doc.data();
                 final fid = (data['factoryId'] ?? data['factory_id'])
@@ -200,6 +257,10 @@ class OrdersNotifier extends Notifier<List<Order>> {
                 return o.copyWith(assignedRoute: normalizedId);
               })
               .toList();
+
+          _emitOrderNotifications(nextOrders);
+
+          state = nextOrders;
           Future.microtask(() {
             ref.read(ordersLoadedProvider.notifier).state = true;
           });
@@ -219,16 +280,65 @@ class OrdersNotifier extends Notifier<List<Order>> {
     }
   }
 
-  void addOrder(Order order) => FirebaseService.firestore
-      .collection('orders')
-      .doc(order.id)
-      .set(order.toJson());
-  void updateOrder(Order order) => FirebaseService.firestore
-      .collection('orders')
-      .doc(order.id)
-      .set(order.toJson());
-  void deleteOrder(String id) =>
-      FirebaseService.firestore.collection('orders').doc(id).delete();
+  void addOrder(Order order) {
+    _markSelfMutation(order.id);
+    FirebaseService.firestore
+        .collection('orders')
+        .doc(order.id)
+        .set(order.toJson());
+  }
+
+  void updateOrder(Order order) {
+    _markSelfMutation(order.id);
+    FirebaseService.firestore
+        .collection('orders')
+        .doc(order.id)
+        .set(order.toJson());
+  }
+
+  void deleteOrder(String id) {
+    _markSelfMutation(id);
+    FirebaseService.firestore.collection('orders').doc(id).delete();
+  }
+
+  void _emitOrderNotifications(List<Order> nextOrders) {
+    final nextById = <String, OrderStatus>{
+      for (final o in nextOrders) o.id: o.status,
+    };
+
+    // Skip notifications during the initial snapshot — every order would
+    // otherwise appear "new" right after sign in / app launch.
+    if (!_firstSnapshotProcessed) {
+      _prevStatusById = nextById;
+      _firstSnapshotProcessed = true;
+      return;
+    }
+
+    final notifier = LocalNotificationsService.instance;
+    for (final order in nextOrders) {
+      if (_isFreshSelfMutation(order.id)) continue;
+
+      final prev = _prevStatusById[order.id];
+      if (prev == null) {
+        notifier.showOrderAlert(
+          title: 'New order received',
+          body: _formatOrderAlertBody(order, suffix: 'placed'),
+          payload: 'order:${order.id}',
+        );
+      } else if (prev != order.status) {
+        notifier.showOrderAlert(
+          title: 'Order status updated',
+          body: _formatOrderAlertBody(
+            order,
+            suffix: 'is now ${_humanizeStatus(order.status)}',
+          ),
+          payload: 'order:${order.id}',
+        );
+      }
+    }
+
+    _prevStatusById = nextById;
+  }
 
   Future<void> refresh() async {
     final id = _activeFactoryId;

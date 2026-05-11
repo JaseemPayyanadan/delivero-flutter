@@ -6,6 +6,7 @@ import '../data/models/user.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/delivery/delivery_shell.dart';
+import '../features/delivery/order_details/driver_order_details_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/owner/owner_shell.dart';
 import '../features/owner/customers/customer_list_screen.dart';
@@ -19,6 +20,7 @@ import '../features/owner/orders/create_order_screen.dart';
 import '../features/owner/reports/reports_screen.dart';
 import '../features/owner/search/global_search_screen.dart';
 import '../features/startup/app_intro_screen.dart';
+import '../features/startup/app_launcher_screen.dart';
 import 'providers.dart';
 
 class RouterNotifier extends ChangeNotifier {
@@ -179,6 +181,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/delivery',
         builder: (context, state) => const DeliveryShell(),
+        routes: [
+          GoRoute(
+            path: 'orders/:id',
+            builder: (context, state) => DriverOrderDetailsScreen(
+              orderId: state.pathParameters['id']!,
+            ),
+          ),
+        ],
       ),
     ],
   );
