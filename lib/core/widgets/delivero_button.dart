@@ -72,7 +72,11 @@ class DeliveroButton extends StatelessWidget {
       onPressed: isLoading || onPressed == null
           ? null
           : () {
-              if (useHaptics) HapticFeedback.mediumImpact();
+              if (useHaptics) {
+                try {
+                  HapticFeedback.mediumImpact();
+                } catch (_) {}
+              }
               onPressed?.call();
             },
       style: buttonStyle,

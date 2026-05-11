@@ -110,7 +110,9 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
             tooltip:
                 _tabController.index == 0 ? 'Add route' : 'Add driver',
             onPressed: () {
-              HapticFeedback.lightImpact();
+              try {
+                HapticFeedback.lightImpact();
+              } catch (_) {}
               _showAddDialog();
             },
             icon: const Icon(
@@ -649,7 +651,9 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                                       .read(driversProvider.notifier)
                                       .updateDriver(updatedDriver);
 
-                                  HapticFeedback.mediumImpact();
+                                  try {
+                                    HapticFeedback.mediumImpact();
+                                  } catch (_) {}
                                   Navigator.pop(sheetContext);
                                 },
                                 child: Padding(
@@ -1702,4 +1706,3 @@ String _vehicleAsset(VehicleType type) {
       return 'assets/images/scooter.webp';
   }
 }
-

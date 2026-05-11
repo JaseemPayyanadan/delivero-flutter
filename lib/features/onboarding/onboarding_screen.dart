@@ -88,7 +88,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       return;
     }
 
-    HapticFeedback.mediumImpact();
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kBusinessNameKey, next);
 
@@ -200,12 +202,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: FilledButton(
                     onPressed: isLast
                         ? (canFinish
-                              ? () {
-                                  HapticFeedback.mediumImpact();
-                                  ref
+                              ? () async {
+                                  try {
+                                    HapticFeedback.mediumImpact();
+                                  } catch (_) {}
+                                  await ref
                                       .read(authProvider.notifier)
                                       .completeOnboarding();
-                                  context.go('/owner');
+                                  if (context.mounted) context.go('/owner');
                                 }
                               : null)
                         : (canContinue ? details.onStepContinue : null),
@@ -258,14 +262,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               }
               return;
             case 1:
-              HapticFeedback.selectionClick();
+              try {
+                HapticFeedback.selectionClick();
+              } catch (_) {}
               context.push('/owner/routes');
               return;
             case 2:
-              HapticFeedback.selectionClick();
+              try {
+                HapticFeedback.selectionClick();
+              } catch (_) {}
               context.push('/owner/customers');
               return;
             case 3:
+              try {
+                HapticFeedback.selectionClick();
+              } catch (_) {}
+              context.push('/owner/food-items');
               return;
           }
         },
@@ -364,10 +376,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             height: 52,
             child: FilledButton.icon(
               onPressed: allDone
-                  ? () {
-                      HapticFeedback.mediumImpact();
-                      ref.read(authProvider.notifier).completeOnboarding();
-                      context.go('/owner');
+                  ? () async {
+                      try {
+                        HapticFeedback.mediumImpact();
+                      } catch (_) {}
+                      await ref
+                          .read(authProvider.notifier)
+                          .completeOnboarding();
+                      if (context.mounted) context.go('/owner');
                     }
                   : null,
               style: FilledButton.styleFrom(

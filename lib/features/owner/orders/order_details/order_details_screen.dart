@@ -158,7 +158,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                 onPhoneTap: order.customerPhone.trim().isEmpty
                     ? null
                     : () {
-                        HapticFeedback.selectionClick();
+                        try {
+                          HapticFeedback.selectionClick();
+                        } catch (_) {}
                         _handleCallCustomer(context, order.customerPhone);
                       },
               ),
@@ -305,7 +307,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   ) {
     if (order.status == newStatus) return;
 
-    HapticFeedback.mediumImpact();
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
     final updatedOrder = order.copyWith(status: newStatus);
     ref.read(ordersProvider.notifier).updateOrder(updatedOrder);
 

@@ -9,6 +9,7 @@ import 'app/providers.dart';
 import 'app/router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/firebase_service.dart';
+import 'core/services/local_notifications_service.dart';
 import 'core/services/push_notification_service.dart';
 
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
@@ -22,6 +23,7 @@ Future<void> main() async {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   }
   PushNotificationService.instance.attachMessenger(rootScaffoldMessengerKey);
+  await LocalNotificationsService.instance.init();
   runApp(const ProviderScope(child: DeliveroApp()));
 }
 

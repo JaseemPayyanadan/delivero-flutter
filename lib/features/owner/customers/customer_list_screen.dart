@@ -98,18 +98,18 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       final matchesSearch = q.isEmpty
           ? true
           : customer.name.toLowerCase().contains(q) ||
-              (customer.ownerName?.toLowerCase().contains(q) ?? false) ||
-              customer.phone.contains(_searchQuery.trim()) ||
-              customer.email.toLowerCase().contains(q) ||
-              customer.address.toLowerCase().contains(q) ||
-              customer.area.toLowerCase().contains(q);
+                (customer.ownerName?.toLowerCase().contains(q) ?? false) ||
+                customer.phone.contains(_searchQuery.trim()) ||
+                customer.email.toLowerCase().contains(q) ||
+                customer.address.toLowerCase().contains(q) ||
+                customer.area.toLowerCase().contains(q);
 
       final matchesRoute = switch (_selectedRouteId) {
         null => true,
         '__unassigned__' => routeIdForCustomer(customer) == null,
         _ =>
-            customer.assignedRoute == _selectedRouteId ||
-            routeIdForCustomer(customer) == _selectedRouteId,
+          customer.assignedRoute == _selectedRouteId ||
+              routeIdForCustomer(customer) == _selectedRouteId,
       };
 
       return matchesSearch && matchesRoute;
@@ -160,7 +160,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          HapticFeedback.lightImpact();
+          try {
+            HapticFeedback.lightImpact();
+          } catch (_) {}
           context.push('/owner/customers/add');
         },
         backgroundColor: AppColors.primary,
@@ -341,7 +343,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                 paymentStatus: paymentStatus,
                 scheduleLabel: scheduleLabel,
                 onTap: () {
-                  HapticFeedback.selectionClick();
+                  try {
+                    HapticFeedback.selectionClick();
+                  } catch (_) {}
                   context.push('/owner/customers/${customer.id}');
                 },
               );

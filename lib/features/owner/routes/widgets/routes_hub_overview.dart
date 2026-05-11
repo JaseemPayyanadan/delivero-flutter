@@ -185,7 +185,9 @@ class RoutesHubSegmentedControl extends StatelessWidget {
       child: InkWell(
         onTap: () {
           if (controller.index != index) {
-            HapticFeedback.selectionClick();
+            try {
+              HapticFeedback.selectionClick();
+            } catch (_) {}
             controller.animateTo(index);
           }
         },

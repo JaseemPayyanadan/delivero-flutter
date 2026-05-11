@@ -120,7 +120,9 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
                 selectedIndex: _selectedIndex,
                 onDestinationSelected: (index) {
                   if (_selectedIndex != index) {
-                    HapticFeedback.selectionClick();
+                    try {
+                      HapticFeedback.selectionClick();
+                    } catch (_) {}
                     setState(() => _selectedIndex = index);
                   }
                 },

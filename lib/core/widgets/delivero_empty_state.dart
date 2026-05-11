@@ -85,7 +85,11 @@ class DeliveroEmptyState extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    if (useHaptics) HapticFeedback.lightImpact();
+                    if (useHaptics) {
+                      try {
+                        HapticFeedback.lightImpact();
+                      } catch (_) {}
+                    }
                     onActionPressed!();
                   },
                   icon: const Icon(Icons.add_rounded),

@@ -48,7 +48,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     try {
-      HapticFeedback.mediumImpact();
+      try {
+        HapticFeedback.mediumImpact();
+      } catch (_) {}
       await ref.read(authProvider.notifier).login(email, password);
     } catch (e) {
       // Error is also handled in authProvider state

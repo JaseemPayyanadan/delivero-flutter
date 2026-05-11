@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
@@ -304,7 +306,18 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
           ),
         ],
       ),
-      child: Padding(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            try {
+              HapticFeedback.selectionClick();
+            } catch (_) {}
+            context.push('/delivery/orders/${order.id}');
+          },
+          child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,6 +526,8 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
                 ),
               ),
           ],
+        ),
+      ),
         ),
       ),
     );

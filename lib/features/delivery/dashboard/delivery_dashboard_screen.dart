@@ -57,21 +57,26 @@ class DeliveryDashboardScreen extends ConsumerWidget {
       }
     }
 
-    final completedCount =
-        myOrders.where((o) => o.status == OrderStatus.delivered).length;
-    final pendingCount =
-        myOrders.where((o) => o.status == OrderStatus.pending).length;
-    final todayDeliveredCount =
-        todayOrders.where((o) => o.status == OrderStatus.delivered).length;
-    final todayPendingCount =
-        todayOrders.where((o) => o.status == OrderStatus.pending).length;
+    final completedCount = myOrders
+        .where((o) => o.status == OrderStatus.delivered)
+        .length;
+    final pendingCount = myOrders
+        .where((o) => o.status == OrderStatus.pending)
+        .length;
+    final todayDeliveredCount = todayOrders
+        .where((o) => o.status == OrderStatus.delivered)
+        .length;
+    final todayPendingCount = todayOrders
+        .where((o) => o.status == OrderStatus.pending)
+        .length;
     final todayTotal = todayCash + todayUpi;
     final dateLabel = DateFormat('EEEE, d MMMM').format(today);
 
     final upcomingToday = [...todayOrders]
       ..sort((a, b) {
-        final p = _statusPriority(a.status)
-            .compareTo(_statusPriority(b.status));
+        final p = _statusPriority(
+          a.status,
+        ).compareTo(_statusPriority(b.status));
         if (p != 0) return p;
         return b.totalAmount.compareTo(a.totalAmount);
       });
@@ -397,7 +402,9 @@ class _HeroTopRow extends StatelessWidget {
         _HeroIconButton(
           icon: Icons.notifications_none_rounded,
           onTap: () {
-            HapticFeedback.lightImpact();
+            try {
+              HapticFeedback.lightImpact();
+            } catch (_) {}
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Text(
@@ -436,9 +443,7 @@ class _HeroIconButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.14),
             shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.22),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
           ),
           child: Icon(icon, color: Colors.white, size: 21),
         ),
@@ -501,9 +506,7 @@ class _HeroCollected extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -869,7 +872,9 @@ class _QuickActionTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          HapticFeedback.lightImpact();
+          try {
+            HapticFeedback.lightImpact();
+          } catch (_) {}
           action.onTap();
         },
         borderRadius: BorderRadius.circular(14),
@@ -1061,10 +1066,7 @@ class _DeliveryTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: statusChipBg,
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.surface,
-                      width: 2,
-                    ),
+                    border: Border.all(color: AppColors.surface, width: 2),
                   ),
                 ),
               ),
@@ -1464,10 +1466,7 @@ class _NoDeliveriesEmpty extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: AppColors.backgroundSecondary,
                 borderRadius: BorderRadius.circular(16),
