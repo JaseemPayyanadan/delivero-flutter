@@ -225,6 +225,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                 context,
                 filteredCustomers: filteredCustomers,
                 routeNameForCustomer: routeNameForCustomer,
+                routeIdForCustomer: routeIdForCustomer,
                 ordersByCustomer: ordersByCustomer,
                 reports: reports,
               ),
@@ -285,10 +286,58 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     });
   }
 
+  Future<void> _openAssignRouteSheet(
+    BuildContext context,
+    Customer customer,
+  ) async {
+    try {
+      HapticFeedback.selectionClick();
+    } catch (_) {}
+
+    final messenger = ScaffoldMessenger.of(context);
+    final routes = ref.read(routesProvider);
+    final picked = await showModalBottomSheet<DeliveryRoute>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => _AssignRouteSheet(
+        customerName: customer.name,
+        routes: routes,
+      ),
+    );
+    if (picked == null || !mounted) return;
+
+    final updated = Customer(
+      id: customer.id,
+      factoryId: customer.factoryId,
+      name: customer.name,
+      ownerName: customer.ownerName,
+      email: customer.email,
+      phone: customer.phone,
+      address: customer.address,
+      area: customer.area.isEmpty ? picked.area : customer.area,
+      isActive: customer.isActive,
+      discountPercentage: customer.discountPercentage,
+      assignedRoute: picked.name,
+      products: customer.products,
+      createdAt: customer.createdAt,
+      updatedAt: DateTime.now(),
+    );
+    ref.read(customersProvider.notifier).updateCustomer(updated);
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('${customer.name} assigned to ${picked.name}'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   List<Widget> _buildGroupedCustomerSlivers(
     BuildContext context, {
     required List<Customer> filteredCustomers,
     required String Function(Customer) routeNameForCustomer,
+    required String? Function(Customer) routeIdForCustomer,
     required Map<String, List<Order>> ordersByCustomer,
     required ReportsData reports,
   }) {
@@ -336,11 +385,30 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
               final customerReport = reports.customerRevenue[customer.name];
               final ltv = customerReport?.revenue ?? 0;
 
+              double pendingAmount = 0;
+              for (final o in customerOrders) {
+                switch (o.paymentStatus) {
+                  case PaymentStatus.unpaid:
+                    pendingAmount += o.totalAmount;
+                    break;
+                  case PaymentStatus.partial:
+                    pendingAmount += (o.totalAmount - (o.amountPaid ?? 0))
+                        .clamp(0, double.infinity);
+                    break;
+                  case PaymentStatus.paid:
+                  case null:
+                    break;
+                }
+              }
+              final hasPending = pendingAmount > 0.004;
+              final hasRoute = routeIdForCustomer(customer) != null;
+
               return _CustomerListCard(
                 customer: customer,
                 phone: customer.phone,
-                isActive: customer.isActive,
                 paymentStatus: paymentStatus,
+                hasPending: hasPending,
+                hasRoute: hasRoute,
                 scheduleLabel: scheduleLabel,
                 onTap: () {
                   try {
@@ -348,6 +416,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                   } catch (_) {}
                   context.push('/owner/customers/${customer.id}');
                 },
+                onAssignRoute: () => _openAssignRouteSheet(context, customer),
               );
             },
           ),
@@ -437,36 +506,27 @@ class _GroupHeader extends StatelessWidget {
 class _CustomerListCard extends StatelessWidget {
   final Customer customer;
   final String phone;
-  final bool isActive;
   final PaymentStatus? paymentStatus;
+  final bool hasPending;
+  final bool hasRoute;
   final String scheduleLabel;
   final VoidCallback onTap;
+  final VoidCallback onAssignRoute;
 
   const _CustomerListCard({
     required this.customer,
     required this.phone,
-    required this.isActive,
     required this.paymentStatus,
+    required this.hasPending,
+    required this.hasRoute,
     required this.scheduleLabel,
     required this.onTap,
+    required this.onAssignRoute,
   });
 
   @override
   Widget build(BuildContext context) {
     final payment = _PaymentPill.from(paymentStatus);
-    final activePill = isActive
-        ? const _Pill(
-            label: 'ACTIVE',
-            fg: AppColors.success,
-            bg: AppColors.successLighter,
-            compact: true,
-          )
-        : const _Pill(
-            label: 'INACTIVE',
-            fg: AppColors.textSecondary,
-            bg: AppColors.backgroundSecondary,
-            compact: true,
-          );
 
     return Container(
       decoration: BoxDecoration(
@@ -540,15 +600,10 @@ class _CustomerListCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        activePill,
-                        const SizedBox(height: 6),
-                        payment.pill,
-                      ],
-                    ),
+                    if (hasPending) ...[
+                      const SizedBox(width: 10),
+                      payment.pill,
+                    ],
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -574,6 +629,35 @@ class _CustomerListCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (!hasRoute) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: onAssignRoute,
+                      icon: const Icon(Icons.alt_route_rounded, size: 16),
+                      label: const Text('Assign a route'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.4),
+                        ),
+                        backgroundColor: AppColors.primary.withValues(
+                          alpha: 0.06,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        textStyle: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -694,13 +778,6 @@ class _RouteChipsRow extends StatelessWidget {
             _CustomerRouteChip(
               label: 'All Routes',
               routeId: null,
-              selectedRouteId: selectedRouteId,
-              routesLoaded: routesLoaded,
-              onChipTapped: onChipTapped,
-            ),
-            _CustomerRouteChip(
-              label: 'Unassigned',
-              routeId: '__unassigned__',
               selectedRouteId: selectedRouteId,
               routesLoaded: routesLoaded,
               onChipTapped: onChipTapped,
@@ -963,22 +1040,6 @@ class _RouteFilterSheet extends StatelessWidget {
                       color: AppColors.textLight,
                     ),
             ),
-            ListTile(
-              onTap: () => Navigator.pop(context, '__unassigned__'),
-              title: const Text(
-                'Unassigned',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-              trailing: selectedRouteId == '__unassigned__'
-                  ? const Icon(
-                      Icons.check_circle_rounded,
-                      color: AppColors.primary,
-                    )
-                  : const Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.textLight,
-                    ),
-            ),
             const Divider(height: 1, color: AppColors.divider),
             if (!routesLoaded && routes.isEmpty)
               const Padding(
@@ -1032,6 +1093,152 @@ class _RouteFilterSheet extends StatelessWidget {
                               Icons.chevron_right_rounded,
                               color: AppColors.textLight,
                             ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AssignRouteSheet extends StatelessWidget {
+  final String customerName;
+  final List<DeliveryRoute> routes;
+
+  const _AssignRouteSheet({
+    required this.customerName,
+    required this.routes,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedRoutes = [...routes]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Assign a route',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.45,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Pick a route for $customerName',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (sortedRoutes.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'No routes available yet.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        context.push('/owner/routes');
+                      },
+                      icon: const Icon(Icons.add_road_rounded, size: 18),
+                      label: const Text('Create a route'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: sortedRoutes.length,
+                  separatorBuilder: (_, __) => const Divider(
+                    height: 1,
+                    color: AppColors.divider,
+                  ),
+                  itemBuilder: (context, index) {
+                    final route = sortedRoutes[index];
+                    final area = route.area.trim();
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.alt_route_rounded,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
+                      ),
+                      title: Text(
+                        route.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: area.isEmpty
+                          ? null
+                          : Text(
+                              area,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                      trailing: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textLight,
+                      ),
+                      onTap: () => Navigator.pop(context, route),
                     );
                   },
                 ),
