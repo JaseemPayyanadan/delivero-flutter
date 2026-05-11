@@ -4,32 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/firebase_service.dart';
-
-class SetupStep {
-  final String id;
-  final String title;
-  final String description;
-  final IconData icon;
-  final bool isCompleted;
-  final String actionLabel;
-  final String importance;
-  final String? route;
-
-  SetupStep({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.isCompleted,
-    required this.actionLabel,
-    required this.route,
-    required this.importance,
-  });
-}
+import '../../data/models/delivery_route.dart';
+import '../../data/models/customer.dart';
+import '../../data/models/food_item.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -40,16 +22,170 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   static const _kBusinessNameKey = 'onboarding_business_name';
+  static const _kStepCount = 4;
 
+  final _pageController = PageController();
   final _businessNameController = TextEditingController();
+  final _routeNameController = TextEditingController();
+  final _routeAreaController = TextEditingController();
+  final _customerNameController = TextEditingController();
+  final _customerPhoneController = TextEditingController();
+  final _customerAddressController = TextEditingController();
+  final _productNameController = TextEditingController();
+  final _productPriceController = TextEditingController();
   bool _businessLoaded = false;
+  bool _didInitialJump = false;
   String _businessName = '';
   int _currentStep = 0;
+  bool _savingBusiness = false;
+  bool _savingRoute = false;
+  bool _savingCustomer = false;
+  bool _savingProduct = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _businessNameController.addListener(_onFormChanged);
+    _productNameController.addListener(_onFormChanged);
+    _productPriceController.addListener(_onFormChanged);
+  }
 
   @override
   void dispose() {
+    _businessNameController.removeListener(_onFormChanged);
+    _productNameController.removeListener(_onFormChanged);
+    _productPriceController.removeListener(_onFormChanged);
+    _pageController.dispose();
     _businessNameController.dispose();
+    _routeNameController.dispose();
+    _routeAreaController.dispose();
+    _customerNameController.dispose();
+    _customerPhoneController.dispose();
+    _customerAddressController.dispose();
+    _productNameController.dispose();
+    _productPriceController.dispose();
     super.dispose();
+  }
+
+  void _onFormChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<bool> _saveInlineRoute() async {
+    FocusScope.of(context).unfocus();
+    final name = _routeNameController.text.trim();
+    final area = _routeAreaController.text.trim();
+    if (name.isEmpty || area.isEmpty) return false;
+
+    setState(() => _savingRoute = true);
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
+
+    final factoryId =
+        await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+    final now = DateTime.now();
+    final route = DeliveryRoute(
+      id: const Uuid().v4(),
+      factoryId: factoryId,
+      name: name,
+      area: area,
+      description: '',
+      isActive: true,
+      estimatedDeliveryTime: 30,
+      maxOrders: 10,
+      currentOrders: 0,
+      createdAt: now,
+      updatedAt: now,
+    );
+    ref.read(routesProvider.notifier).addRoute(route);
+
+    if (!mounted) return true;
+    setState(() {
+      _savingRoute = false;
+      _routeNameController.clear();
+      _routeAreaController.clear();
+    });
+    return true;
+  }
+
+  Future<bool> _saveInlineCustomer() async {
+    FocusScope.of(context).unfocus();
+    final name = _customerNameController.text.trim();
+    final phone = _customerPhoneController.text.trim();
+    final address = _customerAddressController.text.trim();
+    if (name.isEmpty) return false;
+
+    setState(() => _savingCustomer = true);
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
+
+    final factoryId =
+        await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+    final now = DateTime.now();
+    final customer = Customer(
+      id: const Uuid().v4(),
+      factoryId: factoryId,
+      name: name,
+      email: '',
+      phone: phone,
+      address: address,
+      area: '',
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    );
+    ref.read(customersProvider.notifier).addCustomer(customer);
+
+    if (!mounted) return true;
+    setState(() {
+      _savingCustomer = false;
+      _customerNameController.clear();
+      _customerPhoneController.clear();
+      _customerAddressController.clear();
+    });
+    return true;
+  }
+
+  Future<bool> _saveInlineProduct() async {
+    FocusScope.of(context).unfocus();
+    final name = _productNameController.text.trim();
+    final priceText = _productPriceController.text.trim();
+    if (name.isEmpty || priceText.isEmpty) return false;
+
+    final price = double.tryParse(priceText);
+    if (price == null || price < 0) {
+      _showSnack('Enter a valid price (e.g. 25.00).');
+      return false;
+    }
+
+    setState(() => _savingProduct = true);
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
+
+    final factoryId =
+        await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+    final now = DateTime.now();
+    final item = FoodItem(
+      id: const Uuid().v4(),
+      factoryId: factoryId,
+      name: name,
+      price: price,
+      createdAt: now,
+      updatedAt: now,
+    );
+    ref.read(foodItemsProvider.notifier).addFoodItem(item);
+
+    if (!mounted) return true;
+    setState(() {
+      _savingProduct = false;
+      _productNameController.clear();
+      _productPriceController.clear();
+    });
+    return true;
   }
 
   Future<void> _ensureBusinessLoaded() async {
@@ -74,10 +210,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (!routesDone) return 1;
     if (!customersDone) return 2;
     if (!productsDone) return 3;
-    return 3;
+    return _kStepCount - 1;
   }
 
-  Future<void> _saveBusinessName() async {
+  Future<bool> _saveBusinessName() async {
     FocusScope.of(context).unfocus();
     final next = _businessNameController.text.trim();
     if (next.isEmpty) {
@@ -85,16 +221,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your business name')),
       );
-      return;
+      return false;
     }
 
+    setState(() => _savingBusiness = true);
     try {
       HapticFeedback.mediumImpact();
     } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kBusinessNameKey, next);
 
-    // Persist into Firestore factory document as well (best-effort).
     try {
       final factoryId = ref.read(factoryIdProvider).asData?.value;
       if (factoryId != null &&
@@ -112,12 +248,139 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       // Best-effort: local persistence already completed.
     }
 
+    if (!mounted) return false;
+    setState(() {
+      _businessName = next;
+      _savingBusiness = false;
+    });
+    return true;
+  }
+
+  Future<void> _finishOnboarding() async {
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
+    await ref.read(authProvider.notifier).completeOnboarding();
     if (!mounted) return;
-    setState(() => _businessName = next);
-    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Business name saved')));
+    if (context.mounted) context.go('/owner');
+  }
+
+  void _jumpTo(int index) {
+    final safe = index.clamp(0, _kStepCount - 1);
+    _pageController.animateToPage(
+      safe,
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeInOutCubic,
+    );
+    setState(() => _currentStep = safe);
+  }
+
+  void _goBack() {
+    if (_currentStep == 0) return;
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
+    _jumpTo(_currentStep - 1);
+  }
+
+  Future<void> _goNext({
+    required bool routesDone,
+    required bool productsDone,
+    required bool allRequiredDone,
+  }) async {
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
+
+    switch (_currentStep) {
+      case 0:
+        final saved = await _saveBusinessName();
+        if (!saved || !mounted) return;
+        _jumpTo(1);
+        return;
+      case 1:
+        final hasName = _routeNameController.text.trim().isNotEmpty;
+        final hasArea = _routeAreaController.text.trim().isNotEmpty;
+        final hasFormData = hasName && hasArea;
+        final hasPartialData = (hasName || hasArea) && !hasFormData;
+
+        if (hasFormData) {
+          await _saveInlineRoute();
+        } else if (hasPartialData) {
+          _showSnack('Enter both a route name and area to add it.');
+          return;
+        }
+
+        if (!mounted) return;
+        final routesNow = ref.read(routesProvider).isNotEmpty;
+        if (!routesNow) {
+          _showSnack(
+            'Enter a route name and area above, then tap Next.',
+          );
+          return;
+        }
+        _jumpTo(2);
+        return;
+      case 2:
+        // Customers step is optional. If user entered a name, save it.
+        if (_customerNameController.text.trim().isNotEmpty) {
+          await _saveInlineCustomer();
+          if (!mounted) return;
+        }
+        _jumpTo(3);
+        return;
+      case 3:
+        final hasName = _productNameController.text.trim().isNotEmpty;
+        final hasPrice = _productPriceController.text.trim().isNotEmpty;
+        final hasFormData = hasName && hasPrice;
+        final hasPartialData = (hasName || hasPrice) && !hasFormData;
+
+        if (hasFormData) {
+          final saved = await _saveInlineProduct();
+          if (!saved || !mounted) return;
+          await _finishOnboarding();
+          return;
+        } else if (hasPartialData) {
+          _showSnack('Enter both a product name and price to add it.');
+          return;
+        }
+
+        if (!productsDone) {
+          _showSnack(
+            'Enter a product name and price above, then tap Launch.',
+          );
+          return;
+        }
+        await _finishOnboarding();
+        return;
+    }
+  }
+
+  void _showSnack(
+    String message, {
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        action: (actionLabel != null && onAction != null)
+            ? SnackBarAction(label: actionLabel, onPressed: onAction)
+            : null,
+      ),
+    );
+  }
+
+  void _selectStep(int index, int firstIncomplete) {
+    if (index > firstIncomplete) return;
+    if (index == _currentStep) return;
+    try {
+      HapticFeedback.selectionClick();
+    } catch (_) {}
+    _jumpTo(index);
   }
 
   @override
@@ -136,15 +399,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final routesDone = routes.isNotEmpty;
     final customersDone = customers.isNotEmpty;
     final productsDone = foodItems.isNotEmpty;
-
-    final allDone = businessDone && routesDone && customersDone && productsDone;
-
-    final requiredDone = businessDone && routesDone && productsDone;
-    final requiredLeft = requiredDone
-        ? 0
-        : (businessDone ? 0 : 1) +
-              (routesDone ? 0 : 1) +
-              (productsDone ? 0 : 1);
+    final allRequiredDone = businessDone && routesDone && productsDone;
 
     final firstIncomplete = _firstIncompleteIndex(
       businessDone: businessDone,
@@ -153,276 +408,979 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       productsDone: productsDone,
     );
 
-    if (_currentStep < firstIncomplete) {
-      // Prevent user from staying on a previous step that is already complete.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() => _currentStep = firstIncomplete);
-      });
+    if (!_didInitialJump && _businessLoaded) {
+      _didInitialJump = true;
+      if (_currentStep < firstIncomplete) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _pageController.jumpToPage(firstIncomplete);
+          setState(() => _currentStep = firstIncomplete);
+        });
+      }
     }
+
+    final stepStatuses = <bool>[
+      businessDone,
+      routesDone,
+      customersDone,
+      productsDone,
+    ];
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.backgroundPrimary,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
         title: const Text(
           'Business setup',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+          ),
         ),
         actions: [
-          if (requiredLeft > 0)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Center(child: _buildBadge('$requiredLeft required')),
+          Padding(
+            padding: const EdgeInsets.only(right: 20),
+            child: Center(
+              child: Text(
+                'Step ${_currentStep + 1} of $_kStepCount',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
             ),
+          ),
         ],
       ),
-      body: Stepper(
-        type: StepperType.vertical,
-        currentStep: _currentStep,
-        onStepTapped: (i) {
-          // No skipping ahead: only allow navigating to completed steps or the first incomplete step.
-          if (i <= firstIncomplete) {
-            setState(() => _currentStep = i);
-          }
-        },
-        controlsBuilder: (context, details) {
-          final isLast = details.currentStep == 3;
-          final canFinish = allDone;
-          final canContinue = details.currentStep < 3;
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            _StepperHeader(
+              labels: const ['Business', 'Routes', 'Customers', 'Products'],
+              statuses: stepStatuses,
+              currentIndex: _currentStep,
+              firstIncomplete: firstIncomplete,
+              onTap: (i) => _selectStep(i, firstIncomplete),
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                onPageChanged: (i) => setState(() => _currentStep = i),
+                children: [
+                  _BusinessStepPage(
+                    controller: _businessNameController,
+                    isCompleted: businessDone,
+                    saving: _savingBusiness,
+                  ),
+                  _RoutesStepPage(
+                    nameController: _routeNameController,
+                    areaController: _routeAreaController,
+                    saving: _savingRoute,
+                  ),
+                  _CustomersStepPage(
+                    nameController: _customerNameController,
+                    phoneController: _customerPhoneController,
+                    addressController: _customerAddressController,
+                    saving: _savingCustomer,
+                  ),
+                  _ProductsStepPage(
+                    nameController: _productNameController,
+                    priceController: _productPriceController,
+                    saving: _savingProduct,
+                  ),
+                ],
+              ),
+            ),
+            _BottomNav(
+              currentStep: _currentStep,
+              isLastStep: _currentStep == _kStepCount - 1,
+              allRequiredDone: allRequiredDone ||
+                  (businessDone &&
+                      routesDone &&
+                      _productNameController.text.trim().isNotEmpty &&
+                      _productPriceController.text.trim().isNotEmpty),
+              saving: _savingBusiness ||
+                  _savingRoute ||
+                  _savingCustomer ||
+                  _savingProduct,
+              onBack: _goBack,
+              onContinue: () => _goNext(
+                routesDone: routesDone,
+                productsDone: productsDone,
+                allRequiredDone: allRequiredDone,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          return Padding(
-            padding: const EdgeInsets.only(top: 12),
+}
+
+// =====================  Stepper header  =====================
+
+class _StepperHeader extends StatelessWidget {
+  final List<String> labels;
+  final List<bool> statuses;
+  final int currentIndex;
+  final int firstIncomplete;
+  final ValueChanged<int> onTap;
+
+  const _StepperHeader({
+    required this.labels,
+    required this.statuses,
+    required this.currentIndex,
+    required this.firstIncomplete,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final count = labels.length;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 36,
             child: Row(
-              children: [
-                Expanded(
-                  child: FilledButton(
-                    onPressed: isLast
-                        ? (canFinish
-                              ? () async {
-                                  try {
-                                    HapticFeedback.mediumImpact();
-                                  } catch (_) {}
-                                  await ref
-                                      .read(authProvider.notifier)
-                                      .completeOnboarding();
-                                  if (context.mounted) context.go('/owner');
-                                }
-                              : null)
-                        : (canContinue ? details.onStepContinue : null),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: isLast
-                          ? (canFinish ? AppColors.success : AppColors.border)
-                          : AppColors.primary,
-                      disabledBackgroundColor: AppColors.border,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: Text(
-                      isLast
-                          ? (canFinish
-                                ? 'Finish setup'
-                                : 'Complete steps to finish')
-                          : 'Continue',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: isLast && !canFinish
-                            ? AppColors.textSecondary
-                            : Colors.white,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: List.generate(count * 2 - 1, (i) {
+                if (i.isOdd) {
+                  final leftIndex = i ~/ 2;
+                  final reached = statuses[leftIndex];
+                  return Expanded(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      height: 2,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(2),
+                        color: reached
+                            ? AppColors.success
+                            : AppColors.border,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                TextButton(
-                  onPressed: details.currentStep == 0
-                      ? null
-                      : details.onStepCancel,
-                  child: const Text(
-                    'Back',
-                    style: TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ],
+                  );
+                }
+                final stepIndex = i ~/ 2;
+                final isCompleted = statuses[stepIndex];
+                final isActive = stepIndex == currentIndex;
+                final isLocked = stepIndex > firstIncomplete;
+                return _StepDot(
+                  index: stepIndex,
+                  isCompleted: isCompleted,
+                  isActive: isActive,
+                  isLocked: isLocked,
+                  onTap: () => onTap(stepIndex),
+                );
+              }),
             ),
-          );
-        },
-        onStepContinue: () async {
-          switch (_currentStep) {
-            case 0:
-              await _saveBusinessName();
-              if (!mounted) return;
-              if (_businessName.trim().isNotEmpty) {
-                setState(() => _currentStep = 1);
-              }
-              return;
-            case 1:
-              try {
-                HapticFeedback.selectionClick();
-              } catch (_) {}
-              context.push('/owner/routes');
-              return;
-            case 2:
-              try {
-                HapticFeedback.selectionClick();
-              } catch (_) {}
-              context.push('/owner/customers');
-              return;
-            case 3:
-              try {
-                HapticFeedback.selectionClick();
-              } catch (_) {}
-              context.push('/owner/food-items');
-              return;
-          }
-        },
-        onStepCancel: () {
-          if (_currentStep == 0) return;
-          setState(() => _currentStep -= 1);
-        },
-        steps: [
-          Step(
-            title: const Text('Business details'),
-            subtitle: businessDone
-                ? Text(_businessName)
-                : const Text('Required'),
-            isActive: _currentStep == 0,
-            state: businessDone ? StepState.complete : StepState.indexed,
-            content: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Add your business name. This will be saved to your factory profile.',
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: List.generate(count, (i) {
+              final isActive = i == currentIndex;
+              final isCompleted = statuses[i];
+              return Expanded(
+                child: Text(
+                  labels[i],
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: AppColors.textSecondary,
-                    height: 1.35,
+                    fontSize: 11.5,
+                    fontWeight: isActive
+                        ? FontWeight.w900
+                        : FontWeight.w700,
+                    color: isActive
+                        ? AppColors.primary
+                        : (isCompleted
+                              ? AppColors.success
+                              : AppColors.textLight),
+                    letterSpacing: 0.2,
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _businessNameController,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _saveBusinessName(),
-                  decoration: InputDecoration(
-                    hintText: 'Business name',
-                    prefixIcon: const Icon(Icons.store_rounded, size: 20),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 1.6,
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepDot extends StatelessWidget {
+  final int index;
+  final bool isCompleted;
+  final bool isActive;
+  final bool isLocked;
+  final VoidCallback onTap;
+
+  const _StepDot({
+    required this.index,
+    required this.isCompleted,
+    required this.isActive,
+    required this.isLocked,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color fill;
+    final Color textColor;
+    if (isCompleted) {
+      fill = AppColors.success;
+      textColor = Colors.white;
+    } else if (isActive) {
+      fill = AppColors.primary;
+      textColor = Colors.white;
+    } else {
+      fill = AppColors.surface;
+      textColor = AppColors.textLight;
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: isLocked ? null : onTap,
+      child: SizedBox(
+        width: 40,
+        height: 36,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            width: isActive ? 30 : 26,
+            height: isActive ? 30 : 26,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: fill,
+              border: Border.all(
+                color: isCompleted || isActive ? fill : AppColors.border,
+                width: 1.4,
+              ),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.32),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
+                    ]
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: isCompleted
+                ? const Icon(
+                    Icons.check_rounded,
+                    size: 14,
+                    color: Colors.white,
+                  )
+                : Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: isActive ? 13 : 12,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =====================  Step pages  =====================
+
+class _StepScaffold extends StatelessWidget {
+  final Widget child;
+  const _StepScaffold({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      child: child,
+    );
+  }
+}
+
+class _StepHeader extends StatelessWidget {
+  final String title;
+  final String description;
+  final IconData icon;
+  final Color accent;
+  final bool isCompleted;
+  final bool isRequired;
+
+  const _StepHeader({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.accent,
+    required this.isCompleted,
+    required this.isRequired,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: accent, size: 22),
+            ),
+            const Spacer(),
+            _StatusChip(isCompleted: isCompleted, isRequired: isRequired),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.3,
+            height: 1.15,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          description,
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BusinessStepPage extends StatelessWidget {
+  final TextEditingController controller;
+  final bool isCompleted;
+  final bool saving;
+
+  const _BusinessStepPage({
+    required this.controller,
+    required this.isCompleted,
+    required this.saving,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _StepScaffold(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _StepHeader(
+            title: 'Tell us about your business',
+            description:
+                'Add your business name so we can personalize your dashboard and reports.',
+            icon: Icons.storefront_rounded,
+            accent: AppColors.primary,
+            isCompleted: isCompleted,
+            isRequired: true,
+          ),
+          const SizedBox(height: 26),
+          const Text(
+            'Business name',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            enabled: !saving,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              hintText: 'e.g. Acme Foods',
+              prefixIcon: const Icon(Icons.store_rounded, size: 20),
+              filled: true,
+              fillColor: AppColors.surface,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.6,
                 ),
-              ],
+              ),
             ),
           ),
-          Step(
-            title: const Text('Add route'),
-            subtitle: routesDone ? const Text('Done') : const Text('Required'),
-            isActive: _currentStep == 1,
-            state: routesDone ? StepState.complete : StepState.indexed,
-            content: const Text(
-              'Create at least one delivery route to organize operations.',
-              style: TextStyle(color: AppColors.textSecondary, height: 1.35),
+          const SizedBox(height: 12),
+          _HintCard(
+            icon: Icons.info_outline_rounded,
+            text:
+                'You can update this anytime from your settings. It will also be saved to your factory profile.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoutesStepPage extends ConsumerWidget {
+  final TextEditingController nameController;
+  final TextEditingController areaController;
+  final bool saving;
+
+  const _RoutesStepPage({
+    required this.nameController,
+    required this.areaController,
+    required this.saving,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isCompleted = ref.watch(routesProvider).isNotEmpty;
+
+    return _StepScaffold(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _StepHeader(
+            title: 'Set up your routes',
+            description:
+                'Add at least one delivery route. Give it a name and the area it covers, then tap Next.',
+            icon: Icons.route_rounded,
+            accent: AppColors.primary,
+            isCompleted: isCompleted,
+            isRequired: true,
+          ),
+          const SizedBox(height: 22),
+          const _FormFieldLabel(label: 'Route name'),
+          const SizedBox(height: 6),
+          TextField(
+            controller: nameController,
+            enabled: !saving,
+            textInputAction: TextInputAction.next,
+            decoration: _formDecoration(
+              hint: 'e.g. City Center Route',
+              icon: Icons.label_outline_rounded,
             ),
           ),
-          Step(
-            title: const Text('Add customer'),
-            subtitle: customersDone
-                ? const Text('Done')
-                : const Text('Optional'),
-            isActive: _currentStep == 2,
-            state: customersDone ? StepState.complete : StepState.indexed,
-            content: const Text(
-              'Add customers and assign them to routes.',
-              style: TextStyle(color: AppColors.textSecondary, height: 1.35),
-            ),
-          ),
-          Step(
-            title: const Text('Add products'),
-            subtitle: productsDone
-                ? const Text('Done')
-                : const Text('Required'),
-            isActive: _currentStep == 3,
-            state: productsDone ? StepState.complete : StepState.indexed,
-            content: const Text(
-              'Add the products/items you sell so orders can be created.',
-              style: TextStyle(color: AppColors.textSecondary, height: 1.35),
+          const SizedBox(height: 14),
+          const _FormFieldLabel(label: 'Area covered'),
+          const SizedBox(height: 6),
+          TextField(
+            controller: areaController,
+            enabled: !saving,
+            textInputAction: TextInputAction.done,
+            decoration: _formDecoration(
+              hint: 'e.g. Downtown',
+              icon: Icons.place_outlined,
             ),
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
+    );
+  }
+}
+
+class _FormFieldLabel extends StatelessWidget {
+  final String label;
+  const _FormFieldLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+}
+
+InputDecoration _formDecoration({
+  required String hint,
+  required IconData icon,
+}) {
+  return InputDecoration(
+    hintText: hint,
+    prefixIcon: Icon(icon, size: 18),
+    filled: true,
+    fillColor: AppColors.surface,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(
+        color: AppColors.primary,
+        width: 1.6,
+      ),
+    ),
+  );
+}
+
+class _CustomersStepPage extends ConsumerWidget {
+  final TextEditingController nameController;
+  final TextEditingController phoneController;
+  final TextEditingController addressController;
+  final bool saving;
+
+  const _CustomersStepPage({
+    required this.nameController,
+    required this.phoneController,
+    required this.addressController,
+    required this.saving,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isCompleted = ref.watch(customersProvider).isNotEmpty;
+
+    return _StepScaffold(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _StepHeader(
+            title: 'Add your customers',
+            description:
+                'Add a customer to get started, or skip this step and tap Next.',
+            icon: Icons.people_alt_rounded,
+            accent: AppColors.info,
+            isCompleted: isCompleted,
+            isRequired: false,
+          ),
+          const SizedBox(height: 22),
+          const _FormFieldLabel(label: 'Customer name'),
+          const SizedBox(height: 6),
+          TextField(
+            controller: nameController,
+            enabled: !saving,
+            textInputAction: TextInputAction.next,
+            decoration: _formDecoration(
+              hint: 'e.g. Sunrise Cafe',
+              icon: Icons.person_outline_rounded,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const _FormFieldLabel(label: 'Phone'),
+          const SizedBox(height: 6),
+          TextField(
+            controller: phoneController,
+            enabled: !saving,
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.next,
+            decoration: _formDecoration(
+              hint: 'e.g. +91 98765 43210',
+              icon: Icons.phone_outlined,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const _FormFieldLabel(label: 'Address'),
+          const SizedBox(height: 6),
+          TextField(
+            controller: addressController,
+            enabled: !saving,
+            textInputAction: TextInputAction.done,
+            decoration: _formDecoration(
+              hint: 'e.g. 12 Market Road, Kochi',
+              icon: Icons.place_outlined,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductsStepPage extends ConsumerWidget {
+  final TextEditingController nameController;
+  final TextEditingController priceController;
+  final bool saving;
+
+  const _ProductsStepPage({
+    required this.nameController,
+    required this.priceController,
+    required this.saving,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isCompleted = ref.watch(foodItemsProvider).isNotEmpty;
+
+    return _StepScaffold(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _StepHeader(
+            title: 'Add your products',
+            description:
+                'Add the items you sell. You can update prices and add more later.',
+            icon: Icons.inventory_2_rounded,
+            accent: AppColors.warning,
+            isCompleted: isCompleted,
+            isRequired: true,
+          ),
+          const SizedBox(height: 22),
+          const _FormFieldLabel(label: 'Product name'),
+          const SizedBox(height: 6),
+          TextField(
+            controller: nameController,
+            enabled: !saving,
+            textInputAction: TextInputAction.next,
+            decoration: _formDecoration(
+              hint: 'e.g. Fresh Bread',
+              icon: Icons.label_outline_rounded,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const _FormFieldLabel(label: 'Price'),
+          const SizedBox(height: 6),
+          TextField(
+            controller: priceController,
+            enabled: !saving,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.done,
+            decoration: _formDecoration(
+              hint: 'e.g. 25.00',
+              icon: Icons.attach_money_rounded,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final bool isCompleted;
+  final bool isRequired;
+
+  const _StatusChip({required this.isCompleted, required this.isRequired});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color fg;
+    final Color bg;
+    final String label;
+    if (isCompleted) {
+      fg = AppColors.success;
+      bg = AppColors.successLighter;
+      label = 'Done';
+    } else if (isRequired) {
+      fg = AppColors.error;
+      bg = AppColors.errorLighter;
+      label = 'Required';
+    } else {
+      fg = AppColors.textSecondary;
+      bg = AppColors.backgroundSecondary;
+      label = 'Optional';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          color: fg,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.6,
+        ),
+      ),
+    );
+  }
+}
+
+class _HintCard extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _HintCard({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.infoLighter,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.info, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12.5,
+                height: 1.4,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =====================  Bottom navigation  =====================
+
+class _BottomNav extends StatelessWidget {
+  final int currentStep;
+  final bool isLastStep;
+  final bool allRequiredDone;
+  final bool saving;
+  final VoidCallback onBack;
+  final VoidCallback onContinue;
+
+  const _BottomNav({
+    required this.currentStep,
+    required this.isLastStep,
+    required this.allRequiredDone,
+    required this.saving,
+    required this.onBack,
+    required this.onContinue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final showBack = currentStep > 0;
+    final continueEnabled = !saving;
+
+    String label;
+    IconData icon;
+    if (isLastStep) {
+      label = saving ? 'Saving…' : 'Launch dashboard';
+      icon = Icons.rocket_launch_rounded;
+    } else if (currentStep == 0) {
+      label = saving ? 'Saving…' : 'Save & next';
+      icon = Icons.arrow_forward_rounded;
+    } else {
+      label = saving ? 'Saving…' : 'Next';
+      icon = Icons.arrow_forward_rounded;
+    }
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.backgroundPrimary,
+        border: Border(
+          top: BorderSide(color: AppColors.divider, width: 1),
+        ),
+      ),
+      child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+          child: Row(
+            children: [
+              if (showBack) ...[
+                _CircleIconButton(
+                  icon: Icons.arrow_back_rounded,
+                  onTap: onBack,
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: _PrimaryButton(
+                  label: label,
+                  icon: icon,
+                  enabled: continueEnabled,
+                  loading: saving,
+                  isSuccess: isLastStep && allRequiredDone,
+                  onTap: continueEnabled ? onContinue : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CircleIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Ink(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.border, width: 1.2),
+          ),
           child: SizedBox(
-            width: double.infinity,
+            width: 52,
             height: 52,
-            child: FilledButton.icon(
-              onPressed: allDone
-                  ? () async {
-                      try {
-                        HapticFeedback.mediumImpact();
-                      } catch (_) {}
-                      await ref
-                          .read(authProvider.notifier)
-                          .completeOnboarding();
-                      if (context.mounted) context.go('/owner');
-                    }
-                  : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: allDone ? AppColors.success : AppColors.border,
-                disabledBackgroundColor: AppColors.border,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              icon: const Icon(Icons.check_circle_rounded),
-              label: Text(
-                allDone ? 'Launch dashboard' : 'Complete all steps to continue',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: allDone ? Colors.white : AppColors.textSecondary,
-                ),
-              ),
+            child: Icon(
+              icon,
+              color: AppColors.textPrimary,
+              size: 20,
             ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildBadge(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        label.toUpperCase(),
-        style: const TextStyle(
-          color: AppColors.error,
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.5,
+class _PrimaryButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool enabled;
+  final bool loading;
+  final bool isSuccess;
+  final VoidCallback? onTap;
+
+  const _PrimaryButton({
+    required this.label,
+    required this.icon,
+    required this.enabled,
+    required this.loading,
+    required this.isSuccess,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final gradient = enabled
+        ? (isSuccess
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.success,
+                    Color(0xFF047857),
+                  ],
+                )
+              : const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primaryGradientStart,
+                    AppColors.primaryGradientEnd,
+                  ],
+                ))
+        : null;
+
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: gradient,
+          color: enabled ? null : AppColors.border,
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: (isSuccess
+                            ? AppColors.success
+                            : AppColors.primary)
+                        .withValues(alpha: 0.28),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: SizedBox(
+            height: 52,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (loading)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                else
+                  Icon(
+                    icon,
+                    color: enabled
+                        ? Colors.white
+                        : AppColors.textSecondary,
+                    size: 18,
+                  ),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: enabled
+                        ? Colors.white
+                        : AppColors.textSecondary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

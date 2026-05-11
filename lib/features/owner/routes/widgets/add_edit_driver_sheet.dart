@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../app/providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../data/models/delivery_route.dart';
 import '../../../../data/models/driver.dart';
 
 InputDecoration _driverSheetInputDecoration({
@@ -206,6 +207,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
   late VehicleType _vehicle;
+  String? _selectedRouteId;
   var _obscurePassword = true;
   var _createLogin = false;
   var _submitting = false;
@@ -229,6 +231,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
     _vehicle = d?.vehicleType ?? VehicleType.bike;
+    _selectedRouteId = d?.currentRoute;
   }
 
   @override
@@ -325,7 +328,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
       vehicleType: _vehicle,
       licenseNumber: d?.licenseNumber,
       isActive: d?.isActive ?? true,
-      currentRoute: d?.currentRoute,
+      currentRoute: _selectedRouteId,
       createdAt: d?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -404,6 +407,14 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final routes = ref.watch(routesProvider);
+    final sortedRoutes = [...routes]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final hasSelectedRouteInList =
+        _selectedRouteId != null &&
+            sortedRoutes.any((r) => r.id == _selectedRouteId);
+    final routeDropdownValue =
+        hasSelectedRouteInList ? _selectedRouteId : null;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
@@ -524,6 +535,65 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                       onChanged: (val) =>
                           setState(() => _vehicle = val ?? VehicleType.bike),
                       decoration: _driverSheetInputDecoration(label: 'Vehicle'),
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String?>(
+                      initialValue: routeDropdownValue,
+                      isExpanded: true,
+                      items: <DropdownMenuItem<String?>>[
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text(
+                            'No route assigned',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        ...sortedRoutes.map<DropdownMenuItem<String?>>(
+                          (DeliveryRoute r) {
+                            final area = r.area.trim();
+                            final label = area.isEmpty
+                                ? r.name
+                                : '${r.name} · $area';
+                            return DropdownMenuItem<String?>(
+                              value: r.id,
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.alt_route_rounded,
+                                    color: AppColors.primary,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                      onChanged: _submitting
+                          ? null
+                          : (val) => setState(() => _selectedRouteId = val),
+                      decoration: _driverSheetInputDecoration(
+                        label: 'Route',
+                        hint: sortedRoutes.isEmpty
+                            ? 'No routes available yet'
+                            : 'Optional',
+                      ),
                     ),
                     if (_hasExistingLogin) ...[
                       const SizedBox(height: 18),

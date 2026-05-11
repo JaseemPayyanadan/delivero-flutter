@@ -8,21 +8,24 @@ import '../../core/theme/app_colors.dart';
 
 const List<_IntroSlide> _kIntroSlides = [
   _IntroSlide(
-    title: 'Fast',
-    titleRest: 'delivery',
-    subtitle: 'Get your orders delivered quickly and efficiently',
+    title: 'Manage',
+    titleRest: 'every delivery',
+    subtitle:
+        'Organize orders, assign drivers, and dispatch your team with a single tap.',
     imageAsset: 'assets/images/slide-1.webp',
   ),
   _IntroSlide(
     title: 'Track',
-    titleRest: 'your orders',
-    subtitle: 'Monitor your deliveries in real-time',
+    titleRest: 'with confidence',
+    subtitle:
+        'Real-time status, verified drop-offs, and clear proof of delivery on every order.',
     imageAsset: 'assets/images/slide-2.webp',
   ),
   _IntroSlide(
-    title: 'Fresh',
-    titleRest: 'food always',
-    subtitle: 'Quality ingredients delivered to your door',
+    title: 'Deliver',
+    titleRest: 'on time',
+    subtitle:
+        'Smart routes and live updates keep your fleet moving and customers happy.',
     imageAsset: 'assets/images/slide-3.webp',
   ),
 ];
@@ -40,6 +43,7 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
 
   int get _slideCount => _kIntroSlides.length;
   bool get _isLastPage => _currentPage >= _slideCount - 1;
+  bool get _isFirstPage => _currentPage == 0;
 
   @override
   void dispose() {
@@ -48,9 +52,7 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
   }
 
   void _onNext() {
-    try {
-      HapticFeedback.lightImpact();
-    } catch (_) {}
+    _hapticLight();
     if (_isLastPage) {
       _complete();
       return;
@@ -61,14 +63,24 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
     );
   }
 
-  void _goToIndex(int index) {
-    final safe = index.clamp(0, _slideCount - 1);
-    _pageController.animateToPage(
-      safe,
+  void _onBack() {
+    if (_isFirstPage) return;
+    _hapticLight();
+    _pageController.previousPage(
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeOutCubic,
     );
-    setState(() => _currentPage = safe);
+  }
+
+  void _goToIndex(int index) {
+    final safe = index.clamp(0, _slideCount - 1);
+    if (safe == _currentPage) return;
+    _hapticLight();
+    _pageController.animateToPage(
+      safe,
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   Future<void> _complete() async {
@@ -78,6 +90,12 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
     await ref.read(appStartupProvider.notifier).markAppIntroSeen();
     if (!mounted) return;
     context.go('/login');
+  }
+
+  void _hapticLight() {
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
   }
 
   @override
@@ -90,16 +108,17 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
             final heroWidth = (constraints.maxWidth - 80).clamp(240.0, 360.0);
             return Column(
               children: [
-                const SizedBox(height: 18),
-                Center(
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    width: 200,
-                    height: 52,
-                    fit: BoxFit.contain,
-                  ),
+                _IntroTopBar(
+                  showSkip: !_isLastPage,
+                  onSkip: _complete,
                 ),
                 const SizedBox(height: 14),
+                _OnboardingStepper(
+                  labels: _kIntroSlides.map((s) => s.title).toList(),
+                  currentIndex: _currentPage,
+                  onTap: _goToIndex,
+                ),
+                const SizedBox(height: 4),
                 Expanded(
                   child: PageView.builder(
                     controller: _pageController,
@@ -115,11 +134,9 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
                   ),
                 ),
                 _IntroFooter(
-                  pageCount: _slideCount,
-                  currentPage: _currentPage,
+                  isFirstPage: _isFirstPage,
                   isLastPage: _isLastPage,
-                  onSkip: _complete,
-                  onDotTap: _goToIndex,
+                  onBack: _onBack,
                   onNext: _onNext,
                 ),
               ],
@@ -145,18 +162,237 @@ class _IntroSlide {
   });
 }
 
-class _IntroSlideView extends StatelessWidget {
-  final _IntroSlide slide;
-  final double heroWidth;
+class _IntroTopBar extends StatelessWidget {
+  final bool showSkip;
+  final VoidCallback onSkip;
 
-  const _IntroSlideView({required this.slide, required this.heroWidth});
+  const _IntroTopBar({required this.showSkip, required this.onSkip});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(20, 14, 12, 0),
+      child: Row(
+        children: [
+          Image.asset(
+            'assets/images/logo.png',
+            width: 140,
+            height: 40,
+            fit: BoxFit.contain,
+          ),
+          const Spacer(),
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: showSkip ? 1 : 0,
+            child: IgnorePointer(
+              ignoring: !showSkip,
+              child: TextButton(
+                onPressed: onSkip,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: const Text(
+                  'Skip',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OnboardingStepper extends StatelessWidget {
+  final List<String> labels;
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  const _OnboardingStepper({
+    required this.labels,
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final count = labels.length;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
         children: [
+          SizedBox(
+            height: 36,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: List.generate(count * 2 - 1, (i) {
+                if (i.isOdd) {
+                  final leftIndex = i ~/ 2;
+                  final reached = leftIndex < currentIndex;
+                  return Expanded(
+                    child: _StepConnector(reached: reached),
+                  );
+                }
+                final stepIndex = i ~/ 2;
+                return _StepDot(
+                  index: stepIndex,
+                  currentIndex: currentIndex,
+                  onTap: () => onTap(stepIndex),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(count, (i) {
+              final isActive = i == currentIndex;
+              return Expanded(
+                child: Text(
+                  labels[i],
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isActive
+                        ? FontWeight.w800
+                        : FontWeight.w600,
+                    color: isActive
+                        ? AppColors.primary
+                        : AppColors.textLight,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepDot extends StatelessWidget {
+  final int index;
+  final int currentIndex;
+  final VoidCallback onTap;
+
+  const _StepDot({
+    required this.index,
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = index == currentIndex;
+    final isDone = index < currentIndex;
+    final size = isActive ? 32.0 : 26.0;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: 40,
+        height: 36,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDone || isActive
+                  ? AppColors.primary
+                  : AppColors.surface,
+              border: Border.all(
+                color: isDone || isActive
+                    ? AppColors.primary
+                    : AppColors.border,
+                width: 1.4,
+              ),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.32),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: isDone
+                ? const Icon(
+                    Icons.check_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  )
+                : Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      fontSize: isActive ? 14 : 12,
+                      fontWeight: FontWeight.w800,
+                      color: isActive
+                          ? Colors.white
+                          : AppColors.textLight,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StepConnector extends StatelessWidget {
+  final bool reached;
+  const _StepConnector({required this.reached});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      height: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(2),
+        color: reached ? AppColors.primary : AppColors.border,
+      ),
+    );
+  }
+}
+
+class _IntroSlideView extends StatelessWidget {
+  final _IntroSlide slide;
+  final double heroWidth;
+
+  const _IntroSlideView({
+    required this.slide,
+    required this.heroWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 18),
           Expanded(
             child: Center(
               child: _ArchedHero(
@@ -165,19 +401,28 @@ class _IntroSlideView extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          Text(
-            '${slide.title} ${slide.titleRest}',
+          const SizedBox(height: 18),
+          RichText(
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.6,
-              height: 1.05,
+            text: TextSpan(
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.6,
+                height: 1.05,
+              ),
+              children: [
+                TextSpan(
+                  text: slide.title,
+                  style: const TextStyle(color: AppColors.primary),
+                ),
+                const TextSpan(text: ' '),
+                TextSpan(text: slide.titleRest),
+              ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           Text(
             slide.subtitle,
             textAlign: TextAlign.center,
@@ -196,130 +441,135 @@ class _IntroSlideView extends StatelessWidget {
 }
 
 class _IntroFooter extends StatelessWidget {
-  final int pageCount;
-  final int currentPage;
+  final bool isFirstPage;
   final bool isLastPage;
-  final VoidCallback onSkip;
-  final ValueChanged<int> onDotTap;
+  final VoidCallback onBack;
   final VoidCallback onNext;
 
   const _IntroFooter({
-    required this.pageCount,
-    required this.currentPage,
+    required this.isFirstPage,
     required this.isLastPage,
-    required this.onSkip,
-    required this.onDotTap,
+    required this.onBack,
     required this.onNext,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 22),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _FooterTextButton(label: 'Skip', onTap: onSkip, isPrimary: false),
-          _PageDots(
-            count: pageCount,
-            current: currentPage,
-            onTap: onDotTap,
-          ),
-          _FooterTextButton(
-            label: isLastPage ? 'Get started' : 'Next',
-            onTap: onNext,
-            isPrimary: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FooterTextButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  final bool isPrimary;
-
-  const _FooterTextButton({
-    required this.label,
-    required this.onTap,
-    required this.isPrimary,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isPrimary) {
-      return InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          child: Text(
-            'Skip',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return TextButton(
-      onPressed: onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 22),
       child: Row(
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(width: 8),
-          const Icon(Icons.arrow_forward_rounded, size: 18),
-        ],
-      ),
-    );
-  }
-}
-
-class _PageDots extends StatelessWidget {
-  final int count;
-  final int current;
-  final ValueChanged<int> onTap;
-
-  const _PageDots({
-    required this.count,
-    required this.current,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(count, (i) {
-        final isActive = i == current;
-        return InkWell(
-          onTap: () => onTap(i),
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: isActive ? 28 : 18,
-              height: 4,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(3),
-                color: isActive ? AppColors.primary : AppColors.border,
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: isFirstPage ? 0 : 1,
+            child: IgnorePointer(
+              ignoring: isFirstPage,
+              child: _CircleIconButton(
+                icon: Icons.arrow_back_rounded,
+                onTap: onBack,
               ),
             ),
           ),
-        );
-      }),
+          const Spacer(),
+          _PrimaryPillButton(
+            label: isLastPage ? 'Get started' : 'Continue',
+            onTap: onNext,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CircleIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: const CircleBorder(),
+      elevation: 0,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Ink(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.border, width: 1.2),
+          ),
+          child: SizedBox(
+            width: 52,
+            height: 52,
+            child: Icon(icon, color: AppColors.textPrimary, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrimaryPillButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _PrimaryPillButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.primary,
+      borderRadius: BorderRadius.circular(28),
+      elevation: 0,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primaryGradientStart,
+                AppColors.primaryGradientEnd,
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.30),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -338,8 +588,8 @@ class _ArchedHero extends StatelessWidget {
             ? constraints.maxHeight
             : 320.0;
         final frameHeight = maxHeight.clamp(180.0, 320.0).toDouble();
-        final imageSize = (frameHeight * 0.75).clamp(120.0, 240.0).toDouble();
-        final top = (frameHeight - imageSize) * 0.15;
+        final imageSize = (frameHeight * 0.78).clamp(140.0, 260.0).toDouble();
+        final top = (frameHeight - imageSize) * 0.18;
 
         return SizedBox(
           width: width,
@@ -371,9 +621,15 @@ class _ArchedHero extends StatelessWidget {
 class _ArchFramePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.surface.withValues(alpha: 0.12)
-      ..style = PaintingStyle.fill;
+    final bgPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          AppColors.primary.withValues(alpha: 0.08),
+          AppColors.primary.withValues(alpha: 0.02),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final path = Path()
       ..moveTo(0, 80)
@@ -382,7 +638,7 @@ class _ArchFramePainter extends CustomPainter {
       ..lineTo(0, size.height)
       ..close();
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, bgPaint);
   }
 
   @override

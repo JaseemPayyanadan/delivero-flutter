@@ -507,57 +507,68 @@ class _HeroRevenue extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        if (isLoading)
-          Container(
-            height: 36,
-            width: 160,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: isLoading
+                  ? Container(
+                      height: 36,
+                      width: 160,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    )
+                  : Text(
+                      '₹${NumberFormat.decimalPattern('en_IN').format(totalRevenue.round())}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.appTextStyles.sliverTitle.copyWith(
+                        color: Colors.white,
+                        fontSize: 36,
+                        letterSpacing: -1.4,
+                        height: 1.0,
+                      ),
+                    ),
             ),
-          )
-        else
-          Text(
-            '₹${NumberFormat.decimalPattern('en_IN').format(totalRevenue.round())}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: context.appTextStyles.sliverTitle.copyWith(
-              color: Colors.white,
-              fontSize: 36,
-              letterSpacing: -1.4,
-              height: 1.0,
-            ),
-          ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.bolt_rounded,
-                size: 14,
-                color: Colors.white.withValues(alpha: 0.95),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                isLoading
-                    ? '—'
-                    : '$todayOrdersCount ${todayOrdersCount == 1 ? 'order' : 'orders'} today',
-                style: context.appTextStyles.sliverSubtitle.copyWith(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.2,
+            const SizedBox(width: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.bolt_rounded,
+                      size: 14,
+                      color: Colors.white.withValues(alpha: 0.95),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isLoading
+                          ? '—'
+                          : '$todayOrdersCount ${todayOrdersCount == 1 ? 'order' : 'orders'} today',
+                      style: context.appTextStyles.sliverSubtitle.copyWith(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
@@ -775,8 +786,8 @@ class _SectionHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 4,
-            height: 46,
+            width: 3,
+            height: 38,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
               gradient: LinearGradient(
@@ -786,7 +797,7 @@ class _SectionHeader extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -795,28 +806,28 @@ class _SectionHeader extends StatelessWidget {
                   eyebrow.toUpperCase(),
                   style: context.appTextStyles.caption.copyWith(
                     color: AppColors.primary.withValues(alpha: 0.9),
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.25,
+                    letterSpacing: 1.2,
                     height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
                 Text(
                   title,
                   style: context.appTextStyles.sliverTitle.copyWith(
-                    fontSize: 22,
-                    letterSpacing: -0.55,
-                    height: 1.05,
+                    fontSize: 17,
+                    letterSpacing: -0.4,
+                    height: 1.1,
                   ),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 3),
                   Text(
                     subtitle!,
                     style: context.appTextStyles.body.copyWith(
                       color: AppColors.textSecondary.withValues(alpha: 0.92),
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       height: 1.3,
                     ),
