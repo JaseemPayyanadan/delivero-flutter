@@ -312,7 +312,9 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(24),
           onTap: () {
-            HapticFeedback.selectionClick();
+            try {
+              HapticFeedback.selectionClick();
+            } catch (_) {}
             context.push('/delivery/orders/${order.id}');
           },
           child: Padding(

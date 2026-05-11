@@ -248,7 +248,9 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
       _passwordController.text = password;
       _createLogin = true;
     });
-    HapticFeedback.selectionClick();
+    try {
+      HapticFeedback.selectionClick();
+    } catch (_) {}
   }
 
   Future<void> _showCredentialsDialog({

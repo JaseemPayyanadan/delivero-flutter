@@ -150,7 +150,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     }
 
     if (mounted) {
-      HapticFeedback.mediumImpact();
+      try {
+        HapticFeedback.mediumImpact();
+      } catch (_) {}
       context.pop();
     }
   }
@@ -313,7 +315,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         ),
         child: ElevatedButton(
           onPressed: () {
-            HapticFeedback.heavyImpact();
+            try {
+              HapticFeedback.heavyImpact();
+            } catch (_) {}
             _onSave();
           },
           style: ElevatedButton.styleFrom(

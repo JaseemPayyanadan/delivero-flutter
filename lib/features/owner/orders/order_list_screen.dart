@@ -724,7 +724,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             Expanded(
                               child: OutlinedButton(
                                 onPressed: () {
-                                  HapticFeedback.lightImpact();
+                                  try {
+                                    HapticFeedback.lightImpact();
+                                  } catch (_) {}
                                   Navigator.pop(context, (
                                     clearAll: true,
                                     payment: null,
@@ -751,7 +753,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             Expanded(
                               child: FilledButton(
                                 onPressed: () {
-                                  HapticFeedback.mediumImpact();
+                                  try {
+                                    HapticFeedback.mediumImpact();
+                                  } catch (_) {}
                                   Navigator.pop(context, (
                                     clearAll: false,
                                     payment: payment,
@@ -816,9 +820,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     final displayId = _displayOrderId(order.id);
 
-    final typeLabel = order.orderType == OrderType.daily
-        ? 'Daily'
-        : 'One-time';
+    final typeLabel = order.orderType == OrderType.daily ? 'Daily' : 'One-time';
 
     final statusChipBg = switch (order.status) {
       OrderStatus.pending => const Color(0xFF6D5EF6),
@@ -828,8 +830,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     const statusChipFg = Colors.white;
 
     final lineTypes = order.items.length;
-    final unitCount =
-        order.items.fold<int>(0, (sum, i) => sum + i.quantity);
+    final unitCount = order.items.fold<int>(0, (sum, i) => sum + i.quantity);
     final metaParts = <String>[
       DateFormat('EEE, d MMM').format(order.orderDate),
       if (lineTypes > 0)
@@ -852,11 +853,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final detailsBody = previewItems.isEmpty
         ? '—'
         : previewItems
-            .map(
-              (i) =>
-                  '${i.foodItemName} · ${_formatRupee(i.totalPrice)}',
-            )
-            .join('\n');
+              .map((i) => '${i.foodItemName} · ${_formatRupee(i.totalPrice)}')
+              .join('\n');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -929,9 +927,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                 decoration: BoxDecoration(
                                   color: AppColors.backgroundSecondary,
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                  ),
+                                  border: Border.all(color: AppColors.border),
                                 ),
                                 child: Text(
                                   typeLabel,
@@ -1154,8 +1150,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                       style: TextStyle(
                                         fontWeight: FontWeight.w900,
                                         fontSize: 12,
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.95),
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.95,
+                                        ),
                                       ),
                                     ),
                                   ],

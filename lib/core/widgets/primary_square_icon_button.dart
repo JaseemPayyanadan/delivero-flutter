@@ -22,7 +22,11 @@ class PrimarySquareIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: () {
-        if (useHaptics) HapticFeedback.mediumImpact();
+        if (useHaptics) {
+          try {
+            HapticFeedback.mediumImpact();
+          } catch (_) {}
+        }
         onPressed();
       },
       icon: Container(

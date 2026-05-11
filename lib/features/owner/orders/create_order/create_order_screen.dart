@@ -371,11 +371,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   void _onPrimaryStepAction({required bool hasSelectedUnits}) {
     if (_step < 3) {
       if (!_canGoNextFromStep(hasSelectedUnits: hasSelectedUnits)) return;
-      HapticFeedback.lightImpact();
+      try {
+        HapticFeedback.lightImpact();
+      } catch (_) {}
       setState(() => _step += 1);
       return;
     }
-    HapticFeedback.heavyImpact();
+    try {
+      HapticFeedback.heavyImpact();
+    } catch (_) {}
     _submitOrder();
   }
 

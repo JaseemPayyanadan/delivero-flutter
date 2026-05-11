@@ -87,7 +87,9 @@ class OwnerDashboardScreen extends ConsumerWidget {
         onRefresh: () async {
           await _refreshOwnerDashboard(ref);
           if (context.mounted) {
-            HapticFeedback.lightImpact();
+            try {
+              HapticFeedback.lightImpact();
+            } catch (_) {}
           }
         },
         child: CustomScrollView(
@@ -425,7 +427,9 @@ class _HeroTopRow extends StatelessWidget {
         _HeroIconButton(
           icon: Icons.notifications_none_rounded,
           onTap: () {
-            HapticFeedback.lightImpact();
+            try {
+              HapticFeedback.lightImpact();
+            } catch (_) {}
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -828,7 +832,9 @@ class _SectionHeader extends StatelessWidget {
               label: '${trailingLabel!}, orders list',
               child: TextButton(
                 onPressed: () {
-                  HapticFeedback.lightImpact();
+                  try {
+                    HapticFeedback.lightImpact();
+                  } catch (_) {}
                   onTrailingTap?.call();
                 },
                 style: TextButton.styleFrom(
@@ -928,7 +934,9 @@ class _ResumeSetupBanner extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            HapticFeedback.mediumImpact();
+            try {
+              HapticFeedback.mediumImpact();
+            } catch (_) {}
             context.push('/onboarding');
           },
           borderRadius: BorderRadius.circular(22),
@@ -1081,7 +1089,9 @@ class _QuickActionTile extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              HapticFeedback.lightImpact();
+              try {
+                HapticFeedback.lightImpact();
+              } catch (_) {}
               context.push(action.path);
             },
             borderRadius: BorderRadius.circular(16),
@@ -1621,7 +1631,9 @@ class _RecentOrdersList extends StatelessWidget {
               width: double.infinity,
               child: FilledButton.tonalIcon(
                 onPressed: () {
-                  HapticFeedback.lightImpact();
+                  try {
+                    HapticFeedback.lightImpact();
+                  } catch (_) {}
                   context.push('/owner/orders/create');
                 },
                 icon: const Icon(Icons.add_rounded, size: 20),
@@ -1725,7 +1737,9 @@ class _RecentOrderTile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(24),
           onTap: () {
-            HapticFeedback.selectionClick();
+            try {
+              HapticFeedback.selectionClick();
+            } catch (_) {}
             context.push('/owner/orders/${order.id}');
           },
           child: Padding(

@@ -89,7 +89,9 @@ class OrderDetailPaymentSection extends StatelessWidget {
       updatedAt: DateTime.now(),
     );
     ref.read(ordersProvider.notifier).updateOrder(next);
-    HapticFeedback.lightImpact();
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(

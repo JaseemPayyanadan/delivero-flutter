@@ -48,7 +48,9 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
   }
 
   void _onNext() {
-    HapticFeedback.lightImpact();
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
     if (_isLastPage) {
       _complete();
       return;
@@ -70,7 +72,9 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
   }
 
   Future<void> _complete() async {
-    HapticFeedback.mediumImpact();
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
     await ref.read(appStartupProvider.notifier).markAppIntroSeen();
     if (!mounted) return;
     context.go('/login');

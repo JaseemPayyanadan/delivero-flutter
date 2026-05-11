@@ -116,7 +116,9 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
                 onPhoneTap: order.customerPhone.trim().isEmpty
                     ? null
                     : () {
-                        HapticFeedback.selectionClick();
+                        try {
+                          HapticFeedback.selectionClick();
+                        } catch (_) {}
                         _handleCallCustomer(context, order.customerPhone);
                       },
               ),
@@ -266,7 +268,9 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              HapticFeedback.mediumImpact();
+              try {
+                HapticFeedback.mediumImpact();
+              } catch (_) {}
               final updated = order.copyWith(status: OrderStatus.delivered);
               ref.read(ordersProvider.notifier).updateOrder(updated);
               ScaffoldMessenger.of(context).removeCurrentSnackBar();

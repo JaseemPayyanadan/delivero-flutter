@@ -224,7 +224,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        HapticFeedback.heavyImpact();
+                        try {
+                          HapticFeedback.heavyImpact();
+                        } catch (_) {}
                         _showLogoutDialog();
                       },
                       icon: const Icon(Icons.logout_rounded, size: 20),
