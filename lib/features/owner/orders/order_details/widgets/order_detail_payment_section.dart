@@ -1,0 +1,291 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+
+import '../../../../../app/providers.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../data/models/order.dart';
+import '../order_detail_formatting.dart';
+import 'order_detail_surfaces.dart';
+
+class OrderDetailPaymentSection extends StatelessWidget {
+  final Order order;
+  final NumberFormat money0;
+  final PaymentStatus paymentStatus;
+  final Color paymentColor;
+  final double deliveryFee;
+  final double effectivePaid;
+  final double balanceDue;
+  final PaymentStatus draftPaymentStatus;
+  final PaymentMethod draftPaymentMethod;
+  final TextEditingController partialAmountController;
+  final double? draftAmountPaid;
+  final ValueChanged<PaymentStatus> onDraftPaymentStatusChanged;
+  final ValueChanged<PaymentMethod> onDraftPaymentMethodChanged;
+  final ValueChanged<String> onPartialAmountChanged;
+  final WidgetRef ref;
+
+  const OrderDetailPaymentSection({
+    super.key,
+    required this.order,
+    required this.money0,
+    required this.paymentStatus,
+    required this.paymentColor,
+    required this.deliveryFee,
+    required this.effectivePaid,
+    required this.balanceDue,
+    required this.draftPaymentStatus,
+    required this.draftPaymentMethod,
+    required this.partialAmountController,
+    required this.draftAmountPaid,
+    required this.onDraftPaymentStatusChanged,
+    required this.onDraftPaymentMethodChanged,
+    required this.onPartialAmountChanged,
+    required this.ref,
+  });
+
+  void _onApply(BuildContext context) {
+    final nextStatus = draftPaymentStatus;
+    final nextMethod = draftPaymentMethod;
+    double? amountPaid;
+
+    if (nextStatus == PaymentStatus.unpaid) {
+      amountPaid = null;
+    } else if (nextStatus == PaymentStatus.paid) {
+      amountPaid = order.totalAmount;
+    } else {
+      final parsed =
+          (draftAmountPaid ??
+              double.tryParse(
+                partialAmountController.text.trim().replaceAll(',', ''),
+              )) ??
+          0.0;
+      final clamped = parsed.clamp(0.0, order.totalAmount);
+      if (clamped <= 0 || clamped >= order.totalAmount) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Enter an amount between ${money0.format(1)} and ${money0.format(order.totalAmount - 1)}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.warning,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        return;
+      }
+      amountPaid = clamped;
+    }
+
+    final next = order.copyWith(
+      paymentStatus: nextStatus,
+      paymentMethod: nextMethod,
+      amountPaid: amountPaid,
+      paymentTime: nextStatus == PaymentStatus.unpaid ? null : DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    ref.read(ordersProvider.notifier).updateOrder(next);
+    HapticFeedback.lightImpact();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Payment status updated',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.success,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        OrderDetailSectionHeader(
+          title: 'Payment',
+          trailingWidget: OrderDetailPillBadge(
+            label: orderDetailHumanize(paymentStatus.name).toUpperCase(),
+            background: paymentColor == AppColors.error
+                ? AppColors.errorLighter.withValues(alpha: 0.85)
+                : paymentColor.withValues(alpha: 0.12),
+            foreground: paymentColor,
+            border: paymentColor.withValues(alpha: 0.22),
+          ),
+        ),
+        const SizedBox(height: 12),
+        OrderDetailCard(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            children: [
+              OrderDetailSummaryRow(label: 'Subtotal', value: order.subtotal),
+              const SizedBox(height: 10),
+              OrderDetailSummaryRow(label: 'Delivery Fee', value: deliveryFee),
+              if (paymentStatus == PaymentStatus.partial) ...[
+                const SizedBox(height: 10),
+                OrderDetailSummaryRow(
+                  label: 'Paid Amount',
+                  value: effectivePaid,
+                ),
+                const SizedBox(height: 10),
+                OrderDetailSummaryRow(
+                  label: 'Balance Due',
+                  value: balanceDue,
+                ),
+              ],
+              const SizedBox(height: 14),
+              const Divider(height: 1, color: AppColors.divider),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Total Amount',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    money0.format(order.totalAmount),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                      letterSpacing: -0.6,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OrderDetailLabeledDropdown<PaymentStatus>(
+                            label: 'STATUS',
+                            value: draftPaymentStatus,
+                            items: const [
+                              PaymentStatus.unpaid,
+                              PaymentStatus.paid,
+                              PaymentStatus.partial,
+                            ],
+                            itemLabel: (v) => orderDetailHumanize(v.name),
+                            onChanged: onDraftPaymentStatusChanged,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OrderDetailLabeledDropdown<PaymentMethod>(
+                            label: 'METHOD',
+                            value: draftPaymentMethod,
+                            items: const [
+                              PaymentMethod.cash,
+                              PaymentMethod.upi,
+                              PaymentMethod.card,
+                              PaymentMethod.online,
+                            ],
+                            itemLabel: (v) => orderDetailHumanize(v.name),
+                            onChanged: onDraftPaymentMethodChanged,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (draftPaymentStatus == PaymentStatus.partial) ...[
+                      const SizedBox(height: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'AMOUNT PAID',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textLight,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: partialAmountController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: money0.format(order.totalAmount),
+                              prefixIcon: const Icon(
+                                Icons.currency_rupee_rounded,
+                                size: 18,
+                                color: AppColors.textLight,
+                              ),
+                              filled: true,
+                              fillColor: AppColors.surface,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(18),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: onPartialAmountChanged,
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _onApply(context),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onPrimary,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        icon: Icon(
+                          Icons.check_rounded,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                        label: Text(
+                          'Save payment',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
