@@ -2,11 +2,15 @@ import '../../core/utils/date_utils.dart' as app_utils;
 
 enum VehicleType { bike, scooter, auto, van }
 
+/// Lifecycle of a driver record:
+/// - [pending]: created by an owner but not yet linked to a verified phone login.
+/// - [active]: a Firebase Auth user (phone OTP) has been linked via [Driver.userId].
+enum DriverStatus { pending, active }
+
 class Driver {
   final String id;
   final String factoryId;
   final String name;
-  final String? email;
   final String phone;
   final VehicleType vehicleType;
   final String? licenseNumber;
@@ -15,11 +19,14 @@ class Driver {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// Firebase Auth UID once the driver signs in with this phone for the first time.
+  final String? userId;
+  final DriverStatus status;
+
   const Driver({
     required this.id,
     required this.factoryId,
     required this.name,
-    this.email,
     required this.phone,
     required this.vehicleType,
     this.licenseNumber,
@@ -27,6 +34,8 @@ class Driver {
     this.currentRoute,
     required this.createdAt,
     required this.updatedAt,
+    this.userId,
+    this.status = DriverStatus.pending,
   });
 
   Map<String, dynamic> toJson() {
@@ -34,7 +43,6 @@ class Driver {
       'id': id,
       'factoryId': factoryId,
       'name': name,
-      'email': email,
       'phone': phone,
       'vehicleType':
           vehicleType.name[0].toUpperCase() + vehicleType.name.substring(1),
@@ -43,6 +51,8 @@ class Driver {
       'currentRoute': currentRoute,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
+      'userId': userId,
+      'status': status.name,
     };
   }
 
@@ -51,7 +61,6 @@ class Driver {
       id: json['id'] as String,
       factoryId: json['factoryId'] ?? '',
       name: json['name'] ?? '',
-      email: json['email'] as String?,
       phone: json['phone'] ?? '',
       vehicleType: _parseVehicleType(json['vehicleType']),
       licenseNumber: json['licenseNumber'] as String?,
@@ -59,6 +68,38 @@ class Driver {
       currentRoute: json['currentRoute'] as String?,
       createdAt: app_utils.DateUtils.parse(json['createdAt']),
       updatedAt: app_utils.DateUtils.parse(json['updatedAt']),
+      userId: json['userId'] as String?,
+      status: _parseStatus(json['status']),
+    );
+  }
+
+  Driver copyWith({
+    String? id,
+    String? factoryId,
+    String? name,
+    String? phone,
+    VehicleType? vehicleType,
+    String? licenseNumber,
+    bool? isActive,
+    String? currentRoute,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? userId,
+    DriverStatus? status,
+  }) {
+    return Driver(
+      id: id ?? this.id,
+      factoryId: factoryId ?? this.factoryId,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      vehicleType: vehicleType ?? this.vehicleType,
+      licenseNumber: licenseNumber ?? this.licenseNumber,
+      isActive: isActive ?? this.isActive,
+      currentRoute: currentRoute ?? this.currentRoute,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      userId: userId ?? this.userId,
+      status: status ?? this.status,
     );
   }
 
@@ -68,6 +109,15 @@ class Driver {
     return VehicleType.values.firstWhere(
       (v) => v.name.toLowerCase() == stringValue,
       orElse: () => VehicleType.bike,
+    );
+  }
+
+  static DriverStatus _parseStatus(dynamic value) {
+    if (value == null) return DriverStatus.pending;
+    final s = value.toString().toLowerCase();
+    return DriverStatus.values.firstWhere(
+      (v) => v.name == s,
+      orElse: () => DriverStatus.pending,
     );
   }
 }

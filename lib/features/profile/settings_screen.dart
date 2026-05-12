@@ -65,7 +65,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ? 'Your account, when you are on duty, and alerts'
               : 'Your account and how the app behaves');
 
-    final userKey = user?.email;
+    final userKey = user?.id;
     if (!_prefsLoaded || _prefsKey != userKey) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -145,18 +145,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   setState(() => _isAvailable = val);
                                   _savePref('available', val);
                                   if (isDelivery && driver != null) {
-                                    final d = driver;
-                                    final updated = Driver(
-                                      id: d.id,
-                                      factoryId: d.factoryId,
-                                      name: d.name,
-                                      email: d.email,
-                                      phone: d.phone,
-                                      vehicleType: d.vehicleType,
-                                      licenseNumber: d.licenseNumber,
+                                    final updated = driver.copyWith(
                                       isActive: val,
-                                      currentRoute: d.currentRoute,
-                                      createdAt: d.createdAt,
                                       updatedAt: DateTime.now(),
                                     );
                                     ref
@@ -654,22 +644,12 @@ class _ProfileHeroCard extends StatelessWidget {
                         child: Column(
                           children: [
                             _ProfileContactLine(
-                              icon: Icons.alternate_email_rounded,
-                              label: 'Email',
-                              text: user!.email,
+                              icon: Icons.phone_iphone_rounded,
+                              label: 'Phone',
+                              text: user!.phone.trim().isEmpty
+                                  ? '—'
+                                  : user!.phone.trim(),
                             ),
-                            if (user!.phone != null &&
-                                user!.phone!.trim().isNotEmpty) ...[
-                              const Divider(
-                                height: 1,
-                                color: AppColors.divider,
-                              ),
-                              _ProfileContactLine(
-                                icon: Icons.phone_iphone_rounded,
-                                label: 'Phone',
-                                text: user!.phone!.trim(),
-                              ),
-                            ],
                             if (user!.factoryId != null &&
                                 user!.factoryId!.trim().isNotEmpty) ...[
                               const Divider(

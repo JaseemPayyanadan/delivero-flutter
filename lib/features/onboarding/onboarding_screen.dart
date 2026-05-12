@@ -25,6 +25,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   static const _kStepCount = 4;
 
   final _pageController = PageController();
+  final _ownerNameController = TextEditingController();
   final _businessNameController = TextEditingController();
   final _routeNameController = TextEditingController();
   final _routeAreaController = TextEditingController();
@@ -33,11 +34,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _customerAddressController = TextEditingController();
   final _productNameController = TextEditingController();
   final _productPriceController = TextEditingController();
-  bool _businessLoaded = false;
+  bool _profileLoaded = false;
   bool _didInitialJump = false;
+  String _ownerName = '';
   String _businessName = '';
   int _currentStep = 0;
-  bool _savingBusiness = false;
+  bool _savingProfile = false;
   bool _savingRoute = false;
   bool _savingCustomer = false;
   bool _savingProduct = false;
@@ -45,6 +47,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
+    _ownerNameController.addListener(_onFormChanged);
     _businessNameController.addListener(_onFormChanged);
     _productNameController.addListener(_onFormChanged);
     _productPriceController.addListener(_onFormChanged);
@@ -52,10 +55,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   void dispose() {
+    _ownerNameController.removeListener(_onFormChanged);
     _businessNameController.removeListener(_onFormChanged);
     _productNameController.removeListener(_onFormChanged);
     _productPriceController.removeListener(_onFormChanged);
     _pageController.dispose();
+    _ownerNameController.dispose();
     _businessNameController.dispose();
     _routeNameController.dispose();
     _routeAreaController.dispose();
@@ -77,6 +82,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final name = _routeNameController.text.trim();
     final area = _routeAreaController.text.trim();
     if (name.isEmpty || area.isEmpty) return false;
+
+    // Skip if this exactly matches an existing route — keeps the inputs
+    // populated for visual confirmation without creating duplicates when
+    // the user comes back to this step and taps Next again.
+    final existing = ref.read(routesProvider);
+    final isDuplicate = existing.any(
+      (r) =>
+          r.name.trim().toLowerCase() == name.toLowerCase() &&
+          r.area.trim().toLowerCase() == area.toLowerCase(),
+    );
+    if (isDuplicate) return true;
 
     setState(() => _savingRoute = true);
     try {
@@ -102,11 +118,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ref.read(routesProvider.notifier).addRoute(route);
 
     if (!mounted) return true;
-    setState(() {
-      _savingRoute = false;
-      _routeNameController.clear();
-      _routeAreaController.clear();
-    });
+    setState(() => _savingRoute = false);
     return true;
   }
 
@@ -116,6 +128,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final phone = _customerPhoneController.text.trim();
     final address = _customerAddressController.text.trim();
     if (name.isEmpty) return false;
+
+    // Skip if name (and phone, if provided) match an existing customer.
+    final existing = ref.read(customersProvider);
+    final isDuplicate = existing.any((c) {
+      final sameName = c.name.trim().toLowerCase() == name.toLowerCase();
+      if (phone.isEmpty) return sameName;
+      return sameName && c.phone.trim() == phone;
+    });
+    if (isDuplicate) return true;
 
     setState(() => _savingCustomer = true);
     try {
@@ -140,12 +161,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ref.read(customersProvider.notifier).addCustomer(customer);
 
     if (!mounted) return true;
-    setState(() {
-      _savingCustomer = false;
-      _customerNameController.clear();
-      _customerPhoneController.clear();
-      _customerAddressController.clear();
-    });
+    setState(() => _savingCustomer = false);
     return true;
   }
 
@@ -160,6 +176,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       _showSnack('Enter a valid price (e.g. 25.00).');
       return false;
     }
+
+    // Skip if name + price match an existing product.
+    final existing = ref.read(foodItemsProvider);
+    final isDuplicate = existing.any(
+      (f) =>
+          f.name.trim().toLowerCase() == name.toLowerCase() &&
+          f.price == price,
+    );
+    if (isDuplicate) return true;
 
     setState(() => _savingProduct = true);
     try {
@@ -180,43 +205,51 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ref.read(foodItemsProvider.notifier).addFoodItem(item);
 
     if (!mounted) return true;
-    setState(() {
-      _savingProduct = false;
-      _productNameController.clear();
-      _productPriceController.clear();
-    });
+    setState(() => _savingProduct = false);
     return true;
   }
 
-  Future<void> _ensureBusinessLoaded() async {
-    if (_businessLoaded) return;
+  Future<void> _ensureProfileLoaded() async {
+    if (_profileLoaded) return;
     final prefs = await SharedPreferences.getInstance();
-    final name = (prefs.getString(_kBusinessNameKey) ?? '').trim();
+    final cachedBusiness = (prefs.getString(_kBusinessNameKey) ?? '').trim();
+    final cachedOwner = (ref.read(authProvider).user?.name ?? '').trim();
     if (!mounted) return;
     setState(() {
-      _businessLoaded = true;
-      _businessName = name;
-      _businessNameController.text = name;
+      _profileLoaded = true;
+      _businessName = cachedBusiness;
+      _businessNameController.text = cachedBusiness;
+      _ownerName = cachedOwner;
+      _ownerNameController.text = cachedOwner;
     });
   }
 
   int _firstIncompleteIndex({
-    required bool businessDone,
+    required bool profileDone,
     required bool routesDone,
     required bool customersDone,
     required bool productsDone,
   }) {
-    if (!businessDone) return 0;
+    if (!profileDone) return 0;
     if (!routesDone) return 1;
     if (!customersDone) return 2;
     if (!productsDone) return 3;
     return _kStepCount - 1;
   }
 
-  Future<bool> _saveBusinessName() async {
+  Future<bool> _saveProfile() async {
     FocusScope.of(context).unfocus();
-    final next = _businessNameController.text.trim();
-    if (next.isEmpty) {
+    final ownerNext = _ownerNameController.text.trim();
+    final businessNext = _businessNameController.text.trim();
+
+    if (ownerNext.isEmpty) {
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your name')),
+      );
+      return false;
+    }
+    if (businessNext.isEmpty) {
       ScaffoldMessenger.of(context).removeCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your business name')),
@@ -224,12 +257,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       return false;
     }
 
-    setState(() => _savingBusiness = true);
+    setState(() => _savingProfile = true);
     try {
       HapticFeedback.mediumImpact();
     } catch (_) {}
+
+    try {
+      await ref.read(authProvider.notifier).updateOwnerName(ownerNext);
+    } catch (_) {
+      // Best-effort: surfacing a failure here would block onboarding flow.
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kBusinessNameKey, next);
+    await prefs.setString(_kBusinessNameKey, businessNext);
 
     try {
       final factoryId = ref.read(factoryIdProvider).asData?.value;
@@ -240,7 +280,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             .collection('factories')
             .doc(factoryId)
             .set({
-              'name': next,
+              'name': businessNext,
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
       }
@@ -250,8 +290,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     if (!mounted) return false;
     setState(() {
-      _businessName = next;
-      _savingBusiness = false;
+      _ownerName = ownerNext;
+      _businessName = businessNext;
+      _savingProfile = false;
     });
     return true;
   }
@@ -262,7 +303,36 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     } catch (_) {}
     await ref.read(authProvider.notifier).completeOnboarding();
     if (!mounted) return;
+
+    final ownerName = ref.read(authProvider).user?.name.trim() ?? '';
+    final businessName = _businessName.trim();
+
+    await _showSetupCompleteDialog(
+      ownerName: ownerName,
+      businessName: businessName,
+    );
+    if (!mounted) return;
     if (context.mounted) context.go('/owner');
+  }
+
+  Future<void> _showSetupCompleteDialog({
+    required String ownerName,
+    required String businessName,
+  }) async {
+    try {
+      HapticFeedback.heavyImpact();
+    } catch (_) {}
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) => _SetupCompleteDialog(
+        ownerName: ownerName,
+        businessName: businessName,
+        onDismiss: () => Navigator.of(dialogContext).pop(),
+      ),
+    );
   }
 
   void _jumpTo(int index) {
@@ -294,7 +364,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     switch (_currentStep) {
       case 0:
-        final saved = await _saveBusinessName();
+        final saved = await _saveProfile();
         if (!saved || !mounted) return;
         _jumpTo(1);
         return;
@@ -303,22 +373,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         final hasArea = _routeAreaController.text.trim().isNotEmpty;
         final hasFormData = hasName && hasArea;
         final hasPartialData = (hasName || hasArea) && !hasFormData;
+        final hasExistingRoutes = ref.read(routesProvider).isNotEmpty;
 
         if (hasFormData) {
-          await _saveInlineRoute();
-        } else if (hasPartialData) {
+          final saved = await _saveInlineRoute();
+          if (!saved || !mounted) return;
+          _jumpTo(2);
+          return;
+        }
+
+        if (hasPartialData) {
           _showSnack('Enter both a route name and area to add it.');
           return;
         }
 
-        if (!mounted) return;
-        final routesNow = ref.read(routesProvider).isNotEmpty;
-        if (!routesNow) {
-          _showSnack(
-            'Enter a route name and area above, then tap Next.',
-          );
+        if (!hasExistingRoutes) {
+          _showSnack('Enter a route name and area above, then tap Next.');
           return;
         }
+
         _jumpTo(2);
         return;
       case 2:
@@ -334,23 +407,27 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         final hasPrice = _productPriceController.text.trim().isNotEmpty;
         final hasFormData = hasName && hasPrice;
         final hasPartialData = (hasName || hasPrice) && !hasFormData;
+        final hasExistingProducts = ref.read(foodItemsProvider).isNotEmpty;
 
         if (hasFormData) {
           final saved = await _saveInlineProduct();
           if (!saved || !mounted) return;
           await _finishOnboarding();
           return;
-        } else if (hasPartialData) {
+        }
+
+        if (hasPartialData) {
           _showSnack('Enter both a product name and price to add it.');
           return;
         }
 
-        if (!productsDone) {
+        if (!hasExistingProducts) {
           _showSnack(
             'Enter a product name and price above, then tap Launch.',
           );
           return;
         }
+
         await _finishOnboarding();
         return;
     }
@@ -385,9 +462,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_businessLoaded) {
+    if (!_profileLoaded) {
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _ensureBusinessLoaded(),
+        (_) => _ensureProfileLoaded(),
       );
     }
 
@@ -395,20 +472,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final foodItems = ref.watch(foodItemsProvider);
     final customers = ref.watch(customersProvider);
 
-    final businessDone = _businessName.trim().isNotEmpty;
+    final profileDone = _ownerName.trim().isNotEmpty &&
+        _businessName.trim().isNotEmpty;
     final routesDone = routes.isNotEmpty;
     final customersDone = customers.isNotEmpty;
     final productsDone = foodItems.isNotEmpty;
-    final allRequiredDone = businessDone && routesDone && productsDone;
+    final allRequiredDone = profileDone && routesDone && productsDone;
 
     final firstIncomplete = _firstIncompleteIndex(
-      businessDone: businessDone,
+      profileDone: profileDone,
       routesDone: routesDone,
       customersDone: customersDone,
       productsDone: productsDone,
     );
 
-    if (!_didInitialJump && _businessLoaded) {
+    if (!_didInitialJump && _profileLoaded) {
       _didInitialJump = true;
       if (_currentStep < firstIncomplete) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -420,7 +498,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
 
     final stepStatuses = <bool>[
-      businessDone,
+      profileDone,
       routesDone,
       customersDone,
       productsDone,
@@ -465,7 +543,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           children: [
             const SizedBox(height: 8),
             _StepperHeader(
-              labels: const ['Business', 'Routes', 'Customers', 'Products'],
+              labels: const ['Profile', 'Routes', 'Customers', 'Products'],
               statuses: stepStatuses,
               currentIndex: _currentStep,
               firstIncomplete: firstIncomplete,
@@ -479,9 +557,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 onPageChanged: (i) => setState(() => _currentStep = i),
                 children: [
                   _BusinessStepPage(
-                    controller: _businessNameController,
-                    isCompleted: businessDone,
-                    saving: _savingBusiness,
+                    ownerController: _ownerNameController,
+                    businessController: _businessNameController,
+                    isCompleted: profileDone,
+                    saving: _savingProfile,
                   ),
                   _RoutesStepPage(
                     nameController: _routeNameController,
@@ -506,11 +585,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               currentStep: _currentStep,
               isLastStep: _currentStep == _kStepCount - 1,
               allRequiredDone: allRequiredDone ||
-                  (businessDone &&
+                  (profileDone &&
                       routesDone &&
                       _productNameController.text.trim().isNotEmpty &&
                       _productPriceController.text.trim().isNotEmpty),
-              saving: _savingBusiness ||
+              saving: _savingProfile ||
                   _savingRoute ||
                   _savingCustomer ||
                   _savingProduct,
@@ -782,15 +861,48 @@ class _StepHeader extends StatelessWidget {
 }
 
 class _BusinessStepPage extends StatelessWidget {
-  final TextEditingController controller;
+  final TextEditingController ownerController;
+  final TextEditingController businessController;
   final bool isCompleted;
   final bool saving;
 
   const _BusinessStepPage({
-    required this.controller,
+    required this.ownerController,
+    required this.businessController,
     required this.isCompleted,
     required this.saving,
   });
+
+  InputDecoration _decoration({
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon, size: 20),
+      filled: true,
+      fillColor: AppColors.surface,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 14,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(
+          color: AppColors.primary,
+          width: 1.6,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -799,15 +911,35 @@ class _BusinessStepPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _StepHeader(
-            title: 'Tell us about your business',
+            title: 'Tell us about you',
             description:
-                'Add your business name so we can personalize your dashboard and reports.',
+                "Your name and business name appear across your dashboard and reports.",
             icon: Icons.storefront_rounded,
             accent: AppColors.primary,
             isCompleted: isCompleted,
             isRequired: true,
           ),
           const SizedBox(height: 26),
+          const Text(
+            'Your name',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: ownerController,
+            enabled: !saving,
+            textInputAction: TextInputAction.next,
+            textCapitalization: TextCapitalization.words,
+            decoration: _decoration(
+              hint: 'e.g. Anita Rao',
+              icon: Icons.person_outline_rounded,
+            ),
+          ),
+          const SizedBox(height: 18),
           const Text(
             'Business name',
             style: TextStyle(
@@ -818,38 +950,20 @@ class _BusinessStepPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           TextField(
-            controller: controller,
+            controller: businessController,
             enabled: !saving,
             textInputAction: TextInputAction.done,
-            decoration: InputDecoration(
-              hintText: 'e.g. Acme Foods',
-              prefixIcon: const Icon(Icons.store_rounded, size: 20),
-              filled: true,
-              fillColor: AppColors.surface,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 1.6,
-                ),
-              ),
+            textCapitalization: TextCapitalization.words,
+            decoration: _decoration(
+              hint: 'e.g. Acme Foods',
+              icon: Icons.store_rounded,
             ),
           ),
           const SizedBox(height: 12),
           _HintCard(
             icon: Icons.info_outline_rounded,
             text:
-                'You can update this anytime from your settings. It will also be saved to your factory profile.',
+                'You can update both anytime from settings. The business name will be saved to your factory profile.',
           ),
         ],
       ),
@@ -887,7 +1001,7 @@ class _RoutesStepPage extends ConsumerWidget {
           ),
           const SizedBox(height: 22),
           const _FormFieldLabel(label: 'Route name'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           TextField(
             controller: nameController,
             enabled: !saving,
@@ -899,7 +1013,7 @@ class _RoutesStepPage extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           const _FormFieldLabel(label: 'Area covered'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           TextField(
             controller: areaController,
             enabled: !saving,
@@ -938,20 +1052,20 @@ InputDecoration _formDecoration({
 }) {
   return InputDecoration(
     hintText: hint,
-    prefixIcon: Icon(icon, size: 18),
+    prefixIcon: Icon(icon, size: 20),
     filled: true,
     fillColor: AppColors.surface,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       borderSide: const BorderSide(color: AppColors.border),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       borderSide: const BorderSide(color: AppColors.border),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       borderSide: const BorderSide(
         color: AppColors.primary,
         width: 1.6,
@@ -992,7 +1106,7 @@ class _CustomersStepPage extends ConsumerWidget {
           ),
           const SizedBox(height: 22),
           const _FormFieldLabel(label: 'Customer name'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           TextField(
             controller: nameController,
             enabled: !saving,
@@ -1004,7 +1118,7 @@ class _CustomersStepPage extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           const _FormFieldLabel(label: 'Phone'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           TextField(
             controller: phoneController,
             enabled: !saving,
@@ -1017,7 +1131,7 @@ class _CustomersStepPage extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           const _FormFieldLabel(label: 'Address'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           TextField(
             controller: addressController,
             enabled: !saving,
@@ -1063,7 +1177,7 @@ class _ProductsStepPage extends ConsumerWidget {
           ),
           const SizedBox(height: 22),
           const _FormFieldLabel(label: 'Product name'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           TextField(
             controller: nameController,
             enabled: !saving,
@@ -1075,7 +1189,7 @@ class _ProductsStepPage extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           const _FormFieldLabel(label: 'Price'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           TextField(
             controller: priceController,
             enabled: !saving,
@@ -1383,6 +1497,316 @@ class _PrimaryButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SetupCompleteDialog extends StatefulWidget {
+  final String ownerName;
+  final String businessName;
+  final VoidCallback onDismiss;
+
+  const _SetupCompleteDialog({
+    required this.ownerName,
+    required this.businessName,
+    required this.onDismiss,
+  });
+
+  @override
+  State<_SetupCompleteDialog> createState() => _SetupCompleteDialogState();
+}
+
+class _SetupCompleteDialogState extends State<_SetupCompleteDialog>
+    with TickerProviderStateMixin {
+  late final AnimationController _entryController;
+  late final AnimationController _checkController;
+  late final Animation<double> _cardScale;
+  late final Animation<double> _cardOpacity;
+  late final Animation<double> _badgeScale;
+  late final Animation<double> _checkProgress;
+
+  @override
+  void initState() {
+    super.initState();
+    _entryController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 360),
+    );
+    _checkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+
+    _cardScale = CurvedAnimation(
+      parent: _entryController,
+      curve: Curves.easeOutBack,
+    );
+    _cardOpacity = CurvedAnimation(
+      parent: _entryController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    );
+    _badgeScale = CurvedAnimation(
+      parent: _checkController,
+      curve: const Interval(0.0, 0.55, curve: Curves.easeOutBack),
+    );
+    _checkProgress = CurvedAnimation(
+      parent: _checkController,
+      curve: const Interval(0.35, 1.0, curve: Curves.easeOut),
+    );
+
+    _entryController.forward();
+    Future<void>.delayed(const Duration(milliseconds: 180), () {
+      if (mounted) _checkController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _entryController.dispose();
+    _checkController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ownerFirstName = widget.ownerName.split(' ').first.trim();
+    final hasName = ownerFirstName.isNotEmpty;
+    final hasBusiness = widget.businessName.isNotEmpty;
+
+    return AnimatedBuilder(
+      animation: _entryController,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _cardOpacity.value,
+          child: Transform.scale(
+            scale: 0.85 + (_cardScale.value * 0.15),
+            child: child,
+          ),
+        );
+      },
+      child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 32,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedBuilder(
+                animation: _checkController,
+                builder: (context, _) {
+                  return Transform.scale(
+                    scale: 0.6 + (_badgeScale.value * 0.4),
+                    child: _SuccessBadge(progress: _checkProgress.value),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              Text(
+                hasName ? "You're all set, $ownerFirstName!" : "You're all set!",
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.3,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  hasBusiness
+                      ? '${widget.businessName} is ready to roll. Let\'s open your dashboard and start delivering.'
+                      : 'Your workspace is ready. Let\'s open your dashboard and start delivering.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _ReadyHighlights(),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                child: _PrimaryButton(
+                  label: 'Open dashboard',
+                  icon: Icons.dashboard_rounded,
+                  enabled: true,
+                  loading: false,
+                  isSuccess: true,
+                  onTap: widget.onDismiss,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SuccessBadge extends StatelessWidget {
+  final double progress;
+  const _SuccessBadge({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 84,
+      height: 84,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.success, Color(0xFF047857)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.success.withValues(alpha: 0.32),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Center(
+        child: CustomPaint(
+          size: const Size(44, 44),
+          painter: _CheckmarkPainter(progress: progress),
+        ),
+      ),
+    );
+  }
+}
+
+class _CheckmarkPainter extends CustomPainter {
+  final double progress;
+  _CheckmarkPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+
+    final start = Offset(size.width * 0.18, size.height * 0.52);
+    final mid = Offset(size.width * 0.42, size.height * 0.74);
+    final end = Offset(size.width * 0.82, size.height * 0.30);
+
+    final firstLeg = (mid - start).distance;
+    final secondLeg = (end - mid).distance;
+    final total = firstLeg + secondLeg;
+    final drawn = total * progress.clamp(0.0, 1.0);
+
+    final path = Path()..moveTo(start.dx, start.dy);
+    if (drawn <= firstLeg) {
+      final t = firstLeg == 0 ? 0.0 : drawn / firstLeg;
+      final p = Offset.lerp(start, mid, t)!;
+      path.lineTo(p.dx, p.dy);
+    } else {
+      path.lineTo(mid.dx, mid.dy);
+      final remaining = drawn - firstLeg;
+      final t = secondLeg == 0 ? 0.0 : remaining / secondLeg;
+      final p = Offset.lerp(mid, end, t)!;
+      path.lineTo(p.dx, p.dy);
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CheckmarkPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _ReadyHighlights extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: const [
+          _ReadyHighlightRow(
+            icon: Icons.alt_route_rounded,
+            label: 'Routes mapped',
+          ),
+          SizedBox(height: 8),
+          _ReadyHighlightRow(
+            icon: Icons.people_alt_rounded,
+            label: 'Customers added',
+          ),
+          SizedBox(height: 8),
+          _ReadyHighlightRow(
+            icon: Icons.restaurant_menu_rounded,
+            label: 'Menu loaded',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadyHighlightRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _ReadyHighlightRow({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: AppColors.successLighter,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.check_rounded,
+            size: 16,
+            color: AppColors.success,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Icon(icon, size: 18, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
