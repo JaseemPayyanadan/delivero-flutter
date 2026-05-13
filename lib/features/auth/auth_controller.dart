@@ -393,6 +393,7 @@ class AuthNotifier extends Notifier<AuthState> {
           'id': factoryId,
           'name': '',
           'ownerId': uid,
+          'plan': SubscriptionPlan.free.name,
           'createdAt': FieldValue.serverTimestamp(),
         },
       );
@@ -410,6 +411,7 @@ class AuthNotifier extends Notifier<AuthState> {
         phone: phone,
         name: '',
         role: UserRole.owner,
+        plan: SubscriptionPlan.free,
         factoryId: factoryId,
         linkedEntityId: ownerId,
       );
