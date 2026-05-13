@@ -336,7 +336,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     if (routesLoaded &&
         _selectedRouteId != null &&
-        _selectedRouteId != '__unassigned__' &&
         !availableRouteIds.contains(_selectedRouteId)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -356,7 +355,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
       final matchesRoute = switch (_selectedRouteId) {
         null => true,
-        '__unassigned__' => routeIdForOrder(order) == null,
         _ => routeIdForOrder(order) == _selectedRouteId,
       };
 
@@ -496,7 +494,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       }
 
       final effective = (raw == null || raw.isEmpty) ? customerRoute() : raw;
-      if (effective == null || effective.isEmpty) return 'Unassigned';
+      if (effective == null || effective.isEmpty) return '';
       final route = routes.firstWhereOrNull(
         (r) => r.id == effective || r.name == effective,
       );
@@ -511,8 +509,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     final sortedKeys = groups.keys.toList()
       ..sort((a, b) {
-        if (a == 'Unassigned') return 1;
-        if (b == 'Unassigned') return -1;
+        if (a.isEmpty) return 1;
+        if (b.isEmpty) return -1;
         return a.toLowerCase().compareTo(b.toLowerCase());
       });
 
@@ -521,7 +519,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       final orders = groups[key]!;
       final count = orders.length;
 
-      widgets.add(_RouteSectionHeader(title: key, count: count));
+      if (key.trim().isNotEmpty) {
+        widgets.add(_RouteSectionHeader(title: key, count: count));
+      }
       for (final o in orders) {
         widgets.add(_buildOrderCard(o));
       }
@@ -546,11 +546,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             child: Row(
               children: [
                 _buildRouteChip(null, 'All Routes', routesLoaded: routesLoaded),
-                _buildRouteChip(
-                  '__unassigned__',
-                  'Unassigned',
-                  routesLoaded: routesLoaded,
-                ),
                 const SizedBox(width: 2),
                 if (!routesLoaded && routes.isEmpty)
                   _buildRouteChip(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
@@ -23,9 +24,16 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     final isLoading = !ordersLoaded && allOrders.isEmpty;
 
     final driverId = user?.linkedEntityId ?? user?.id;
-    final myOrders = allOrders
-        .where((o) => o.assignedDriver == driverId)
-        .toList();
+    final drivers = ref.watch(driversProvider);
+    final me = drivers.firstWhereOrNull((d) => d.id == driverId);
+    final myRouteId = me?.currentRoute?.trim();
+
+    final myOrders = allOrders.where((o) {
+      if (driverId == null) return false;
+      if (o.assignedDriver == driverId) return true;
+      if (myRouteId == null || myRouteId.isEmpty) return false;
+      return o.assignedRoute == myRouteId;
+    }).toList();
 
     final today = DateTime.now();
     final todayOrders = myOrders.where((o) {

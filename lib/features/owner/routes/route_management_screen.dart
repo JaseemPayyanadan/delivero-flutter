@@ -88,7 +88,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
     final routesLoaded = ref.watch(routesLoadedProvider);
     final driversLoaded = ref.watch(driversLoadedProvider);
     final onDuty = drivers.where((d) => d.isActive).length;
-    final unassignedRoutes = routes
+    final routesWithoutDriverCount = routes
         .where(
           (r) =>
               r.assignedDriver == null || r.assignedDriver!.trim().isEmpty,
@@ -128,7 +128,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
           RoutesHubOverviewCard(
             routesCount: routes.length,
             driversOnDuty: onDuty,
-            routesWithoutDriver: unassignedRoutes,
+            routesWithoutDriver: routesWithoutDriverCount,
           ),
           RoutesHubSegmentedControl(controller: _tabController),
           Expanded(
@@ -814,7 +814,7 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         content: Text(
-          'Delete "${route.name}" for good? Any driver on this route will be unassigned.',
+          'Delete "${route.name}" for good? Any driver on this route will be removed from the route.',
           style: const TextStyle(height: 1.5),
         ),
         actions: [
@@ -1498,7 +1498,7 @@ class _DriverListTabState extends ConsumerState<_DriverListTab> {
                                         ),
                                         const SizedBox(height: 3),
                                         Text(
-                                          routeName ?? 'Unassigned',
+                                          routeName ?? 'No route',
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           textAlign: TextAlign.right,

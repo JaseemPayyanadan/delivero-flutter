@@ -44,6 +44,9 @@
       pointer-events: none;
       z-index: 2147483647;
     }
+    html:not(.show-recaptcha) .grecaptcha-badge {
+      display: none !important;
+    }
     @media (max-width: 520px) {
       .grecaptcha-badge {
         bottom: 86px !important;
@@ -134,11 +137,11 @@
   </script>
 </head>
 <body>
-  <picture id="splash">
+  <!-- <picture id="splash">
       <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
       <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
       <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
-  </picture>
+  </picture> -->
   
   
     <div id="loading">Loading…</div>
@@ -146,12 +149,20 @@
   <!-- Invisible reCAPTCHA target used by Firebase Phone Auth on web. -->
   <div id="recaptcha-container"></div>
 
-  <!--
-    Firebase web config:
-    - Option 1 (recommended): build with --dart-define FIREBASE_WEB_* values.
-    - Option 2: set window.firebaseConfig below (use your Firebase console web app config).
-    If neither is set, the web app will load but Firebase data will be empty.
-  -->
+  <script>
+    (function () {
+      function updateRecaptchaVisibility() {
+        var hash = window.location.hash || '';
+        var path = hash.startsWith('#') ? hash.slice(1) : hash;
+        var shouldShow = path.startsWith('/login') || path.startsWith('/otp');
+        document.documentElement.classList.toggle('show-recaptcha', shouldShow);
+      }
+
+      window.addEventListener('hashchange', updateRecaptchaVisibility);
+      updateRecaptchaVisibility();
+    })();
+  </script>
+
   <script>
     window.firebaseConfig = {
       apiKey: "AIzaSyBtd6op8KUKyAhyHor_3kM4sOvYwkBIe4M",

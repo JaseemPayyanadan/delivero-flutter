@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
@@ -64,11 +65,16 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     final ordersLoaded = ref.watch(ordersLoadedProvider);
     final isLoading = !ordersLoaded && allOrders.isEmpty;
 
-    // Filter orders for the current driver
     final driverId = user?.linkedEntityId ?? user?.id;
-    var myOrders = allOrders
-        .where((o) => o.assignedDriver == driverId)
-        .toList();
+    final drivers = ref.watch(driversProvider);
+    final me = drivers.firstWhereOrNull((d) => d.id == driverId);
+    final myRouteId = me?.currentRoute?.trim();
+    var myOrders = allOrders.where((o) {
+      if (driverId == null) return false;
+      if (o.assignedDriver == driverId) return true;
+      if (myRouteId == null || myRouteId.isEmpty) return false;
+      return o.assignedRoute == myRouteId;
+    }).toList();
 
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
@@ -109,8 +115,12 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
       return b.orderDate.compareTo(a.orderDate);
     });
 
-    final myAllOrders =
-        allOrders.where((o) => o.assignedDriver == driverId).toList();
+    final myAllOrders = allOrders.where((o) {
+      if (driverId == null) return false;
+      if (o.assignedDriver == driverId) return true;
+      if (myRouteId == null || myRouteId.isEmpty) return false;
+      return o.assignedRoute == myRouteId;
+    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,

@@ -77,7 +77,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       return r?.name ??
           (c.assignedRoute?.trim().isNotEmpty == true
               ? c.assignedRoute!.trim()
-              : 'Unassigned');
+              : 'No route');
     }
 
     String? routeIdForCustomer(Customer c) {
@@ -106,7 +106,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
 
       final matchesRoute = switch (_selectedRouteId) {
         null => true,
-        '__unassigned__' => routeIdForCustomer(customer) == null,
         _ =>
           customer.assignedRoute == _selectedRouteId ||
               routeIdForCustomer(customer) == _selectedRouteId,
@@ -300,10 +299,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetCtx) => _AssignRouteSheet(
-        customerName: customer.name,
-        routes: routes,
-      ),
+      builder: (sheetCtx) =>
+          _AssignRouteSheet(customerName: customer.name, routes: routes),
     );
     if (picked == null || !mounted) return;
 
@@ -1108,10 +1105,7 @@ class _AssignRouteSheet extends StatelessWidget {
   final String customerName;
   final List<DeliveryRoute> routes;
 
-  const _AssignRouteSheet({
-    required this.customerName,
-    required this.routes,
-  });
+  const _AssignRouteSheet({required this.customerName, required this.routes});
 
   @override
   Widget build(BuildContext context) {
@@ -1194,10 +1188,8 @@ class _AssignRouteSheet extends StatelessWidget {
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: sortedRoutes.length,
-                  separatorBuilder: (_, __) => const Divider(
-                    height: 1,
-                    color: AppColors.divider,
-                  ),
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, color: AppColors.divider),
                   itemBuilder: (context, index) {
                     final route = sortedRoutes[index];
                     final area = route.area.trim();
