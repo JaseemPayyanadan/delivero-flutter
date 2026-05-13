@@ -147,6 +147,12 @@ class OwnerDashboardScreen extends ConsumerWidget {
                           path: '/owner/orders/create',
                         ),
                         _QuickAction(
+                          label: 'Products',
+                          icon: Icons.inventory_2_rounded,
+                          color: AppColors.secondary,
+                          path: '/owner/food-items',
+                        ),
+                        _QuickAction(
                           label: 'Customers',
                           icon: Icons.people_alt_rounded,
                           color: AppColors.success,
@@ -536,13 +542,16 @@ class _HeroRevenue extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(999),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
