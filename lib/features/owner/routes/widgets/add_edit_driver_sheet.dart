@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:intl_phone_field/phone_number.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/providers.dart';
+import '../../../../core/services/firebase_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../data/models/delivery_route.dart';
@@ -80,10 +82,7 @@ Future<void> showDriverLoginShareDialog({
     context: context,
     builder: (ctx) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      title: Text(
-        title,
-        style: ctx.appTextStyles.sectionHeader,
-      ),
+      title: Text(title, style: ctx.appTextStyles.sectionHeader),
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -118,9 +117,9 @@ Future<void> showDriverLoginShareDialog({
               if (ctx.mounted) Navigator.pop(ctx);
             } catch (e) {
               if (ctx.mounted) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(content: Text('$e')),
-                );
+                ScaffoldMessenger.of(
+                  ctx,
+                ).showSnackBar(SnackBar(content: Text('$e')));
               }
             }
           },
@@ -158,10 +157,7 @@ Future<void> showReshareDriverLoginDialog(
   );
 }
 
-Future<void> showAddEditDriverSheet(
-  BuildContext context, {
-  Driver? driver,
-}) {
+Future<void> showAddEditDriverSheet(BuildContext context, {Driver? driver}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -177,8 +173,7 @@ class AddEditDriverSheet extends ConsumerStatefulWidget {
   const AddEditDriverSheet({super.key, this.driver});
 
   @override
-  ConsumerState<AddEditDriverSheet> createState() =>
-      _AddEditDriverSheetState();
+  ConsumerState<AddEditDriverSheet> createState() => _AddEditDriverSheetState();
 }
 
 class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
@@ -223,9 +218,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
     final digits = e164.replaceAll(RegExp(r'\D'), '');
     if (digits.length <= 4) return digits;
     // Best effort: assume the last 10 digits are the national number for IN.
-    return digits.length > 10
-        ? digits.substring(digits.length - 10)
-        : digits;
+    return digits.length > 10 ? digits.substring(digits.length - 10) : digits;
   }
 
   Future<void> _onSave() async {
@@ -249,8 +242,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
       if (!mounted || confirmed != true) return;
     }
 
-    final factoryId =
-        await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+    final factoryId = await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
     if (!mounted) return;
 
     setState(() => _submitting = true);
@@ -258,6 +250,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
     try {
       if (_isEdit) {
         final d = widget.driver!;
+        final previousRouteId = d.currentRoute;
         final updated = d.copyWith(
           name: name,
           phone: phoneE164,
@@ -265,7 +258,54 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
           currentRoute: _selectedRouteId,
           updatedAt: DateTime.now(),
         );
-        ref.read(driversProvider.notifier).updateDriver(updated);
+        await FirebaseService.firestore.runTransaction((tx) async {
+          final driversRef = FirebaseService.firestore.collection('drivers');
+          final routesRef = FirebaseService.firestore.collection('routes');
+
+          final newRouteId = _selectedRouteId;
+
+          if (previousRouteId != null &&
+              previousRouteId.trim().isNotEmpty &&
+              previousRouteId != newRouteId) {
+            final prevRouteRef = routesRef.doc(previousRouteId);
+            final prevRouteSnap = await tx.get(prevRouteRef);
+            if (prevRouteSnap.exists) {
+              final data = prevRouteSnap.data();
+              final assignedDriverId = (data?['assignedDriver'] as String?)
+                  ?.trim();
+              if (assignedDriverId == d.id) {
+                tx.update(prevRouteRef, {
+                  'assignedDriver': null,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+              }
+            }
+          }
+
+          if (newRouteId != null && newRouteId.trim().isNotEmpty) {
+            final nextRouteRef = routesRef.doc(newRouteId);
+            final nextRouteSnap = await tx.get(nextRouteRef);
+            if (nextRouteSnap.exists) {
+              final data = nextRouteSnap.data();
+              final previousDriverId = (data?['assignedDriver'] as String?)
+                  ?.trim();
+              if (previousDriverId != null &&
+                  previousDriverId.isNotEmpty &&
+                  previousDriverId != d.id) {
+                tx.update(driversRef.doc(previousDriverId), {
+                  'currentRoute': null,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+              }
+              tx.update(nextRouteRef, {
+                'assignedDriver': d.id,
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+            }
+          }
+
+          tx.set(driversRef.doc(d.id), updated.toJson());
+        });
         if (mounted) Navigator.pop(context);
       } else {
         final invited = await ref
@@ -321,9 +361,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text(
               'Change anyway',
               style: TextStyle(fontWeight: FontWeight.w800),
@@ -355,9 +393,8 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     final hasSelectedRouteInList =
         _selectedRouteId != null &&
-            sortedRoutes.any((r) => r.id == _selectedRouteId);
-    final routeDropdownValue =
-        hasSelectedRouteInList ? _selectedRouteId : null;
+        sortedRoutes.any((r) => r.id == _selectedRouteId);
+    final routeDropdownValue = hasSelectedRouteInList ? _selectedRouteId : null;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
@@ -501,38 +538,38 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                             ),
                           ),
                         ),
-                        ...sortedRoutes.map<DropdownMenuItem<String?>>(
-                          (DeliveryRoute r) {
-                            final area = r.area.trim();
-                            final label = area.isEmpty
-                                ? r.name
-                                : '${r.name} · $area';
-                            return DropdownMenuItem<String?>(
-                              value: r.id,
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.alt_route_rounded,
-                                    color: AppColors.primary,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      label,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13,
-                                      ),
+                        ...sortedRoutes.map<DropdownMenuItem<String?>>((
+                          DeliveryRoute r,
+                        ) {
+                          final area = r.area.trim();
+                          final label = area.isEmpty
+                              ? r.name
+                              : '${r.name} · $area';
+                          return DropdownMenuItem<String?>(
+                            value: r.id,
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.alt_route_rounded,
+                                  color: AppColors.primary,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13,
                                     ),
                                   ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
                       ],
                       onChanged: _submitting
                           ? null
@@ -569,9 +606,9 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                                     'Sign-in active',
                                     style: context.appTextStyles.caption
                                         .copyWith(
-                                      color: AppColors.textSecondary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(

@@ -445,7 +445,7 @@ class AuthNotifier extends Notifier<AuthState> {
   }) async {
     final id = const Uuid().v4();
     final now = DateTime.now();
-    final driver = Driver(
+    var driver = Driver(
       id: id,
       factoryId: factoryId,
       name: name,
@@ -458,10 +458,35 @@ class AuthNotifier extends Notifier<AuthState> {
       status: DriverStatus.pending,
     );
 
-    await FirebaseService.firestore
-        .collection('drivers')
-        .doc(id)
-        .set(driver.toJson());
+    final driversRef = FirebaseService.firestore.collection('drivers');
+    final routesRef = FirebaseService.firestore.collection('routes');
+
+    await FirebaseService.firestore.runTransaction((tx) async {
+      if (currentRoute != null && currentRoute.trim().isNotEmpty) {
+        final routeRef = routesRef.doc(currentRoute);
+        final routeSnap = await tx.get(routeRef);
+        if (routeSnap.exists) {
+          final data = routeSnap.data();
+          final previousDriverId = (data?['assignedDriver'] as String?)?.trim();
+          if (previousDriverId != null &&
+              previousDriverId.isNotEmpty &&
+              previousDriverId != id) {
+            tx.update(driversRef.doc(previousDriverId), {
+              'currentRoute': null,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+          }
+          tx.update(routeRef, {
+            'assignedDriver': id,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          driver = driver.copyWith(currentRoute: null);
+        }
+      }
+
+      tx.set(driversRef.doc(id), driver.toJson());
+    });
     return driver;
   }
 
@@ -482,23 +507,16 @@ class AuthNotifier extends Notifier<AuthState> {
         final batch = FirebaseService.firestore.batch();
         batch.set(
           FirebaseService.firestore.collection('users').doc(user.id),
-          {
-            'name': trimmed,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
+          {'name': trimmed, 'updatedAt': FieldValue.serverTimestamp()},
           SetOptions(merge: true),
         );
 
         final linkedId = user.linkedEntityId;
         if (linkedId != null && linkedId.trim().isNotEmpty) {
-          final collection =
-              user.role == UserRole.owner ? 'owners' : 'drivers';
+          final collection = user.role == UserRole.owner ? 'owners' : 'drivers';
           batch.set(
             FirebaseService.firestore.collection(collection).doc(linkedId),
-            {
-              'name': trimmed,
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
+            {'name': trimmed, 'updatedAt': FieldValue.serverTimestamp()},
             SetOptions(merge: true),
           );
         }
