@@ -225,15 +225,21 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
     FocusScope.of(context).unfocus();
     final name = _nameController.text.trim();
     final phone = _phoneNumber;
-    if (name.isEmpty || phone == null || phone.number.trim().isEmpty) {
+    final rawDigits = _digitsOnlyPhone(_phoneController.text);
+    if (name.isEmpty || (phone == null && rawDigits.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter name and phone number.')),
       );
       return;
     }
 
-    final phoneE164 =
-        '+${phone.countryCode.replaceAll('+', '')}${phone.number}';
+    final dialCode =
+        phone?.countryCode.replaceAll('+', '').trim().isNotEmpty == true
+            ? phone!.countryCode.replaceAll('+', '').trim()
+            : '91';
+    final numberDigits =
+        phone?.number.trim().isNotEmpty == true ? _digitsOnlyPhone(phone!.number) : rawDigits;
+    final phoneE164 = '+$dialCode$numberDigits';
 
     if (_isLinked &&
         _initialPhoneE164.isNotEmpty &&
