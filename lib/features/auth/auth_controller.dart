@@ -328,11 +328,19 @@ class AuthNotifier extends Notifier<AuthState> {
     required String uid,
     required String phone,
   }) async {
-    final snapshot = await FirebaseService.firestore
-        .collection('drivers')
+    final driversRef = FirebaseService.firestore.collection('drivers');
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+
+    var snapshot = await driversRef
         .where('phone', isEqualTo: phone)
         .limit(5)
         .get();
+    if (snapshot.docs.isEmpty && digits.isNotEmpty) {
+      snapshot = await driversRef
+          .where('phoneDigits', isEqualTo: digits)
+          .limit(5)
+          .get();
+    }
 
     final pending = snapshot.docs.firstWhereOrNull((doc) {
       final data = doc.data();

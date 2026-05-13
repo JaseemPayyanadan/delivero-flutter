@@ -23,6 +23,8 @@ class Driver {
   final String? userId;
   final DriverStatus status;
 
+  String get phoneDigits => phone.replaceAll(RegExp(r'\D'), '');
+
   const Driver({
     required this.id,
     required this.factoryId,
@@ -44,6 +46,7 @@ class Driver {
       'factoryId': factoryId,
       'name': name,
       'phone': phone,
+      'phoneDigits': phoneDigits,
       'vehicleType':
           vehicleType.name[0].toUpperCase() + vehicleType.name.substring(1),
       'licenseNumber': licenseNumber,
