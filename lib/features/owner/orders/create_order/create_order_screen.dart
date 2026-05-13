@@ -51,12 +51,33 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   bool _initializedFromOrder = false;
   Order? _editingOrder;
   final Map<String, TextEditingController> _qtyControllers = {};
+  final Map<String, TextEditingController> _catalogQtyControllers = {};
+
   /// 0 = customer, 1 = order type, 2 = menu, 3 = review.
   int _step = 0;
 
   void _removeQtyController(String id) {
     final c = _qtyControllers.remove(id);
     c?.dispose();
+  }
+
+  void _removeCatalogQtyController(String id) {
+    final c = _catalogQtyControllers.remove(id);
+    c?.dispose();
+  }
+
+  TextEditingController _catalogQtyControllerFor(String id) {
+    return _catalogQtyControllers.putIfAbsent(
+      id,
+      () => TextEditingController(text: (_selectedItems[id] ?? 0).toString()),
+    );
+  }
+
+  void _disposeCatalogQtyControllers() {
+    for (final c in _catalogQtyControllers.values) {
+      c.dispose();
+    }
+    _catalogQtyControllers.clear();
   }
 
   @override
@@ -69,9 +90,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final routesLoaded = ref.watch(routesLoadedProvider);
     final hasSelectedUnits = _selectedItems.values.any((v) => v > 0);
     final selection = _computeSelectionSummary(foodItems);
-    final canPrimaryProceed = !_isSubmitting && _canGoNextFromStep(
-      hasSelectedUnits: hasSelectedUnits,
-    );
+    final canPrimaryProceed =
+        !_isSubmitting &&
+        _canGoNextFromStep(hasSelectedUnits: hasSelectedUnits);
     final total = selection.subtotal.clamp(0, double.infinity).toDouble();
 
     if (widget.orderId != null && !_initializedFromOrder) {
@@ -101,9 +122,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
 
     final stepSubtitle = switch (_step) {
-      0 => widget.orderId == null
-          ? 'Step 1 of 4 — Search and choose who this order is for.'
-          : 'Step 1 of 4 — Customer for this order.',
+      0 =>
+        widget.orderId == null
+            ? 'Step 1 of 4 — Search and choose who this order is for.'
+            : 'Step 1 of 4 — Customer for this order.',
       1 => 'Step 2 of 4 — Daily recurring or a single one-time delivery.',
       2 => 'Step 3 of 4 — Add products and set quantities.',
       _ => 'Step 4 of 4 — Check everything before you save.',
@@ -119,8 +141,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         backgroundColor: AppColors.backgroundPrimary,
         appBar: DeliveroAppBar(
           title: widget.orderId == null ? 'Create order' : 'Edit order',
-          leading:
-              (Navigator.of(context).canPop() || _step > 0)
+          leading: (Navigator.of(context).canPop() || _step > 0)
               ? IconButton(
                   icon: const Icon(Icons.arrow_back_rounded),
                   onPressed: () {
@@ -296,9 +317,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       : Text(
                           _step < 3
                               ? 'Continue'
-                              : (widget.orderId == null
-                                    ? 'Confirm'
-                                    : 'Update'),
+                              : (widget.orderId == null ? 'Confirm' : 'Update'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: context.appTextStyles.buttonLabel.copyWith(
@@ -423,10 +442,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return _customUnitPrices[item.id] ?? item.price;
   }
 
-  void _showCustomPriceDialog(
-    FoodItem item, {
-    VoidCallback? onApplied,
-  }) {
+  void _showCustomPriceDialog(FoodItem item, {VoidCallback? onApplied}) {
     final messenger = ScaffoldMessenger.of(context);
     final current = _customUnitPrices[item.id];
     final controller = TextEditingController(
@@ -592,10 +608,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         customers.where((c) {
           if (q.isEmpty) return true;
           return c.name.toLowerCase().contains(q) || c.phone.contains(q);
-        }).toList()
-          ..sort(
-            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-          );
+        }).toList()..sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
 
     final selected = _selectedCustomer;
 
@@ -726,7 +741,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 return Container(
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
                   ),
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: Column(
@@ -821,6 +838,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                               () => _selectedItems[id] =
                                   (_selectedItems[id] ?? 0) + 1,
                             );
+                            final controller = _catalogQtyControllers[id];
+                            if (controller != null) {
+                              controller.text = (_selectedItems[id] ?? 0)
+                                  .toString();
+                              controller.selection = TextSelection.fromPosition(
+                                TextPosition(offset: controller.text.length),
+                              );
+                            }
                             refreshSheet();
                           },
                           onDec: (id) {
@@ -833,6 +858,28 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 _customUnitPrices.remove(id);
                               } else {
                                 _selectedItems[id] = next;
+                              }
+                            });
+                            final controller = _catalogQtyControllers[id];
+                            if (controller != null) {
+                              controller.text = (_selectedItems[id] ?? 0)
+                                  .toString();
+                              controller.selection = TextSelection.fromPosition(
+                                TextPosition(offset: controller.text.length),
+                              );
+                            }
+                            refreshSheet();
+                          },
+                          getQtyController: _catalogQtyControllerFor,
+                          onQtyChanged: (id, nextQty) {
+                            setState(() {
+                              final safe = nextQty.clamp(0, 999);
+                              if (safe <= 0) {
+                                _selectedItems.remove(id);
+                                _customUnitPrices.remove(id);
+                                _removeCatalogQtyController(id);
+                              } else {
+                                _selectedItems[id] = safe;
                               }
                             });
                             refreshSheet();
@@ -859,10 +906,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 'Done',
                                 style: context.appTextStyles.buttonLabel
                                     .copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimary,
-                                ),
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimary,
+                                    ),
                               ),
                             ),
                           ),
@@ -876,7 +923,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           },
         );
       },
-    );
+    ).whenComplete(_disposeCatalogQtyControllers);
   }
 
   List<FoodItem> _filterCatalog(List<FoodItem> foodItems) {

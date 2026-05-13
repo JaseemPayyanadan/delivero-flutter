@@ -91,11 +91,11 @@ class _OrderReviewReport extends StatelessWidget {
   });
 
   static TextStyle _label(BuildContext context) => const TextStyle(
-        color: AppColors.textLight,
-        fontWeight: FontWeight.w900,
-        fontSize: 11,
-        letterSpacing: 1.2,
-      );
+    color: AppColors.textLight,
+    fontWeight: FontWeight.w900,
+    fontSize: 11,
+    letterSpacing: 1.2,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -170,10 +170,7 @@ class _OrderReviewReport extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: Text(
-                    'LINE ITEMS',
-                    style: _label(context),
-                  ),
+                  child: Text('LINE ITEMS', style: _label(context)),
                 ),
                 const SizedBox(height: 8),
                 const _ReportTableHeaderRow(),
@@ -190,11 +187,7 @@ class _OrderReviewReport extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            width: double.infinity,
-            height: 2,
-            color: AppColors.border,
-          ),
+          Container(width: double.infinity, height: 2, color: AppColors.border),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
             child: Column(
@@ -253,10 +246,7 @@ class _ReportTableHeaderRow extends StatelessWidget {
       color: AppColors.backgroundSecondary,
       child: Row(
         children: [
-          Expanded(
-            flex: 11,
-            child: Text('ITEM', style: s),
-          ),
+          Expanded(flex: 11, child: Text('ITEM', style: s)),
           Expanded(
             flex: 4,
             child: Text('QTY', style: s, textAlign: TextAlign.right),
@@ -400,10 +390,7 @@ class _FormSectionCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: context.appTextStyles.sectionHeader,
-                      ),
+                      Text(title, style: context.appTextStyles.sectionHeader),
                       if (subtitle != null) ...[
                         const SizedBox(height: 4),
                         Text(
@@ -772,6 +759,8 @@ class _QtyStepper extends StatelessWidget {
                     controller: controller,
                     textAlign: TextAlign.center,
                     keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 13,
@@ -786,6 +775,19 @@ class _QtyStepper extends StatelessWidget {
                       final raw = controller!.text.trim();
                       if (raw.isEmpty) {
                         onQtyChanged!(0);
+                      } else {
+                        final parsed = int.tryParse(raw);
+                        if (parsed != null) onQtyChanged!(parsed);
+                      }
+                      FocusScope.of(context).unfocus();
+                    },
+                    onSubmitted: (_) {
+                      final raw = controller!.text.trim();
+                      if (raw.isEmpty) {
+                        onQtyChanged!(0);
+                      } else {
+                        final parsed = int.tryParse(raw);
+                        if (parsed != null) onQtyChanged!(parsed);
                       }
                       FocusScope.of(context).unfocus();
                     },
@@ -821,6 +823,8 @@ class _CatalogList extends StatelessWidget {
   final void Function(FoodItem item) onCustomPrice;
   final void Function(String id) onInc;
   final void Function(String id) onDec;
+  final TextEditingController Function(String id)? getQtyController;
+  final void Function(String id, int qty)? onQtyChanged;
 
   const _CatalogList({
     required this.controller,
@@ -831,6 +835,8 @@ class _CatalogList extends StatelessWidget {
     required this.onCustomPrice,
     required this.onInc,
     required this.onDec,
+    this.getQtyController,
+    this.onQtyChanged,
   });
 
   @override
@@ -856,6 +862,13 @@ class _CatalogList extends StatelessWidget {
         final qty = getQty(item.id);
         final unitPrice = getUnitPrice(item);
         final custom = isCustom(item.id);
+        final controller = getQtyController?.call(item.id);
+        if (controller != null && controller.text != qty.toString()) {
+          controller.text = qty.toString();
+          controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: controller.text.length),
+          );
+        }
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
@@ -922,6 +935,10 @@ class _CatalogList extends StatelessWidget {
               const SizedBox(width: 10),
               _QtyStepper(
                 qty: qty,
+                controller: controller,
+                onQtyChanged: onQtyChanged == null
+                    ? null
+                    : (next) => onQtyChanged!(item.id, next),
                 onDec: () => onDec(item.id),
                 onInc: () => onInc(item.id),
               ),
