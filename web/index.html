@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#2563EB">
 
   <!-- iOS meta tags & icons -->
@@ -32,6 +32,23 @@
       background-color: #ffffff;
       font-family: 'Figtree', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
+    #recaptcha-container {
+      position: fixed;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      left: 0;
+      bottom: 0;
+    }
+    .grecaptcha-badge {
+      pointer-events: none;
+      z-index: 2147483647;
+    }
+    @media (max-width: 520px) {
+      .grecaptcha-badge {
+        bottom: 86px !important;
+      }
+    }
     #loading {
       position: fixed;
       inset: 0;
@@ -48,11 +65,8 @@
       word-break: break-word;
     }
   </style>
-  
-  
-  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
-  
-  
+ 
+ 
   <style id="splash-screen-style">
     html {
       height: 100%
