@@ -241,6 +241,14 @@ class OrdersNotifier extends Notifier<List<Order>> {
             return route == null ? k : route.id;
           }
 
+          String? normalizeDriverId(String? routeId) {
+            if (routeId == null) return null;
+            final r = routes.firstWhereOrNull((r) => r.id == routeId);
+            final d = r?.assignedDriver?.trim();
+            if (d == null || d.isEmpty) return null;
+            return d;
+          }
+
           final nextOrders = snapshot.docs
               .where((doc) {
                 final data = doc.data();
@@ -252,9 +260,24 @@ class OrdersNotifier extends Notifier<List<Order>> {
                 final o = Order.fromJson({...doc.data(), 'id': doc.id});
                 final derivedKey = deriveRouteKey(o);
                 final normalizedId = normalizeRouteId(derivedKey);
-                if (normalizedId == null || normalizedId.isEmpty) return o;
-                if (o.assignedRoute?.trim() == normalizedId) return o;
-                return o.copyWith(assignedRoute: normalizedId);
+                final normalizedDriver = normalizeDriverId(normalizedId);
+
+                final routeSame =
+                    (o.assignedRoute?.trim().isNotEmpty == true
+                        ? o.assignedRoute!.trim()
+                        : null) ==
+                    normalizedId;
+                final driverSame =
+                    (o.assignedDriver?.trim().isNotEmpty == true
+                        ? o.assignedDriver!.trim()
+                        : null) ==
+                    normalizedDriver;
+
+                if (routeSame && driverSame) return o;
+                return o.copyWith(
+                  assignedRoute: normalizedId,
+                  assignedDriver: normalizedDriver,
+                );
               })
               .toList();
 

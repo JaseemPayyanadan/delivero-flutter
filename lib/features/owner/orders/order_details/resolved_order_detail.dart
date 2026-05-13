@@ -66,7 +66,7 @@ class ResolvedOrderDetail {
         (effectiveRoute ?? route)?.name ??
         (order.assignedRoute?.trim().isNotEmpty == true
             ? order.assignedRoute!.trim()
-            : 'Unassigned');
+            : 'No route');
 
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
 

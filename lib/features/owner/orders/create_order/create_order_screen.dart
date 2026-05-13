@@ -658,7 +658,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 r.name == selected.assignedRoute,
                           )
                           ?.name ??
-                      (selected.assignedRoute ?? 'Unassigned')
+                      (selected.assignedRoute ?? 'No route')
                 : 'Loading route…',
             onChange: () => setState(() => _selectedCustomer = null),
           )

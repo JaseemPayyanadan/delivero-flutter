@@ -62,7 +62,7 @@ class RoutesHubOverviewCard extends StatelessWidget {
                     ? AppColors.warning
                     : AppColors.textLight,
                 value: routesWithoutDriver,
-                label: 'Unassigned',
+                label: 'No driver',
               ),
             ),
           ],

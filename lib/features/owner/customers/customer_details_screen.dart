@@ -186,8 +186,10 @@ class CustomerDetailsScreen extends ConsumerWidget {
       for (final FoodItem item in foodItems) item.id: item.price,
     };
 
-    final displayRoute =
-        route?.name ?? (customer.assignedRoute ?? 'Unassigned');
+    final displayRoute = route?.name ??
+        (customer.assignedRoute?.trim().isNotEmpty == true
+            ? customer.assignedRoute!.trim()
+            : 'No route');
     final rawAddress = customer.address.trim();
     final displayAddress = rawAddress.isEmpty
         ? 'Address not available'

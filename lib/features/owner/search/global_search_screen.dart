@@ -168,7 +168,7 @@ class _OrderHitTile extends StatelessWidget {
         route?.name ??
         (order.assignedRoute?.trim().isNotEmpty == true
             ? order.assignedRoute!.trim()
-            : 'Unassigned');
+            : 'No route');
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
