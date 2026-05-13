@@ -1,62 +1,116 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../data/models/user.dart';
-import 'hardcoded_users.dart';
 import '../../core/services/firebase_service.dart';
+import '../../data/models/driver.dart';
+import '../../data/models/user.dart';
 
+/// Authentication state for the phone + OTP flow.
+///
+/// `user` is set after we have a Firestore profile (`users/{uid}`). For new
+/// owner sign-ups a minimal profile is auto-created right after OTP — the
+/// onboarding wizard then collects the business name and other details.
 class AuthState {
   final User? user;
   final bool isLoading;
   final String? error;
 
-  AuthState({this.user, this.isLoading = false, this.error});
+  /// OTP that has been requested but not yet verified.
+  final String? pendingPhone;
+  final String? verificationId;
+  final int? resendToken;
+
+  const AuthState({
+    this.user,
+    this.isLoading = false,
+    this.error,
+    this.pendingPhone,
+    this.verificationId,
+    this.resendToken,
+  });
 
   bool get isAuthenticated => user != null;
 
-  AuthState copyWith({User? user, bool? isLoading, String? error}) {
+  AuthState copyWith({
+    User? user,
+    bool? isLoading,
+    Object? error = _sentinel,
+    Object? pendingPhone = _sentinel,
+    Object? verificationId = _sentinel,
+    Object? resendToken = _sentinel,
+  }) {
     return AuthState(
       user: user ?? this.user,
       isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
+      error: error == _sentinel ? this.error : error as String?,
+      pendingPhone: pendingPhone == _sentinel
+          ? this.pendingPhone
+          : pendingPhone as String?,
+      verificationId: verificationId == _sentinel
+          ? this.verificationId
+          : verificationId as String?,
+      resendToken: resendToken == _sentinel
+          ? this.resendToken
+          : resendToken as int?,
     );
   }
+
+  AuthState withClearedUser() {
+    return const AuthState();
+  }
+
+  static const _sentinel = Object();
 }
 
 class AuthNotifier extends Notifier<AuthState> {
   static const _kUserKey = 'auth_user';
-  static const _kLocalUsersKey = 'auth_local_users';
   SharedPreferences? _prefs;
   final _uuid = const Uuid();
 
+  /// Web-only handle to the active phone-auth confirmation flow. On mobile we
+  /// store the verification id on the state instead and rebuild the credential
+  /// in [verifyOtp].
+  fb.ConfirmationResult? _webConfirmation;
+
   @override
   AuthState build() {
-    // Note: build is sync in v3. Initial state is empty.
-    // Use an init method or read from storage on first use if needed.
-    return AuthState();
+    return const AuthState();
   }
 
   Future<void> init() async {
     debugPrint('[Auth] Initializing...');
     _prefs ??= await SharedPreferences.getInstance();
 
-    // Prefer Firebase authenticated session if available.
+    if (!FirebaseService.isInitialized) {
+      debugPrint('[Auth] Firebase not initialised; skipping session restore.');
+      return;
+    }
+
     try {
       final current = FirebaseService.auth.currentUser;
-      if (current != null) {
+      if (current != null && current.phoneNumber != null) {
         final user = await _loadUserFromFirestore(uid: current.uid);
         if (user != null) {
-          debugPrint('[Auth] Loaded Firebase user: ${user.email}');
+          debugPrint('[Auth] Loaded Firebase user: ${user.phone}');
           state = state.copyWith(user: user);
           await _prefs!.setString(_kUserKey, jsonEncode(user.toJson()));
           return;
         }
+        // Verified phone but no profile doc → auto-create a minimal owner
+        // profile. The onboarding wizard will then collect the rest.
+        await _autoCreateOwnerProfile(
+          uid: current.uid,
+          phone: current.phoneNumber!,
+        );
+        return;
       }
     } catch (e) {
       debugPrint('[Auth] Firebase session load skipped: $e');
@@ -66,275 +120,410 @@ class AuthNotifier extends Notifier<AuthState> {
     if (userJson != null) {
       try {
         final user = User.fromJson(jsonDecode(userJson));
-        debugPrint('[Auth] Loaded user: ${user.email}');
+        debugPrint('[Auth] Loaded cached user: ${user.phone}');
         state = state.copyWith(user: user);
       } catch (e) {
-        debugPrint('[Auth] Error loading user: $e');
+        debugPrint('[Auth] Error loading cached user: $e');
         await _prefs!.remove(_kUserKey);
       }
-    } else {
-      debugPrint('[Auth] No saved user found');
     }
   }
 
-  Future<void> login(String email, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
-    debugPrint('[Auth] Attempting login for $email');
-
-    try {
-      final normalizedEmail = email.toLowerCase().trim();
-      final user =
-          await _loginWithFirebase(normalizedEmail, password) ??
-          await _loginWithLocalFallback(normalizedEmail, password);
-
-      debugPrint('[Auth] Login successful: ${user.email}');
-      _prefs ??= await SharedPreferences.getInstance();
-      await _prefs!.setString(_kUserKey, jsonEncode(user.toJson()));
-      state = state.copyWith(user: user, isLoading: false);
-    } catch (e) {
-      debugPrint('[Auth] Login failed: $e');
+  /// Sends an OTP to [phoneE164] (must already be in `+CCNNNNNNNNNN` form).
+  ///
+  /// Stores `verificationId` in state on success so the OTP screen can call
+  /// [verifyOtp]. On Android, [verificationCompleted] may auto-sign-in. On
+  /// web, [signInWithPhoneNumber] is used because [verifyPhoneNumber] is not
+  /// supported there.
+  Future<void> sendOtp(String phoneE164, {bool forceResend = false}) async {
+    if (!FirebaseService.isInitialized) {
       state = state.copyWith(
+        error: 'Firebase is not configured.',
         isLoading: false,
-        error: e is Exception
-            ? e.toString().replaceFirst('Exception: ', '')
-            : 'Login failed',
       );
-    }
-  }
-
-  Future<void> registerOwner({
-    required String name,
-    required String email,
-    required String password,
-    required String factoryName,
-    String? phone,
-  }) async {
-    state = state.copyWith(isLoading: true, error: null);
-    final normalizedEmail = email.toLowerCase().trim();
-
-    try {
-      final user =
-          await _registerWithFirebase(
-            name: name,
-            email: normalizedEmail,
-            password: password,
-            factoryName: factoryName,
-            phone: phone,
-          ) ??
-          await _registerWithLocalFallback(
-            name: name,
-            email: normalizedEmail,
-            password: password,
-            factoryName: factoryName,
-            phone: phone,
-          );
-
-      _prefs ??= await SharedPreferences.getInstance();
-      await _prefs!.setString(_kUserKey, jsonEncode(user.toJson()));
-      state = state.copyWith(user: user, isLoading: false);
-    } catch (e) {
-      debugPrint('[Auth] Register failed: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e is Exception
-            ? e.toString().replaceFirst('Exception: ', '')
-            : 'Registration failed',
-      );
-    }
-  }
-
-  /// Creates a login for a driver without signing out the current user.
-  /// Uses a secondary Firebase app for Auth when Firebase is enabled.
-  Future<void> registerDriverAccount({
-    required String name,
-    required String email,
-    required String password,
-    required String driverId,
-    required String factoryId,
-    String? phone,
-  }) async {
-    final normalizedEmail = email.toLowerCase().trim();
-
-    await _registerDriverWithFirebase(
-          name: name,
-          email: normalizedEmail,
-          password: password,
-          driverId: driverId,
-          factoryId: factoryId,
-          phone: phone,
-        ) ??
-        await _registerDriverWithLocalFallback(
-          name: name,
-          email: normalizedEmail,
-          password: password,
-          driverId: driverId,
-          factoryId: factoryId,
-          phone: phone,
-        );
-  }
-
-  Future<String?> _registerDriverWithFirebase({
-    required String name,
-    required String email,
-    required String password,
-    required String driverId,
-    required String factoryId,
-    required String? phone,
-  }) async {
-    if (!FirebaseService.isInitialized) return null;
-
-    try {
-      late FirebaseApp regApp;
-      try {
-        regApp = Firebase.app('driver_registration');
-      } catch (_) {
-        regApp = await Firebase.initializeApp(
-          name: 'driver_registration',
-          options: Firebase.app().options,
-        );
-      }
-      final regAuth = fb.FirebaseAuth.instanceFor(app: regApp);
-      if (regAuth.currentUser != null) {
-        await regAuth.signOut();
-      }
-
-      final cred = await regAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      final uid = cred.user?.uid;
-      if (uid == null) {
-        throw Exception('Registration failed');
-      }
-      await regAuth.signOut();
-
-      final user = User(
-        id: uid,
-        email: email,
-        password: '',
-        name: name,
-        role: UserRole.delivery,
-        phone: phone,
-        address: null,
-        factoryId: factoryId,
-        linkedEntityId: driverId,
-        mustChangePassword: true,
-      );
-      await _saveUserToFirestore(uid: uid, user: user);
-      return uid;
-    } on fb.FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        throw Exception('Email is already in use');
-      }
-      if (e.code == 'invalid-email') {
-        throw Exception('Invalid email');
-      }
-      if (e.code == 'weak-password') {
-        throw Exception('Password is too weak (use at least 6 characters)');
-      }
-      throw Exception(e.message ?? 'Registration failed');
-    }
-  }
-
-  Future<String> _registerDriverWithLocalFallback({
-    required String name,
-    required String email,
-    required String password,
-    required String driverId,
-    required String factoryId,
-    required String? phone,
-  }) async {
-    final users = await _getLocalUsers();
-    final exists = users.any(
-      (u) => u.email.toLowerCase().trim() == email.trim(),
-    );
-    if (exists) {
-      throw Exception('Email is already in use');
-    }
-
-    final id = 'USR_${_uuid.v4().substring(0, 8).toUpperCase()}';
-    final user = User(
-      id: id,
-      email: email,
-      password: password,
-      name: name,
-      role: UserRole.delivery,
-      phone: phone,
-      address: null,
-      factoryId: factoryId,
-      linkedEntityId: driverId,
-      mustChangePassword: true,
-    );
-
-    await _saveLocalUsers([...users, user]);
-    return id;
-  }
-
-  /// After first login for new driver accounts ([User.mustChangePassword]).
-  Future<void> completeMandatoryPasswordChange(String newPassword) async {
-    final u = state.user;
-    if (u == null || !u.mustChangePassword) return;
-    if (newPassword.length < 6) {
-      throw Exception('Password must be at least 6 characters');
-    }
-
-    final isLocalId = u.id.startsWith('USR_');
-    if (FirebaseService.isInitialized && !isLocalId) {
-      final cu = FirebaseService.auth.currentUser;
-      if (cu == null || cu.uid != u.id) {
-        throw Exception('Session error. Please sign in again.');
-      }
-      try {
-        await cu.updatePassword(newPassword);
-      } on fb.FirebaseAuthException catch (e) {
-        if (e.code == 'weak-password') {
-          throw Exception('Password is too weak');
-        }
-        if (e.code == 'requires-recent-login') {
-          throw Exception('Please sign out and sign in again, then change your password.');
-        }
-        throw Exception(e.message ?? 'Could not update password');
-      }
-      final updated = u.copyWith(mustChangePassword: false, password: '');
-      await _saveUserToFirestore(uid: u.id, user: updated);
-      _prefs ??= await SharedPreferences.getInstance();
-      await _prefs!.setString(_kUserKey, jsonEncode(updated.toJson()));
-      state = state.copyWith(user: updated);
       return;
     }
 
-    final users = await _getLocalUsers();
-    final idx = users.indexWhere((x) => x.id == u.id);
-    if (idx < 0) {
-      throw Exception('Cannot update password for this account type.');
-    }
-    final row = users[idx].copyWith(
-      password: newPassword,
-      mustChangePassword: false,
+    state = state.copyWith(
+      isLoading: true,
+      error: null,
+      pendingPhone: phoneE164,
     );
-    users[idx] = row;
-    await _saveLocalUsers(users);
-    final sessionUser = row.copyWith(password: '');
-    _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setString(_kUserKey, jsonEncode(sessionUser.toJson()));
-    state = state.copyWith(user: sessionUser);
+
+    if (kIsWeb) {
+      try {
+        final platformAuth = FirebaseAuthPlatform.instanceFor(
+          app: FirebaseService.auth.app,
+          pluginConstants: FirebaseService.auth.pluginConstants,
+        );
+        final verifier = fb.RecaptchaVerifier(auth: platformAuth);
+        _webConfirmation = await FirebaseService.auth.signInWithPhoneNumber(
+          phoneE164,
+          verifier,
+        );
+        state = state.copyWith(
+          isLoading: false,
+          verificationId: _webConfirmation!.verificationId,
+        );
+      } on fb.FirebaseAuthException catch (e) {
+        debugPrint('[Auth] signInWithPhoneNumber failed: ${e.code}');
+        _webConfirmation = null;
+        state = state.copyWith(isLoading: false, error: _humanizePhoneError(e));
+      } catch (e) {
+        debugPrint('[Auth] signInWithPhoneNumber error: $e');
+        _webConfirmation = null;
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Could not send OTP. Please try again.',
+        );
+      }
+      return;
+    }
+
+    final completer = Completer<void>();
+
+    try {
+      await FirebaseService.auth.verifyPhoneNumber(
+        phoneNumber: phoneE164,
+        forceResendingToken: forceResend ? state.resendToken : null,
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (fb.PhoneAuthCredential credential) async {
+          try {
+            final cred = await FirebaseService.auth.signInWithCredential(
+              credential,
+            );
+            final uid = cred.user?.uid;
+            if (uid != null) {
+              await _completeSignIn(uid: uid, phone: phoneE164);
+            }
+          } catch (e) {
+            debugPrint('[Auth] Auto verification failed: $e');
+          } finally {
+            if (!completer.isCompleted) completer.complete();
+          }
+        },
+        verificationFailed: (fb.FirebaseAuthException e) {
+          debugPrint('[Auth] verifyPhoneNumber failed: ${e.code} ${e.message}');
+          state = state.copyWith(
+            isLoading: false,
+            error: _humanizePhoneError(e),
+          );
+          if (!completer.isCompleted) completer.complete();
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          state = state.copyWith(
+            isLoading: false,
+            verificationId: verificationId,
+            resendToken: resendToken,
+          );
+          if (!completer.isCompleted) completer.complete();
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          // Keep the verification id around for manual entry after auto-retrieval times out.
+          state = state.copyWith(verificationId: verificationId);
+        },
+      );
+      await completer.future;
+    } catch (e) {
+      debugPrint('[Auth] sendOtp error: $e');
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Could not send OTP. Please try again.',
+      );
+    }
+  }
+
+  /// Verifies the user-entered [smsCode] against the stored verification id.
+  Future<void> verifyOtp(String smsCode) async {
+    final phone = state.pendingPhone;
+    if (phone == null) {
+      state = state.copyWith(
+        error: 'OTP session expired. Please request a new code.',
+      );
+      return;
+    }
+    if (!kIsWeb && state.verificationId == null) {
+      state = state.copyWith(
+        error: 'OTP session expired. Please request a new code.',
+      );
+      return;
+    }
+    if (kIsWeb && _webConfirmation == null) {
+      state = state.copyWith(
+        error: 'OTP session expired. Please request a new code.',
+      );
+      return;
+    }
+
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final fb.UserCredential cred;
+      if (kIsWeb) {
+        cred = await _webConfirmation!.confirm(smsCode);
+        _webConfirmation = null;
+      } else {
+        final credential = fb.PhoneAuthProvider.credential(
+          verificationId: state.verificationId!,
+          smsCode: smsCode,
+        );
+        cred = await FirebaseService.auth.signInWithCredential(credential);
+      }
+      final uid = cred.user?.uid;
+      if (uid == null) {
+        throw Exception('Sign-in failed. Please try again.');
+      }
+      await _completeSignIn(uid: uid, phone: phone);
+    } on fb.FirebaseAuthException catch (e) {
+      debugPrint('[Auth] verifyOtp failed: ${e.code} ${e.message}');
+      state = state.copyWith(isLoading: false, error: _humanizeOtpError(e));
+    } catch (e) {
+      debugPrint('[Auth] verifyOtp error: $e');
+      state = state.copyWith(
+        isLoading: false,
+        error: e is Exception
+            ? e.toString().replaceFirst('Exception: ', '')
+            : 'Verification failed',
+      );
+    }
+  }
+
+  /// Called after successful Firebase phone sign-in. Loads/creates the
+  /// Firestore profile and routes the user to the correct shell:
+  ///
+  /// 1. If `users/{uid}` exists → set state.user and we're done.
+  /// 2. Else if a pending driver matches the phone → auto-link as delivery.
+  /// 3. Else → auto-create a minimal owner profile; onboarding fills the rest.
+  Future<void> _completeSignIn({
+    required String uid,
+    required String phone,
+  }) async {
+    try {
+      final existing = await _loadUserFromFirestore(uid: uid);
+      if (existing != null) {
+        await _persistSession(existing);
+        state = AuthState(user: existing);
+        return;
+      }
+
+      final linked = await _tryAutoLinkDriver(uid: uid, phone: phone);
+      if (linked != null) {
+        await _persistSession(linked);
+        state = AuthState(user: linked);
+        return;
+      }
+
+      await _autoCreateOwnerProfile(uid: uid, phone: phone);
+    } catch (e) {
+      debugPrint('[Auth] _completeSignIn error: $e');
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Could not load your profile. Please try again.',
+      );
+    }
+  }
+
+  /// Looks for a pending driver whose phone matches [phone]. If found,
+  /// transactionally links the Firebase UID and creates the `users/{uid}` doc.
+  Future<User?> _tryAutoLinkDriver({
+    required String uid,
+    required String phone,
+  }) async {
+    final snapshot = await FirebaseService.firestore
+        .collection('drivers')
+        .where('phone', isEqualTo: phone)
+        .limit(5)
+        .get();
+
+    final pending = snapshot.docs.firstWhereOrNull((doc) {
+      final data = doc.data();
+      final status = (data['status'] as String?) ?? 'pending';
+      final existingUserId = data['userId'] as String?;
+      return status == 'pending' &&
+          (existingUserId == null || existingUserId.isEmpty);
+    });
+    if (pending == null) return null;
+
+    final driverData = pending.data();
+    final driverId = pending.id;
+    final factoryId = driverData['factoryId'] as String? ?? '';
+    final driverName = driverData['name'] as String? ?? '';
+
+    final user = User(
+      id: uid,
+      phone: phone,
+      name: driverName,
+      role: UserRole.delivery,
+      factoryId: factoryId,
+      linkedEntityId: driverId,
+    );
+
+    final batch = FirebaseService.firestore.batch();
+    batch.set(
+      FirebaseService.firestore.collection('users').doc(uid),
+      {...user.toJson(), 'role': user.role.name},
+      SetOptions(merge: true),
+    );
+    batch
+        .update(FirebaseService.firestore.collection('drivers').doc(driverId), {
+          'userId': uid,
+          'isActive': true,
+          'status': DriverStatus.active.name,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+    await batch.commit();
+    return user;
+  }
+
+  /// Creates a minimal owner + factory + user record after a brand-new
+  /// phone sign-in. Names are intentionally left empty — the onboarding
+  /// wizard collects the business name (which is merged into the factory
+  /// doc) and the user can update their personal name in settings.
+  Future<void> _autoCreateOwnerProfile({
+    required String uid,
+    required String phone,
+  }) async {
+    try {
+      final factoryId = 'FAC_${_uuid.v4().substring(0, 8).toUpperCase()}';
+      final ownerId = 'OWN_${_uuid.v4().substring(0, 8).toUpperCase()}';
+
+      final batch = FirebaseService.firestore.batch();
+      batch.set(
+        FirebaseService.firestore.collection('factories').doc(factoryId),
+        {
+          'id': factoryId,
+          'name': '',
+          'ownerId': uid,
+          'plan': SubscriptionPlan.free.name,
+          'createdAt': FieldValue.serverTimestamp(),
+        },
+      );
+      batch.set(FirebaseService.firestore.collection('owners').doc(ownerId), {
+        'id': ownerId,
+        'name': '',
+        'phone': phone,
+        'factoryId': factoryId,
+        'userId': uid,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      final user = User(
+        id: uid,
+        phone: phone,
+        name: '',
+        role: UserRole.owner,
+        plan: SubscriptionPlan.free,
+        factoryId: factoryId,
+        linkedEntityId: ownerId,
+      );
+
+      batch.set(
+        FirebaseService.firestore.collection('users').doc(uid),
+        {...user.toJson(), 'role': user.role.name},
+        SetOptions(merge: true),
+      );
+      await batch.commit();
+
+      await _persistSession(user);
+      state = AuthState(user: user);
+    } catch (e) {
+      debugPrint('[Auth] _autoCreateOwnerProfile error: $e');
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Could not create your account. Please try again.',
+      );
+    }
+  }
+
+  /// Creates a pending driver entity. The driver becomes "active" the first
+  /// time they sign in with phone + OTP (auto-linking).
+  Future<Driver> inviteDriver({
+    required String name,
+    required String phoneE164,
+    required String factoryId,
+    required VehicleType vehicleType,
+    String? currentRoute,
+  }) async {
+    final id = const Uuid().v4();
+    final now = DateTime.now();
+    final driver = Driver(
+      id: id,
+      factoryId: factoryId,
+      name: name,
+      phone: phoneE164,
+      vehicleType: vehicleType,
+      isActive: false,
+      currentRoute: currentRoute,
+      createdAt: now,
+      updatedAt: now,
+      status: DriverStatus.pending,
+    );
+
+    await FirebaseService.firestore
+        .collection('drivers')
+        .doc(id)
+        .set(driver.toJson());
+    return driver;
+  }
+
+  /// Updates the signed-in user's display name. Writes to `users/{uid}` and,
+  /// for owners, the linked `owners/{ownerId}` doc. Mirrors the change into
+  /// local state + the cached session so the dashboard sees it instantly.
+  Future<void> updateOwnerName(String name) async {
+    final user = state.user;
+    if (user == null) return;
+
+    final trimmed = name.trim();
+    if (trimmed == user.name.trim()) return;
+
+    final updated = user.copyWith(name: trimmed);
+
+    try {
+      if (FirebaseService.isInitialized) {
+        final batch = FirebaseService.firestore.batch();
+        batch.set(
+          FirebaseService.firestore.collection('users').doc(user.id),
+          {
+            'name': trimmed,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        final linkedId = user.linkedEntityId;
+        if (linkedId != null && linkedId.trim().isNotEmpty) {
+          final collection =
+              user.role == UserRole.owner ? 'owners' : 'drivers';
+          batch.set(
+            FirebaseService.firestore.collection(collection).doc(linkedId),
+            {
+              'name': trimmed,
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+        }
+        await batch.commit();
+      }
+
+      await _persistSession(updated);
+      state = state.copyWith(user: updated);
+    } catch (e) {
+      debugPrint('[Auth] updateOwnerName error: $e');
+      rethrow;
+    }
   }
 
   Future<void> completeOnboarding() async {
     if (state.user == null) return;
 
-    final updatedUser = state.user!.copyWith(hasFinishedOnboarding: true);
-
+    final updated = state.user!.copyWith(hasFinishedOnboarding: true);
     try {
-      if (FirebaseService.isInitialized && !state.user!.id.startsWith('USR_')) {
-        await _saveUserToFirestore(uid: state.user!.id, user: updatedUser);
+      if (FirebaseService.isInitialized) {
+        await _saveUserToFirestore(uid: state.user!.id, user: updated);
       }
-
-      _prefs ??= await SharedPreferences.getInstance();
-      await _prefs!.setString(_kUserKey, jsonEncode(updatedUser.toJson()));
-
-      state = state.copyWith(user: updatedUser);
-      debugPrint('[Auth] Onboarding completed for ${updatedUser.email}');
+      await _persistSession(updated);
+      state = state.copyWith(user: updated);
+      debugPrint('[Auth] Onboarding completed for ${updated.phone}');
     } catch (e) {
       debugPrint('[Auth] Error completing onboarding: $e');
     }
@@ -343,10 +532,28 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> logout() async {
     _prefs ??= await SharedPreferences.getInstance();
     await _prefs!.remove(_kUserKey);
+    _webConfirmation = null;
     try {
       await FirebaseService.auth.signOut();
     } catch (_) {}
-    state = AuthState();
+    state = const AuthState();
+  }
+
+  void clearError() {
+    if (state.error != null) {
+      state = state.copyWith(error: null);
+    }
+  }
+
+  void cancelPendingOtp() {
+    _webConfirmation = null;
+    state = state.copyWith(
+      verificationId: null,
+      pendingPhone: null,
+      resendToken: null,
+      error: null,
+      isLoading: false,
+    );
   }
 
   Future<User?> _loadUserFromFirestore({required String uid}) async {
@@ -363,238 +570,49 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> _saveUserToFirestore({required String uid, required User user}) {
     return FirebaseService.firestore.collection('users').doc(uid).set({
       ...user.toJson(),
-      // Ensure role always persists as string.
       'role': user.role.name,
     }, SetOptions(merge: true));
   }
 
-  Future<User?> _loginWithFirebase(String email, String password) async {
-    if (!FirebaseService.isInitialized) return null;
-
-    try {
-      final cred = await FirebaseService.auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      final uid = cred.user?.uid;
-      if (uid == null) {
-        throw Exception('Login failed');
-      }
-
-      final fromDb = await _loadUserFromFirestore(uid: uid);
-      if (fromDb != null) return fromDb;
-
-      // If user exists in Auth but not in Firestore, default them to owner.
-      final fallback = User(
-        id: uid,
-        email: email,
-        password: '',
-        name: email.split('@').first,
-        role: UserRole.owner,
-        phone: null,
-        address: null,
-        factoryId: 'FAC_00001',
-      );
-      await _saveUserToFirestore(uid: uid, user: fallback);
-      return fallback;
-    } on fb.FirebaseAuthException catch (e) {
-      // If Firebase isn't configured or user isn't found, return null so local fallback can try.
-      if (e.code == 'invalid-credential' ||
-          e.code == 'user-not-found' ||
-          e.code == 'wrong-password' ||
-          e.code == 'invalid-email') {
-        throw Exception('Invalid email or password');
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<User> _loginWithLocalFallback(String email, String password) async {
-    // Simulate small delay for parity with previous UX.
-    await Future.delayed(const Duration(milliseconds: 350));
-
-    final local = await _getLocalUsers();
-    final user = [...local, ...hardcodedUsers].firstWhere(
-      (u) => u.email.toLowerCase() == email && u.password == password,
-      orElse: () => throw Exception('Invalid email or password'),
-    );
-
-    // Never persist password in authenticated state.
-    return User(
-      id: user.id,
-      email: user.email,
-      password: '',
-      name: user.name,
-      role: user.role,
-      phone: user.phone,
-      address: user.address,
-      avatar: user.avatar,
-      factoryId: user.factoryId,
-      linkedEntityId: user.linkedEntityId,
-      hasFinishedOnboarding: user.hasFinishedOnboarding,
-      mustChangePassword: user.mustChangePassword,
-    );
-  }
-
-  Future<User?> _registerWithFirebase({
-    required String name,
-    required String email,
-    required String password,
-    required String factoryName,
-    required String? phone,
-  }) async {
-    if (!FirebaseService.isInitialized) return null;
-
-    try {
-      // Ensure we don't accidentally "upgrade" an anonymous session in a weird state.
-      if (FirebaseService.auth.currentUser?.isAnonymous == true) {
-        await FirebaseService.auth.signOut();
-      }
-
-      final cred = await FirebaseService.auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      final uid = cred.user?.uid;
-      if (uid == null) {
-        throw Exception('Registration failed');
-      }
-
-      // 1. Create the Factory first
-      final factoryId = 'FAC_${_uuid.v4().substring(0, 8).toUpperCase()}';
-      await FirebaseService.firestore
-          .collection('factories')
-          .doc(factoryId)
-          .set({
-            'id': factoryId,
-            'name': factoryName,
-            'ownerId': uid,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-
-      // 2. Create the Owner entity
-      final ownerId = 'OWN_${_uuid.v4().substring(0, 8).toUpperCase()}';
-      await FirebaseService.firestore.collection('owners').doc(ownerId).set({
-        'id': ownerId,
-        'name': name,
-        'email': email,
-        'phone': phone,
-        'factoryId': factoryId,
-        'userId': uid,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      final user = User(
-        id: uid,
-        email: email,
-        password: '',
-        name: name,
-        role: UserRole.owner,
-        phone: phone,
-        address: null,
-        factoryId: factoryId,
-        linkedEntityId: ownerId,
-      );
-
-      await _saveUserToFirestore(uid: uid, user: user);
-      return user;
-    } on fb.FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        throw Exception('Email is already in use');
-      }
-      if (e.code == 'invalid-email') {
-        throw Exception('Invalid email');
-      }
-      if (e.code == 'weak-password') {
-        throw Exception('Password is too weak');
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<User> _registerWithLocalFallback({
-    required String name,
-    required String email,
-    required String password,
-    required String factoryName,
-    required String? phone,
-  }) async {
-    final users = await _getLocalUsers();
-    final exists = users.any(
-      (u) => u.email.toLowerCase().trim() == email.trim(),
-    );
-    if (exists) {
-      throw Exception('Email is already in use');
-    }
-
-    final factoryId = 'FAC_${_uuid.v4().substring(0, 8).toUpperCase()}';
-    final ownerId = 'OWN_${_uuid.v4().substring(0, 8).toUpperCase()}';
-
-    final id = 'USR_${_uuid.v4().substring(0, 8).toUpperCase()}';
-    final user = User(
-      id: id,
-      email: email,
-      password: password, // stored only for local fallback login
-      name: name,
-      role: UserRole.owner,
-      phone: phone,
-      address: null,
-      factoryId: factoryId,
-      linkedEntityId: ownerId,
-    );
-
-    await _saveLocalUsers([...users, user]);
-
-    // Never persist password in authenticated state.
-    return User(
-      id: user.id,
-      email: user.email,
-      password: '',
-      name: user.name,
-      role: user.role,
-      phone: user.phone,
-      address: user.address,
-      avatar: user.avatar,
-      factoryId: user.factoryId,
-      linkedEntityId: user.linkedEntityId,
-      hasFinishedOnboarding: user.hasFinishedOnboarding,
-      mustChangePassword: user.mustChangePassword,
-    );
-  }
-
-  Future<List<User>> _getLocalUsers() async {
+  Future<void> _persistSession(User user) async {
     _prefs ??= await SharedPreferences.getInstance();
-    final raw = _prefs!.getString(_kLocalUsersKey);
-    if (raw == null || raw.trim().isEmpty) return [];
+    await _prefs!.setString(_kUserKey, jsonEncode(user.toJson()));
+  }
 
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return [];
-      return decoded
-          .whereType<Map<String, dynamic>>()
-          .map((e) => User.fromJson(e))
-          .toList();
-    } catch (_) {
-      return [];
+  String _humanizePhoneError(fb.FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-phone-number':
+        return 'That phone number looks invalid. Check the country code.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      case 'quota-exceeded':
+        return 'SMS quota exceeded. Please try again later.';
+      default:
+        return e.message ?? 'Could not send OTP.';
     }
   }
 
-  Future<void> _saveLocalUsers(List<User> users) async {
-    _prefs ??= await SharedPreferences.getInstance();
-    final payload = users
-        .map(
-          (u) => {
-            ...u.toJson(),
-            // local fallback stores password for login parity only
-            'password': u.password,
-          },
-        )
-        .toList();
-    await _prefs!.setString(_kLocalUsersKey, jsonEncode(payload));
+  String _humanizeOtpError(fb.FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-verification-code':
+        return 'That code is incorrect. Please try again.';
+      case 'session-expired':
+      case 'code-expired':
+        return 'Code expired. Please request a new one.';
+      default:
+        return e.message ?? 'Verification failed.';
+    }
+  }
+}
+
+extension _FirstWhereOrNullDocs<T>
+    on List<QueryDocumentSnapshot<Map<String, dynamic>>> {
+  QueryDocumentSnapshot<Map<String, dynamic>>? firstWhereOrNull(
+    bool Function(QueryDocumentSnapshot<Map<String, dynamic>>) test,
+  ) {
+    for (final element in this) {
+      if (test(element)) return element;
+    }
+    return null;
   }
 }

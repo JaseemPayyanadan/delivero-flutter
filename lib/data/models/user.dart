@@ -1,97 +1,96 @@
 enum UserRole { owner, delivery }
 
+/// Workspace billing tier. New sign-ups start on [free].
+enum SubscriptionPlan {
+  free,
+  pro,
+}
+
 class User {
   final String id;
-  final String email;
-  final String password;
+  final String phone;
   final String name;
   final UserRole role;
-  final String? phone;
+  final SubscriptionPlan plan;
   final String? address;
   final String? avatar;
   final String? factoryId;
   final String? linkedEntityId;
   final bool hasFinishedOnboarding;
-  /// When true (e.g. new driver accounts), the app prompts for a password change after login.
-  final bool mustChangePassword;
 
   const User({
     required this.id,
-    required this.email,
-    required this.password,
+    required this.phone,
     required this.name,
     required this.role,
-    this.phone,
+    this.plan = SubscriptionPlan.free,
     this.address,
     this.avatar,
     this.factoryId,
     this.linkedEntityId,
     this.hasFinishedOnboarding = false,
-    this.mustChangePassword = false,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'email': email,
-      'password': password,
+      'phone': phone,
       'name': name,
       'role': role.name,
-      'phone': phone,
+      'plan': plan.name,
       'address': address,
       'avatar': avatar,
       'factoryId': factoryId,
       'linkedEntityId': linkedEntityId,
       'hasFinishedOnboarding': hasFinishedOnboarding,
-      'mustChangePassword': mustChangePassword,
     };
+  }
+
+  static SubscriptionPlan _planFromJson(Map<String, dynamic> json) {
+    final raw = json['plan'] as String?;
+    if (raw == null) return SubscriptionPlan.free;
+    return SubscriptionPlan.values.asNameMap()[raw] ?? SubscriptionPlan.free;
   }
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] as String,
-      email: json['email'] as String,
-      password: (json['password'] as String?) ?? '',
-      name: json['name'] as String,
-      role: UserRole.values.byName(json['role'] as String),
-      phone: json['phone'] as String?,
+      phone: (json['phone'] as String?) ?? '',
+      name: (json['name'] as String?) ?? '',
+      role: UserRole.values.byName((json['role'] as String?) ?? 'owner'),
+      plan: _planFromJson(json),
       address: json['address'] as String?,
       avatar: json['avatar'] as String?,
       factoryId: json['factoryId'] as String?,
       linkedEntityId: json['linkedEntityId'] as String?,
       hasFinishedOnboarding: (json['hasFinishedOnboarding'] as bool?) ?? false,
-      mustChangePassword: (json['mustChangePassword'] as bool?) ?? false,
     );
   }
 
   User copyWith({
     String? id,
-    String? email,
-    String? password,
+    String? phone,
     String? name,
     UserRole? role,
-    String? phone,
+    SubscriptionPlan? plan,
     String? address,
     String? avatar,
     String? factoryId,
     String? linkedEntityId,
     bool? hasFinishedOnboarding,
-    bool? mustChangePassword,
   }) {
     return User(
       id: id ?? this.id,
-      email: email ?? this.email,
-      password: password ?? this.password,
+      phone: phone ?? this.phone,
       name: name ?? this.name,
       role: role ?? this.role,
-      phone: phone ?? this.phone,
+      plan: plan ?? this.plan,
       address: address ?? this.address,
       avatar: avatar ?? this.avatar,
       factoryId: factoryId ?? this.factoryId,
       linkedEntityId: linkedEntityId ?? this.linkedEntityId,
       hasFinishedOnboarding:
           hasFinishedOnboarding ?? this.hasFinishedOnboarding,
-      mustChangePassword: mustChangePassword ?? this.mustChangePassword,
     );
   }
 }

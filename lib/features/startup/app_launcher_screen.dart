@@ -5,11 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/router.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/delivero_gradient_background.dart';
 
 const Duration _kMinSplashDuration = Duration(milliseconds: 1500);
-const Duration _kFadeInDuration = Duration(milliseconds: 450);
-const Duration _kPulseDuration = Duration(milliseconds: 1400);
+const Duration _kFadeInDuration = Duration(milliseconds: 500);
+const Duration _kPulseDuration = Duration(milliseconds: 1600);
 
 class AppLauncherScreen extends ConsumerStatefulWidget {
   const AppLauncherScreen({super.key});
@@ -32,7 +31,7 @@ class _AppLauncherScreenState extends ConsumerState<AppLauncherScreen>
       vsync: this,
       duration: _kPulseDuration,
     )..repeat(reverse: true);
-    _pulse = Tween<double>(begin: 0.96, end: 1.04).animate(
+    _pulse = Tween<double>(begin: 0.98, end: 1.02).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
     );
 
@@ -40,8 +39,6 @@ class _AppLauncherScreenState extends ConsumerState<AppLauncherScreen>
       if (!mounted) return;
       setState(() => _visible = true);
 
-      // Keep splash visible for a minimum duration to avoid flicker,
-      // then ask the router to re-evaluate redirect targets.
       _minSplashTimer = Timer(_kMinSplashDuration, () {
         if (!mounted) return;
         ref.invalidate(routerProvider);
@@ -60,21 +57,53 @@ class _AppLauncherScreenState extends ConsumerState<AppLauncherScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: DeliveroGradientBackground(
-        glowTop: 140,
-        child: SafeArea(
-          child: Center(
-            child: AnimatedOpacity(
-              duration: _kFadeInDuration,
-              curve: Curves.easeOut,
-              opacity: _visible ? 1 : 0,
-              child: ScaleTransition(
-                scale: _pulse,
-                child: const _LauncherContent(),
+      body: Stack(
+        children: [
+          const Positioned(
+            top: -160,
+            right: -140,
+            child: _SoftGlow(
+              size: 320,
+              color: AppColors.primary,
+              opacity: 0.08,
+            ),
+          ),
+          const Positioned(
+            bottom: -180,
+            left: -120,
+            child: _SoftGlow(
+              size: 300,
+              color: AppColors.info,
+              opacity: 0.06,
+            ),
+          ),
+          SafeArea(
+            child: Center(
+              child: AnimatedOpacity(
+                duration: _kFadeInDuration,
+                curve: Curves.easeOut,
+                opacity: _visible ? 1 : 0,
+                child: ScaleTransition(
+                  scale: _pulse,
+                  child: const _LauncherContent(),
+                ),
               ),
             ),
           ),
-        ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: AnimatedOpacity(
+                duration: _kFadeInDuration,
+                opacity: _visible ? 1 : 0,
+                child: const _LauncherFooter(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -88,41 +117,106 @@ class _LauncherContent extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(24),
-          ),
+        Hero(
+          tag: 'app_logo',
           child: Image.asset(
             'assets/images/logo.png',
             width: 220,
-            height: 56,
+            height: 64,
             fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Text(
+                'DELIVERO',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 3,
+                ),
+              );
+            },
           ),
         ),
         const SizedBox(height: 14),
-        Text(
+        const Text(
           'Delivery, simplified',
           style: TextStyle(
-            color: AppColors.surface.withValues(alpha: 0.85),
+            color: AppColors.textSecondary,
             fontWeight: FontWeight.w700,
-            fontSize: 12,
-            letterSpacing: 0.2,
+            fontSize: 13,
+            letterSpacing: 0.3,
           ),
         ),
-        const SizedBox(height: 18),
-        SizedBox(
+        const SizedBox(height: 28),
+        const SizedBox(
           width: 22,
           height: 22,
           child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              AppColors.surface.withValues(alpha: 0.9),
-            ),
+            strokeWidth: 2.2,
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _LauncherFooter extends StatelessWidget {
+  const _LauncherFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 22),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 3,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Powered by Delivero',
+            style: TextStyle(
+              color: AppColors.textLight,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SoftGlow extends StatelessWidget {
+  final double size;
+  final Color color;
+  final double opacity;
+
+  const _SoftGlow({
+    required this.size,
+    required this.color,
+    required this.opacity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(alpha: opacity),
+        ),
+      ),
     );
   }
 }

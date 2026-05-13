@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/models/user.dart';
-import '../features/auth/login_screen.dart';
-import '../features/auth/register_screen.dart';
+import '../features/auth/otp_verify_screen.dart';
+import '../features/auth/phone_login_screen.dart';
 import '../features/delivery/delivery_shell.dart';
 import '../features/delivery/order_details/driver_order_details_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
@@ -39,7 +39,7 @@ class RouterNotifier extends ChangeNotifier {
     final isAtSplash = loc == '/splash';
     final isAtIntro = loc == '/intro';
     final isAtLogin = loc == '/login';
-    final isAtRegister = loc == '/register';
+    final isAtOtp = loc == '/otp';
     final isAtOnboarding = loc == '/onboarding';
     final isAtOwner = loc.startsWith('/owner');
     final isAtDelivery = loc.startsWith('/delivery');
@@ -48,21 +48,20 @@ class RouterNotifier extends ChangeNotifier {
       return isAtSplash ? null : '/splash';
     }
 
-    // 1. App Intro check
     if (!startupState.hasSeenAppIntro) {
       return isAtIntro ? null : '/intro';
     }
 
-    // 2. Auth check
     if (!authState.isAuthenticated) {
-      return (isAtLogin || isAtRegister) ? null : '/login';
+      // Pre-auth flows: phone-entry and OTP screens.
+      if (isAtLogin) return null;
+      if (isAtOtp && authState.pendingPhone != null) return null;
+      return '/login';
     }
 
-    // 3. Onboarding check (Only for Owners)
+    // Owner onboarding (first-time setup wizard).
     if (authState.user!.role == UserRole.owner &&
         !authState.user!.hasFinishedOnboarding) {
-      // Allow access to the specific setup routes while onboarding is incomplete.
-      // Otherwise users would be redirected back to onboarding immediately.
       final isAllowedSetupPath =
           loc.startsWith('/owner/routes') ||
           loc.startsWith('/owner/customers') ||
@@ -71,7 +70,6 @@ class RouterNotifier extends ChangeNotifier {
       return '/onboarding';
     }
 
-    // 4. Role check
     final role = authState.user!.role;
     if (role == UserRole.owner) {
       return isAtOwner ? null : '/owner';
@@ -101,10 +99,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/intro',
         builder: (context, state) => const AppIntroScreen(),
       ),
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
-        path: '/register',
-        builder: (context, state) => const RegisterScreen(),
+        path: '/login',
+        builder: (context, state) => const PhoneLoginScreen(),
+      ),
+      GoRoute(
+        path: '/otp',
+        builder: (context, state) => const OtpVerifyScreen(),
       ),
       GoRoute(
         path: '/onboarding',
