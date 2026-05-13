@@ -1,10 +1,9 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:intl_phone_field/phone_number.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../../app/providers.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -48,23 +47,6 @@ String _vehicleAsset(VehicleType type) {
     case VehicleType.van:
       return 'assets/images/scooter.webp';
   }
-}
-
-String _suggestDriverEmail(String name) {
-  var slug = name
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9]+'), '.')
-      .replaceAll(RegExp(r'^\.+|\.+$'), '');
-  if (slug.isEmpty) slug = 'driver';
-  final tail = Random.secure().nextInt(9000) + 1000;
-  return '$slug.drv$tail@delivero.driver';
-}
-
-String _generateDriverPassword() {
-  const chars =
-      'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  final r = Random.secure();
-  return List.generate(10, (_) => chars[r.nextInt(chars.length)]).join();
 }
 
 String _digitsOnlyPhone(String phone) {
@@ -159,20 +141,18 @@ Future<void> showDriverLoginShareDialog({
   );
 }
 
-/// Resend login email via WhatsApp (password is not stored in the app).
+/// Re-send the sign-in instructions to a driver via WhatsApp. Drivers sign in
+/// with their phone + OTP, so all we need to share is the phone number.
 Future<void> showReshareDriverLoginDialog(
   BuildContext context, {
   required Driver driver,
 }) async {
-  final email = driver.email?.trim();
-  if (email == null || email.isEmpty) return;
   final message =
-      'Hi ${driver.name},\n\nYour Delivero driver app login email:\n\n$email\n\n'
-      'Open the Delivero app and sign in with this email and your password.\n\n'
-      'Forgot password? On the sign-in screen tap "Forgot password?" or contact your manager.';
+      'Hi ${driver.name},\n\nYour Delivero driver login is your phone number:\n\n${driver.phone}\n\n'
+      'Open the Delivero app, tap "Sign in", enter this number and the OTP we send to confirm.';
   await showDriverLoginShareDialog(
     context: context,
-    title: 'Share login',
+    title: 'Share sign-in details',
     message: message,
     phone: driver.phone,
   );
@@ -204,32 +184,27 @@ class AddEditDriverSheet extends ConsumerStatefulWidget {
 class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _emailController;
-  late final TextEditingController _passwordController;
+  PhoneNumber? _phoneNumber;
+  String _initialPhoneE164 = '';
   late VehicleType _vehicle;
   String? _selectedRouteId;
-  var _obscurePassword = true;
-  var _createLogin = false;
   var _submitting = false;
 
   bool get _isEdit => widget.driver != null;
-
-  bool get _canOfferLogin =>
-      !_isEdit || (widget.driver!.email == null || widget.driver!.email!.isEmpty);
-
-  bool get _hasExistingLogin =>
+  bool get _isLinked =>
       _isEdit &&
-      widget.driver!.email != null &&
-      widget.driver!.email!.isNotEmpty;
+      widget.driver!.status == DriverStatus.active &&
+      (widget.driver!.userId?.isNotEmpty ?? false);
 
   @override
   void initState() {
     super.initState();
     final d = widget.driver;
     _nameController = TextEditingController(text: d?.name);
-    _phoneController = TextEditingController(text: d?.phone);
-    _emailController = TextEditingController();
-    _passwordController = TextEditingController();
+    final initialPhone = d?.phone ?? '';
+    _initialPhoneE164 = initialPhone;
+    // IntlPhoneField needs just the national number for `initialValue`.
+    _phoneController = TextEditingController(text: _nationalPart(initialPhone));
     _vehicle = d?.vehicleType ?? VehicleType.bike;
     _selectedRouteId = d?.currentRoute;
   }
@@ -238,154 +213,74 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
-  void _fillGeneratedCredentials() {
-    final email = _suggestDriverEmail(_nameController.text);
-    final password = _generateDriverPassword();
-    setState(() {
-      _emailController.text = email;
-      _passwordController.text = password;
-      _createLogin = true;
-    });
-    try {
-      HapticFeedback.selectionClick();
-    } catch (_) {}
-  }
-
-  Future<void> _showCredentialsDialog({
-    required String name,
-    required String email,
-    required String password,
-    required String phone,
-  }) async {
-    if (!mounted) return;
-    final message =
-        'Hi $name,\n\nYour Delivero driver app login:\n\nEmail: $email\nPassword: $password\n\nUse these in the Delivero app to sign in.';
-    await showDriverLoginShareDialog(
-      context: context,
-      title: 'Share login details',
-      message: message,
-      phone: phone,
-    );
-  }
-
-  bool _isValidEmail(String value) {
-    return RegExp(
-      r'^[^@]+@[^@]+\.[^@]+$',
-    ).hasMatch(value.trim());
+  String _nationalPart(String e164) {
+    if (e164.isEmpty) return '';
+    // Strip the leading + and the first 1-3 digit country code so the field
+    // shows only the national number portion.
+    final digits = e164.replaceAll(RegExp(r'\D'), '');
+    if (digits.length <= 4) return digits;
+    // Best effort: assume the last 10 digits are the national number for IN.
+    return digits.length > 10
+        ? digits.substring(digits.length - 10)
+        : digits;
   }
 
   Future<void> _onSave() async {
+    FocusScope.of(context).unfocus();
     final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
-    if (name.isEmpty || phone.isEmpty) {
+    final phone = _phoneNumber;
+    if (name.isEmpty || phone == null || phone.number.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter name and phone.')),
+        const SnackBar(content: Text('Enter name and phone number.')),
       );
       return;
+    }
+
+    final phoneE164 =
+        '+${phone.countryCode.replaceAll('+', '')}${phone.number}';
+
+    if (_isLinked &&
+        _initialPhoneE164.isNotEmpty &&
+        phoneE164 != _initialPhoneE164) {
+      final confirmed = await _confirmLinkedPhoneChange();
+      if (!mounted || confirmed != true) return;
     }
 
     final factoryId =
         await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
     if (!mounted) return;
 
-    final emailTrim = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    if (_createLogin && _canOfferLogin) {
-      if (!_isValidEmail(emailTrim)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter a valid email for the driver login.')),
-        );
-        return;
-      }
-      if (password.length < 6) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password must be at least 6 characters.'),
-          ),
-        );
-        return;
-      }
-    }
-
     setState(() => _submitting = true);
-
-    final d = widget.driver;
-    final driverId = d?.id ?? const Uuid().v4();
-    final newDriver = Driver(
-      id: driverId,
-      factoryId: factoryId,
-      name: name,
-      email: _createLogin && _canOfferLogin
-          ? emailTrim.toLowerCase()
-          : d?.email,
-      phone: phone,
-      vehicleType: _vehicle,
-      licenseNumber: d?.licenseNumber,
-      isActive: d?.isActive ?? true,
-      currentRoute: _selectedRouteId,
-      createdAt: d?.createdAt ?? DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
 
     try {
       if (_isEdit) {
-        if (_createLogin && _canOfferLogin) {
-          await ref.read(authProvider.notifier).registerDriverAccount(
-                name: name,
-                email: emailTrim,
-                password: password,
-                driverId: driverId,
-                factoryId: factoryId,
-                phone: phone,
-              );
-          ref.read(driversProvider.notifier).updateDriver(newDriver);
-          if (mounted) {
-            await _showCredentialsDialog(
-              name: name,
-              email: emailTrim.toLowerCase(),
-              password: password,
-              phone: phone,
-            );
-          }
-          if (mounted) Navigator.pop(context);
-        } else {
-          ref.read(driversProvider.notifier).updateDriver(newDriver);
-          if (mounted) Navigator.pop(context);
-        }
+        final d = widget.driver!;
+        final updated = d.copyWith(
+          name: name,
+          phone: phoneE164,
+          vehicleType: _vehicle,
+          currentRoute: _selectedRouteId,
+          updatedAt: DateTime.now(),
+        );
+        ref.read(driversProvider.notifier).updateDriver(updated);
+        if (mounted) Navigator.pop(context);
       } else {
-        ref.read(driversProvider.notifier).addDriver(newDriver);
-        if (_createLogin) {
-          try {
-            await ref.read(authProvider.notifier).registerDriverAccount(
-                  name: name,
-                  email: emailTrim,
-                  password: password,
-                  driverId: driverId,
-                  factoryId: factoryId,
-                  phone: phone,
-                );
-            if (mounted) {
-              await _showCredentialsDialog(
-                name: name,
-                email: emailTrim.toLowerCase(),
-                password: password,
-                phone: phone,
-              );
-            }
-            if (mounted) Navigator.pop(context);
-          } catch (e) {
-            ref.read(driversProvider.notifier).deleteDriver(driverId);
-            rethrow;
-          }
-        } else {
-          if (mounted) Navigator.pop(context);
-        }
+        final invited = await ref
+            .read(authProvider.notifier)
+            .inviteDriver(
+              name: name,
+              phoneE164: phoneE164,
+              factoryId: factoryId,
+              vehicleType: _vehicle,
+              currentRoute: _selectedRouteId,
+            );
+
+        if (!mounted) return;
+        await _showInviteShareDialog(driver: invited);
+        if (mounted) Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -402,6 +297,54 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  Future<bool?> _confirmLinkedPhoneChange() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Change linked phone?'),
+        content: const Text(
+          'This driver already signs in with their current number. '
+          'Changing it will not transfer the existing account — they will '
+          'need to sign in with the new number to re-link.',
+          style: TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Keep current',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            child: const Text(
+              'Change anyway',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showInviteShareDialog({required Driver driver}) async {
+    final message =
+        'Hi ${driver.name},\n\nYou\'ve been invited to Delivero as a driver.\n\n'
+        'Open the Delivero app, tap "Sign in", enter this number:\n${driver.phone}\n'
+        'and verify the OTP. That\'s it — you\'re in.';
+    await showDriverLoginShareDialog(
+      context: context,
+      title: 'Share sign-in details',
+      message: message,
+      phone: driver.phone,
+    );
   }
 
   @override
@@ -467,7 +410,8 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'Vehicle type sets the icon on route cards and driver lists.',
+                      'Drivers sign in to Delivero with their phone number and OTP. '
+                      'Use a phone they have access to.',
                       style: context.appTextStyles.caption.copyWith(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
@@ -484,13 +428,18 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    TextField(
+                    IntlPhoneField(
                       controller: _phoneController,
+                      initialCountryCode: 'IN',
+                      disableLengthCheck: false,
+                      invalidNumberMessage:
+                          'Please enter a valid mobile number',
+                      dropdownIconPosition: IconPosition.trailing,
                       decoration: _driverSheetInputDecoration(
                         label: 'Phone',
-                        hint: '+91 00000 00000',
+                        hint: '00000 00000',
                       ),
-                      keyboardType: TextInputType.phone,
+                      onChanged: (phone) => _phoneNumber = phone,
                     ),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<VehicleType>(
@@ -595,7 +544,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                             : 'Optional',
                       ),
                     ),
-                    if (_hasExistingLogin) ...[
+                    if (_isLinked) ...[
                       const SizedBox(height: 18),
                       Container(
                         padding: const EdgeInsets.all(14),
@@ -617,7 +566,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'App login',
+                                    'Sign-in active',
                                     style: context.appTextStyles.caption
                                         .copyWith(
                                       color: AppColors.textSecondary,
@@ -626,7 +575,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    widget.driver!.email!,
+                                    widget.driver!.phone,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 14,
@@ -638,75 +587,39 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                           ],
                         ),
                       ),
-                    ],
-                    if (_canOfferLogin) ...[
-                      const SizedBox(height: 20),
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text(
-                          'Create app login',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
+                    ] else if (_isEdit) ...[
+                      const SizedBox(height: 18),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.warningLighter,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.3),
                           ),
                         ),
-                        subtitle: Text(
-                          'Email & password for the driver Delivero account',
-                          style: context.appTextStyles.caption.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.hourglass_top_rounded,
+                              color: AppColors.warning,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Pending first sign-in. Driver will activate '
+                                'on their first OTP login.',
+                                style: context.appTextStyles.caption.copyWith(
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        value: _createLogin,
-                        activeThumbColor: AppColors.primary,
-                        onChanged: _submitting
-                            ? null
-                            : (v) => setState(() => _createLogin = v),
                       ),
-                      if (_createLogin) ...[
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: _submitting ? null : _fillGeneratedCredentials,
-                            icon: const Icon(Icons.auto_fix_high_rounded, size: 20),
-                            label: const Text(
-                              'Generate email & password',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        TextField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          autocorrect: false,
-                          decoration: _driverSheetInputDecoration(
-                            label: 'Login email',
-                            hint: 'driver@example.com',
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          decoration: _driverSheetInputDecoration(
-                            label: 'Password',
-                            hint: 'At least 6 characters',
-                          ).copyWith(
-                            suffixIcon: IconButton(
-                              onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                     const SizedBox(height: 28),
                     Row(
@@ -732,7 +645,14 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                         Expanded(
                           flex: 2,
                           child: FilledButton(
-                            onPressed: _submitting ? null : _onSave,
+                            onPressed: _submitting
+                                ? null
+                                : () {
+                                    try {
+                                      HapticFeedback.selectionClick();
+                                    } catch (_) {}
+                                    _onSave();
+                                  },
                             style: FilledButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -750,7 +670,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                                     ),
                                   )
                                 : Text(
-                                    _isEdit ? 'Save' : 'Add driver',
+                                    _isEdit ? 'Save' : 'Invite driver',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w900,
                                     ),

@@ -634,17 +634,8 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                                       .read(routesProvider.notifier)
                                       .updateRoute(updatedRoute);
 
-                                  final updatedDriver = Driver(
-                                    id: driver.id,
-                                    factoryId: driver.factoryId,
-                                    name: driver.name,
-                                    email: driver.email,
-                                    phone: driver.phone,
-                                    vehicleType: driver.vehicleType,
-                                    licenseNumber: driver.licenseNumber,
-                                    isActive: driver.isActive,
+                                  final updatedDriver = driver.copyWith(
                                     currentRoute: route.id,
-                                    createdAt: driver.createdAt,
                                     updatedAt: DateTime.now(),
                                   );
                                   ref
@@ -845,17 +836,8 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                     .read(driversProvider)
                     .firstWhereOrNull((d) => d.id == assignedDriverId);
                 if (driver != null) {
-                  final updatedDriver = Driver(
-                    id: driver.id,
-                    factoryId: driver.factoryId,
-                    name: driver.name,
-                    email: driver.email,
-                    phone: driver.phone,
-                    vehicleType: driver.vehicleType,
-                    licenseNumber: driver.licenseNumber,
-                    isActive: driver.isActive,
+                  final updatedDriver = driver.copyWith(
                     currentRoute: null,
-                    createdAt: driver.createdAt,
                     updatedAt: DateTime.now(),
                   );
                   ref
@@ -1396,13 +1378,11 @@ class _DriverListTabState extends ConsumerState<_DriverListTab> {
                                 Icons.edit_rounded,
                                 'Edit driver',
                               ),
-                              if (driver.email != null &&
-                                  driver.email!.trim().isNotEmpty)
-                                _menuItem(
-                                  'share_login',
-                                  Icons.chat_rounded,
-                                  'Share login (WhatsApp)',
-                                ),
+                              _menuItem(
+                                'share_login',
+                                Icons.chat_rounded,
+                                'Share sign-in (WhatsApp)',
+                              ),
                               _menuItem(
                                 'toggle',
                                 driver.isActive
@@ -1435,17 +1415,8 @@ class _DriverListTabState extends ConsumerState<_DriverListTab> {
                                 return;
                               }
                               if (val == 'toggle') {
-                                final updated = Driver(
-                                  id: driver.id,
-                                  factoryId: driver.factoryId,
-                                  name: driver.name,
-                                  email: driver.email,
-                                  phone: driver.phone,
-                                  vehicleType: driver.vehicleType,
-                                  licenseNumber: driver.licenseNumber,
+                                final updated = driver.copyWith(
                                   isActive: !driver.isActive,
-                                  currentRoute: driver.currentRoute,
-                                  createdAt: driver.createdAt,
                                   updatedAt: DateTime.now(),
                                 );
                                 ref

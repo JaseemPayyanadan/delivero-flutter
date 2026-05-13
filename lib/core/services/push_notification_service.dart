@@ -171,7 +171,7 @@ class PushNotificationService {
           .doc(user.id)
           .set({
             'fcmToken': token,
-            'email': user.email,
+            'phone': user.phone,
             'role': user.role.name,
             'linkedEntityId': user.linkedEntityId,
             'updatedAt': FieldValue.serverTimestamp(),
