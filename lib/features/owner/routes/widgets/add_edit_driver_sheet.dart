@@ -233,13 +233,23 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
       return;
     }
 
-    final dialCode =
-        phone?.countryCode.replaceAll('+', '').trim().isNotEmpty == true
-            ? phone!.countryCode.replaceAll('+', '').trim()
-            : '91';
-    final numberDigits =
-        phone?.number.trim().isNotEmpty == true ? _digitsOnlyPhone(phone!.number) : rawDigits;
-    final phoneE164 = '+$dialCode$numberDigits';
+    final phoneE164 = () {
+      if (phone != null && phone.number.trim().isNotEmpty) {
+        final dialCode = phone.countryCode.replaceAll('+', '').trim();
+        final numberDigits = _digitsOnlyPhone(phone.number);
+        return '+$dialCode$numberDigits';
+      }
+
+      final initial = _initialPhoneE164.trim();
+      if (initial.isNotEmpty) return initial;
+
+      final digits = rawDigits;
+      final dialCodeDigits = _initialPhoneE164.replaceAll(RegExp(r'\D'), '');
+      final inferredDial = dialCodeDigits.length > 10
+          ? dialCodeDigits.substring(0, dialCodeDigits.length - 10)
+          : '91';
+      return '+$inferredDial$digits';
+    }();
 
     if (_isLinked &&
         _initialPhoneE164.isNotEmpty &&
@@ -314,7 +324,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
         });
         if (mounted) Navigator.pop(context);
       } else {
-        final invited = await ref
+        final created = await ref
             .read(authProvider.notifier)
             .inviteDriver(
               name: name,
@@ -325,7 +335,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
             );
 
         if (!mounted) return;
-        await _showInviteShareDialog(driver: invited);
+        await _showCreateShareDialog(driver: created);
         if (mounted) Navigator.pop(context);
       }
     } catch (e) {
@@ -378,11 +388,11 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
     );
   }
 
-  Future<void> _showInviteShareDialog({required Driver driver}) async {
+  Future<void> _showCreateShareDialog({required Driver driver}) async {
     final message =
-        'Hi ${driver.name},\n\nYou\'ve been invited to Delivero as a driver.\n\n'
+        'Hi ${driver.name},\n\nYour Delivero driver profile is ready.\n\n'
         'Open the Delivero app, tap "Sign in", enter this number:\n${driver.phone}\n'
-        'and verify the OTP. That\'s it — you\'re in.';
+        'and verify the OTP to start delivering.';
     await showDriverLoginShareDialog(
       context: context,
       title: 'Share sign-in details',
@@ -713,7 +723,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                                     ),
                                   )
                                 : Text(
-                                    _isEdit ? 'Save' : 'Invite driver',
+                                    _isEdit ? 'Save' : 'Create driver',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w900,
                                     ),

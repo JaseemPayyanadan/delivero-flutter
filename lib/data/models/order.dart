@@ -1,6 +1,6 @@
 import '../../core/utils/date_utils.dart' as app_utils;
 
-enum OrderType { daily, oneTime }
+enum OrderType { daily, oneTime, special }
 
 enum PaymentStatus { paid, unpaid, partial }
 
@@ -138,7 +138,11 @@ class Order {
     return {
       'id': id,
       'factoryId': factoryId,
-      'orderType': orderType == OrderType.oneTime ? 'one-time' : 'daily',
+      'orderType': switch (orderType) {
+        OrderType.daily => 'daily',
+        OrderType.oneTime => 'one-time',
+        OrderType.special => 'special',
+      },
       'customerId': customerId,
       'customerName': customerName,
       'customerEmail': customerEmail,
@@ -273,6 +277,7 @@ class Order {
     if (value == null) return OrderType.daily;
     final stringValue = value.toString().toLowerCase();
     if (stringValue == 'one-time') return OrderType.oneTime;
+    if (stringValue == 'special') return OrderType.special;
     return OrderType.values.firstWhere(
       (v) => v.name.toLowerCase() == stringValue,
       orElse: () => OrderType.daily,

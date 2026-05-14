@@ -1069,7 +1069,7 @@ class _QuickActionsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1118,21 +1118,21 @@ class _QuickActionTile extends StatelessWidget {
             splashColor: action.color.withValues(alpha: 0.08),
             highlightColor: action.color.withValues(alpha: 0.04),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
                       color: action.color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(13),
                     ),
-                    child: Icon(action.icon, color: action.color, size: 20),
+                    child: Icon(action.icon, color: action.color, size: 18),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
@@ -1142,7 +1142,7 @@ class _QuickActionTile extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: context.appTextStyles.caption.copyWith(
                         color: AppColors.textSecondary,
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.05,
                         height: 1.1,

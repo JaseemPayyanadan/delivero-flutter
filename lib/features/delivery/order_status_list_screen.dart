@@ -279,9 +279,11 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
         ? 'Unknown'
         : order.customerName.trim();
     final displayId = _displayOrderId(order.id);
-    final typeLabel = order.orderType == OrderType.daily
-        ? 'Daily order'
-        : 'One-time order';
+    final typeLabel = switch (order.orderType) {
+      OrderType.daily => 'Daily order',
+      OrderType.oneTime => 'One-time order',
+      OrderType.special => 'Special order',
+    };
 
     final statusText = _humanStatus(order.status);
     final statusColor = _getStatusColor(order.status);

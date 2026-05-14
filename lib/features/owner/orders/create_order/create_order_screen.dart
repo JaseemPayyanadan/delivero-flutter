@@ -48,6 +48,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   Map<String, int> _selectedItems = {}; // foodItemId -> quantity
   Map<String, double> _customUnitPrices = {}; // foodItemId -> unit price
   bool _isSubmitting = false;
+  bool _createSeparateOrder = false;
   bool _initializedFromOrder = false;
   Order? _editingOrder;
   final Map<String, TextEditingController> _qtyControllers = {};
@@ -369,9 +370,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         if (c == null) return 'Choose a customer to enable Continue.';
         return '${c.name} · ${c.phone}';
       case 1:
-        return _orderType == OrderType.daily
-            ? 'Daily order is selected.'
-            : 'One-time order is selected.';
+        return switch (_orderType) {
+          OrderType.daily => 'Daily order is selected.',
+          OrderType.oneTime => 'One-time order is selected.',
+          OrderType.special => 'Special order is selected.',
+        };
       case 2:
         if (!hasSelectedUnits) {
           return 'Add at least one menu item to enable Continue.';
@@ -429,17 +432,97 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         ),
     ];
 
-    return _OrderReviewReport(
-      generatedAt: DateTime.now(),
-      lines: reportLines,
-      orderTotal: orderTotal,
-      lineCount: selection.distinctItems,
-      unitCount: selection.totalUnits,
+    final existing = _editingOrder;
+    final mergeTarget =
+        existing == null && _orderType != OrderType.special ? _findMergeTarget() : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _OrderReviewReport(
+          generatedAt: DateTime.now(),
+          lines: reportLines,
+          orderTotal: orderTotal,
+          lineCount: selection.distinctItems,
+          unitCount: selection.totalUnits,
+        ),
+        if (existing == null) ...[
+          const SizedBox(height: 12),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Create separate order',
+                          style: context.appTextStyles.sectionHeader.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          mergeTarget == null
+                              ? 'Creates a new order for this customer.'
+                              : (_createSeparateOrder
+                                    ? 'Creates a new order. Turn off to add items to the existing order instead.'
+                                    : 'Items will be added to the existing order. Turn on to create a separate order.'),
+                          style: context.appTextStyles.caption.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Switch.adaptive(
+                    value: _createSeparateOrder,
+                    onChanged: (v) => setState(() => _createSeparateOrder = v),
+                    activeTrackColor: AppColors.primary.withValues(alpha: 0.35),
+                    activeThumbColor: AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
   double _effectiveUnitPrice(FoodItem item) {
     return _customUnitPrices[item.id] ?? item.price;
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  Order? _findMergeTarget() {
+    final customer = _selectedCustomer;
+    if (customer == null) return null;
+    if (_orderType == OrderType.special) return null;
+    final today = DateTime.now();
+    final orders = ref.read(ordersProvider);
+    final candidates = orders.where((o) {
+      if (o.customerId != customer.id) return false;
+      if (o.orderType != _orderType) return false;
+      if (!_isSameDay(o.orderDate, today)) return false;
+      if (o.status == OrderStatus.cancelled) return false;
+      if (o.status == OrderStatus.delivered) return false;
+      return true;
+    }).toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return candidates.firstOrNull;
   }
 
   void _showCustomPriceDialog(FoodItem item, {VoidCallback? onApplied}) {
@@ -1127,13 +1210,27 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               _orderType == OrderType.oneTime,
               () => setState(() => _orderType = OrderType.oneTime),
             ),
+            const SizedBox(width: 10),
+            pill(
+              'Special',
+              _orderType == OrderType.special,
+              () => setState(() {
+                _orderType = OrderType.special;
+                _createSeparateOrder = true;
+              }),
+            ),
           ],
         ),
         const SizedBox(height: 10),
         Text(
-          _orderType == OrderType.daily
-              ? 'Shows as a recurring daily order on your lists and dashboards.'
-              : 'A single delivery — labeled as a one-time order everywhere.',
+          switch (_orderType) {
+            OrderType.daily =>
+              'Shows as a recurring daily order on your lists and dashboards.',
+            OrderType.oneTime =>
+              'A single delivery — labeled as a one-time order everywhere.',
+            OrderType.special =>
+              'A separate order labeled as special. Special orders won’t merge with existing orders.',
+          },
           style: context.appTextStyles.caption.copyWith(
             color: AppColors.textSecondary,
             fontWeight: FontWeight.w600,
@@ -1191,54 +1288,86 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     final now = DateTime.now();
     final existing = _editingOrder;
-    final nextOrder = existing == null
-        ? Order(
-            id: const Uuid().v4(),
-            factoryId: _selectedCustomer!.factoryId,
-            orderType: _orderType,
-            customerId: _selectedCustomer!.id,
-            customerName: _selectedCustomer!.name,
-            customerEmail: _selectedCustomer!.email,
-            customerPhone: _selectedCustomer!.phone,
-            customerAddress: _selectedCustomer!.address,
-            items: items,
-            subtotal: subtotal,
-            discountAmount: discountAmount,
-            totalAmount: totalAmount,
-            status: OrderStatus.pending,
-            assignedRoute: normalizedRouteId,
-            assignedDriver: assignedDriver,
-            orderDate: now,
-            createdAt: now,
-            updatedAt: now,
-          )
-        : existing.copyWith(
-            factoryId: _selectedCustomer!.factoryId,
-            orderType: _orderType,
-            customerId: _selectedCustomer!.id,
-            customerName: _selectedCustomer!.name,
-            customerEmail: _selectedCustomer!.email,
-            customerPhone: _selectedCustomer!.phone,
-            customerAddress: _selectedCustomer!.address,
-            items: items,
-            subtotal: subtotal,
-            discountAmount: discountAmount,
-            totalAmount: totalAmount,
-            assignedRoute: normalizedRouteId,
-            assignedDriver: assignedDriver,
-            updatedAt: now,
-          );
+    final mergeTarget = existing == null &&
+            !_createSeparateOrder &&
+            _orderType != OrderType.special
+        ? _findMergeTarget()
+        : null;
+    final (Order nextOrder, bool wasCreated) = switch ((
+      existing,
+      mergeTarget,
+    )) {
+      (null, null) => (
+        Order(
+          id: const Uuid().v4(),
+          factoryId: _selectedCustomer!.factoryId,
+          orderType: _orderType,
+          customerId: _selectedCustomer!.id,
+          customerName: _selectedCustomer!.name,
+          customerEmail: _selectedCustomer!.email,
+          customerPhone: _selectedCustomer!.phone,
+          customerAddress: _selectedCustomer!.address,
+          items: items,
+          subtotal: subtotal,
+          discountAmount: discountAmount,
+          totalAmount: totalAmount,
+          status: OrderStatus.pending,
+          assignedRoute: normalizedRouteId,
+          assignedDriver: assignedDriver,
+          orderDate: now,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        true,
+      ),
+      (final existing?, _) => (
+        existing.copyWith(
+          factoryId: _selectedCustomer!.factoryId,
+          orderType: _orderType,
+          customerId: _selectedCustomer!.id,
+          customerName: _selectedCustomer!.name,
+          customerEmail: _selectedCustomer!.email,
+          customerPhone: _selectedCustomer!.phone,
+          customerAddress: _selectedCustomer!.address,
+          items: items,
+          subtotal: subtotal,
+          discountAmount: discountAmount,
+          totalAmount: totalAmount,
+          assignedRoute: normalizedRouteId,
+          assignedDriver: assignedDriver,
+          updatedAt: now,
+        ),
+        false,
+      ),
+      (_, final mergeTarget?) => (
+        _mergeIntoExistingOrder(
+          mergeTarget: mergeTarget,
+          addedItems: items,
+          customer: _selectedCustomer!,
+          orderType: _orderType,
+          assignedRoute: normalizedRouteId,
+          assignedDriver: assignedDriver,
+          now: now,
+        ),
+        false,
+      ),
+    };
 
-    if (existing == null) {
+    if (wasCreated) {
       ref.read(ordersProvider.notifier).addOrder(nextOrder);
     } else {
       ref.read(ordersProvider.notifier).updateOrder(nextOrder);
     }
+    ref
+        .read(lastTouchedOrderProvider.notifier)
+        .set(id: nextOrder.id, wasCreated: wasCreated);
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          existing == null ? 'Order created successfully' : 'Order updated',
+          wasCreated
+              ? 'Order created successfully'
+              : (mergeTarget == null ? 'Order updated' : 'Order updated'),
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         behavior: SnackBarBehavior.floating,
@@ -1247,5 +1376,55 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       ),
     );
     context.pop();
+  }
+
+  Order _mergeIntoExistingOrder({
+    required Order mergeTarget,
+    required List<OrderItem> addedItems,
+    required Customer customer,
+    required OrderType orderType,
+    required String? assignedRoute,
+    required String? assignedDriver,
+    required DateTime now,
+  }) {
+    final merged = List<OrderItem>.from(mergeTarget.items);
+    for (final add in addedItems) {
+      final i = merged.indexWhere((m) => m.foodItemId == add.foodItemId);
+      if (i < 0) {
+        merged.add(add);
+        continue;
+      }
+      final old = merged[i];
+      final nextQty = old.quantity + add.quantity;
+      final unitPrice = add.unitPrice;
+      merged[i] = OrderItem(
+        id: old.id,
+        foodItemId: old.foodItemId,
+        foodItemName: old.foodItemName,
+        quantity: nextQty,
+        unitPrice: unitPrice,
+        totalPrice: unitPrice * nextQty,
+      );
+    }
+    final nextSubtotal = merged.fold<double>(0, (sum, i) => sum + i.totalPrice);
+    final nextTotal = (nextSubtotal - mergeTarget.discountAmount)
+        .clamp(0, double.infinity)
+        .toDouble();
+
+    return mergeTarget.copyWith(
+      factoryId: customer.factoryId,
+      orderType: orderType,
+      customerId: customer.id,
+      customerName: customer.name,
+      customerEmail: customer.email,
+      customerPhone: customer.phone,
+      customerAddress: customer.address,
+      items: merged,
+      subtotal: nextSubtotal,
+      totalAmount: nextTotal,
+      assignedRoute: assignedRoute,
+      assignedDriver: assignedDriver,
+      updatedAt: now,
+    );
   }
 }

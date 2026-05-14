@@ -48,8 +48,11 @@ class OrderDetailSummaryCard extends StatelessWidget {
     final route = routeLabel.trim();
     final phone = order.customerPhone.trim();
     final dateLine = DateFormat('EEEE, d MMM yyyy').format(order.orderDate);
-    final orderTypeLabel =
-        order.orderType == OrderType.daily ? 'Daily' : 'One-time';
+    final orderTypeLabel = switch (order.orderType) {
+      OrderType.daily => 'Daily',
+      OrderType.oneTime => 'One-time',
+      OrderType.special => 'Special',
+    };
     final dueColor = paymentStatus == PaymentStatus.unpaid
         ? AppColors.error
         : AppColors.warning;

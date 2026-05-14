@@ -808,6 +808,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   Widget _buildOrderCard(Order order) {
+    final lastTouched = ref.watch(lastTouchedOrderProvider);
+    final shouldHighlight =
+        lastTouched != null &&
+        lastTouched.id == order.id &&
+        DateTime.now().difference(lastTouched.at) <= const Duration(seconds: 8);
+    final highlightColor = lastTouched?.wasCreated == true
+        ? AppColors.success
+        : AppColors.primary;
+
     final customerName = order.customerName.trim().isEmpty
         ? 'Unknown'
         : order.customerName.trim();
@@ -815,7 +824,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     final displayId = _displayOrderId(order.id);
 
-    final typeLabel = order.orderType == OrderType.daily ? 'Daily' : 'One-time';
+    final typeLabel = switch (order.orderType) {
+      OrderType.daily => 'Daily',
+      OrderType.oneTime => 'One-time',
+      OrderType.special => 'Special',
+    };
 
     final statusChipBg = switch (order.status) {
       OrderStatus.pending => const Color(0xFF6D5EF6),
@@ -854,9 +867,16 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: shouldHighlight
+            ? highlightColor.withValues(alpha: 0.06)
+            : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: shouldHighlight
+              ? highlightColor.withValues(alpha: 0.75)
+              : AppColors.border,
+          width: shouldHighlight ? 2 : 1,
+        ),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
