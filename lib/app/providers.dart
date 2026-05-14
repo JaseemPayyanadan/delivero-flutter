@@ -70,6 +70,38 @@ final driversProvider = NotifierProvider<DriversNotifier, List<Driver>>(
   DriversNotifier.new,
 );
 
+class LastTouchedOrderState {
+  final String id;
+  final bool wasCreated;
+  final DateTime at;
+
+  const LastTouchedOrderState({
+    required this.id,
+    required this.wasCreated,
+    required this.at,
+  });
+}
+
+final lastTouchedOrderProvider =
+    NotifierProvider<LastTouchedOrderNotifier, LastTouchedOrderState?>(
+      LastTouchedOrderNotifier.new,
+    );
+
+class LastTouchedOrderNotifier extends Notifier<LastTouchedOrderState?> {
+  @override
+  LastTouchedOrderState? build() => null;
+
+  void set({required String id, required bool wasCreated}) {
+    state = LastTouchedOrderState(
+      id: id,
+      wasCreated: wasCreated,
+      at: DateTime.now(),
+    );
+  }
+
+  void clear() => state = null;
+}
+
 final ordersLoadedProvider = NotifierProvider<_LoadedFlagNotifier, bool>(
   _LoadedFlagNotifier.new,
 );

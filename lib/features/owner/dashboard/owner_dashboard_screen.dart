@@ -13,6 +13,39 @@ import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_skeleton.dart';
 import '../../../data/models/order.dart';
 
+const List<_QuickAction> _ownerQuickActions = [
+  _QuickAction(
+    label: 'Products',
+    icon: Icons.inventory_2_rounded,
+    color: AppColors.secondary,
+    path: '/owner/food-items',
+  ),
+  _QuickAction(
+    label: 'New Order',
+    icon: Icons.shopping_cart_checkout_rounded,
+    color: AppColors.primary,
+    path: '/owner/orders/create',
+  ),
+  _QuickAction(
+    label: 'Customers',
+    icon: Icons.people_alt_rounded,
+    color: AppColors.success,
+    path: '/owner/customers',
+  ),
+  _QuickAction(
+    label: 'Routes',
+    icon: Icons.alt_route_rounded,
+    color: AppColors.info,
+    path: '/owner/routes',
+  ),
+  _QuickAction(
+    label: 'Drivers',
+    icon: Icons.person_add_alt_1_rounded,
+    color: AppColors.warning,
+    path: '/owner/routes?tab=drivers',
+  ),
+];
+
 // ---------------------------------------------------------------------------
 // Public screen
 // ---------------------------------------------------------------------------
@@ -139,38 +172,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     _QuickActionsGrid(
-                      actions: const [
-                        _QuickAction(
-                          label: 'New Order',
-                          icon: Icons.shopping_cart_checkout_rounded,
-                          color: AppColors.primary,
-                          path: '/owner/orders/create',
-                        ),
-                        _QuickAction(
-                          label: 'Products',
-                          icon: Icons.inventory_2_rounded,
-                          color: AppColors.secondary,
-                          path: '/owner/food-items',
-                        ),
-                        _QuickAction(
-                          label: 'Customers',
-                          icon: Icons.people_alt_rounded,
-                          color: AppColors.success,
-                          path: '/owner/customers',
-                        ),
-                        _QuickAction(
-                          label: 'Routes',
-                          icon: Icons.alt_route_rounded,
-                          color: AppColors.info,
-                          path: '/owner/routes',
-                        ),
-                        _QuickAction(
-                          label: 'Drivers',
-                          icon: Icons.person_add_alt_1_rounded,
-                          color: AppColors.warning,
-                          path: '/owner/routes?tab=drivers',
-                        ),
-                      ],
+                      actions: _ownerQuickActions,
                     ),
                     const SizedBox(height: 32),
                     const _SectionHeader(
@@ -1069,7 +1071,7 @@ class _QuickActionsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1118,21 +1120,21 @@ class _QuickActionTile extends StatelessWidget {
             splashColor: action.color.withValues(alpha: 0.08),
             highlightColor: action.color.withValues(alpha: 0.04),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
                       color: action.color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(13),
                     ),
-                    child: Icon(action.icon, color: action.color, size: 20),
+                    child: Icon(action.icon, color: action.color, size: 18),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
@@ -1142,7 +1144,7 @@ class _QuickActionTile extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: context.appTextStyles.caption.copyWith(
                         color: AppColors.textSecondary,
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.05,
                         height: 1.1,

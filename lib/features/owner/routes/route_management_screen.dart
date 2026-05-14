@@ -17,10 +17,7 @@ import 'widgets/management_search_filters.dart';
 import 'widgets/route_card.dart';
 import 'widgets/routes_hub_overview.dart';
 
-InputDecoration _mgmtInputDecoration({
-  required String label,
-  String? hint,
-}) {
+InputDecoration _mgmtInputDecoration({required String label, String? hint}) {
   return InputDecoration(
     labelText: label,
     hintText: hint,
@@ -90,8 +87,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
     final onDuty = drivers.where((d) => d.isActive).length;
     final routesWithoutDriverCount = routes
         .where(
-          (r) =>
-              r.assignedDriver == null || r.assignedDriver!.trim().isEmpty,
+          (r) => r.assignedDriver == null || r.assignedDriver!.trim().isEmpty,
         )
         .length;
 
@@ -107,18 +103,14 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
             : null,
         actions: [
           IconButton(
-            tooltip:
-                _tabController.index == 0 ? 'Add route' : 'Add driver',
+            tooltip: _tabController.index == 0 ? 'Add route' : 'Add driver',
             onPressed: () {
               try {
                 HapticFeedback.lightImpact();
               } catch (_) {}
               _showAddDialog();
             },
-            icon: const Icon(
-              Icons.add_rounded,
-              color: AppColors.textPrimary,
-            ),
+            icon: const Icon(Icons.add_rounded, color: AppColors.textPrimary),
           ),
         ],
       ),
@@ -428,10 +420,7 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
               ),
             ],
           ),
-          Text(
-            'Your routes',
-            style: context.appTextStyles.sectionHeader,
-          ),
+          Text('Your routes', style: context.appTextStyles.sectionHeader),
           const SizedBox(height: 4),
           Text(
             '${visible.length} shown',
@@ -441,34 +430,35 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
             ),
           ),
           const SizedBox(height: 8),
-        ...visible.map((e) {
-          final route = e.route;
-          final driverName = e.driverName;
-          final driver = e.driver;
-          final hasDriver =
-              route.assignedDriver != null && route.assignedDriver!.isNotEmpty;
-          return RouteCard(
-            route: route,
-            driverName: driverName,
-            hasDriver: hasDriver,
-            vehicleTypeLabel: driver == null
-                ? null
-                : '${driver.vehicleType.name[0].toUpperCase()}${driver.vehicleType.name.substring(1)}',
-            vehicleType: driver?.vehicleType,
-            onTap: () => _showRouteDetails(context, ref, route, driverName),
-            onAssign: () => _showAssignSheet(context, ref, route),
-            trailingMenu: _buildActionMenu(context, ref, route),
-          );
-        }),
-        if (visible.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 60),
-            child: _buildEmptyState(
-              Icons.search_off_rounded,
-              'No matches',
-              'Try a different keyword or filter.',
+          ...visible.map((e) {
+            final route = e.route;
+            final driverName = e.driverName;
+            final driver = e.driver;
+            final hasDriver =
+                route.assignedDriver != null &&
+                route.assignedDriver!.isNotEmpty;
+            return RouteCard(
+              route: route,
+              driverName: driverName,
+              hasDriver: hasDriver,
+              vehicleTypeLabel: driver == null
+                  ? null
+                  : '${driver.vehicleType.name[0].toUpperCase()}${driver.vehicleType.name.substring(1)}',
+              vehicleType: driver?.vehicleType,
+              onTap: () => _showRouteDetails(context, ref, route, driverName),
+              onAssign: () => _showAssignSheet(context, ref, route),
+              trailingMenu: _buildActionMenu(context, ref, route),
+            );
+          }),
+          if (visible.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 60),
+              child: _buildEmptyState(
+                Icons.search_off_rounded,
+                'No matches',
+                'Try a different keyword or filter.',
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -513,7 +503,7 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
   ) {
     final availableDrivers = ref
         .read(driversProvider)
-        .where((d) => d.isActive && d.currentRoute == null)
+        .where((d) => d.isActive && (d.currentRoute?.trim().isEmpty ?? true))
         .toList();
 
     showModalBottomSheet<void>(
@@ -563,9 +553,9 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                                 overflow: TextOverflow.ellipsis,
                                 style: sheetContext.appTextStyles.caption
                                     .copyWith(
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                               ),
                             ],
                           ),
@@ -728,10 +718,7 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: Text(
-          'Edit route',
-          style: context.appTextStyles.sectionHeader,
-        ),
+        title: Text('Edit route', style: context.appTextStyles.sectionHeader),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -763,11 +750,21 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
             ),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
+              final nextName = nameController.text.trim();
+              if (nextName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter a route name.')),
+                );
+                return;
+              }
+              final factoryId =
+                  await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+              if (!context.mounted) return;
               final updated = DeliveryRoute(
                 id: route.id,
-                factoryId: route.factoryId,
-                name: nameController.text.trim(),
+                factoryId: factoryId,
+                name: nextName,
                 description: route.description,
                 area: areaController.text.trim(),
                 assignedDriver: route.assignedDriver,
@@ -870,8 +867,9 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
     final hasDriver =
         route.assignedDriver != null && route.assignedDriver!.isNotEmpty;
     final statusLabel = route.isActive ? 'Active' : 'Inactive';
-    final statusColor =
-        route.isActive ? AppColors.success : AppColors.textSecondary;
+    final statusColor = route.isActive
+        ? AppColors.success
+        : AppColors.textSecondary;
 
     showModalBottomSheet<void>(
       context: context,
@@ -1008,16 +1006,20 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                             child: OutlinedButton(
                               onPressed: () {
                                 Navigator.pop(sheetContext);
-                                WidgetsBinding.instance
-                                    .addPostFrameCallback((_) {
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
                                   if (!context.mounted) return;
                                   _showAssignSheet(context, ref, route);
                                 });
                               },
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                side: const BorderSide(color: AppColors.primary),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                side: const BorderSide(
+                                  color: AppColors.primary,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
@@ -1034,8 +1036,9 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                               onPressed: () => Navigator.pop(sheetContext),
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppColors.primary,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
@@ -1206,8 +1209,7 @@ class _DriverListTabState extends ConsumerState<_DriverListTab> {
       );
     }
 
-    final visible =
-        widget.drivers.where(_driverMatchesSearch).toList();
+    final visible = widget.drivers.where(_driverMatchesSearch).toList();
 
     return RefreshIndicator(
       color: AppColors.primary,
@@ -1242,10 +1244,7 @@ class _DriverListTabState extends ConsumerState<_DriverListTab> {
               ),
             ],
           ),
-          Text(
-            'Your team',
-            style: context.appTextStyles.sectionHeader,
-          ),
+          Text('Your team', style: context.appTextStyles.sectionHeader),
           const SizedBox(height: 4),
           Text(
             '${visible.length} shown',
@@ -1256,315 +1255,320 @@ class _DriverListTabState extends ConsumerState<_DriverListTab> {
           ),
           const SizedBox(height: 8),
           ...visible.map((driver) {
-          final routeName = !routesLoaded || driver.currentRoute == null
-              ? null
-              : routes
-                  .firstWhereOrNull((r) => r.id == driver.currentRoute)
-                  ?.name;
-          final vehicleLabel =
-              '${driver.vehicleType.name[0].toUpperCase()}${driver.vehicleType.name.substring(1)}';
+            final routeName =
+                !routesLoaded || (driver.currentRoute?.trim().isEmpty ?? true)
+                ? null
+                : routes
+                      .firstWhereOrNull((r) => r.id == driver.currentRoute)
+                      ?.name;
+            final vehicleLabel =
+                '${driver.vehicleType.name[0].toUpperCase()}${driver.vehicleType.name.substring(1)}';
 
-          final statusBg =
-              driver.isActive ? AppColors.success : AppColors.backgroundSecondary;
-          final statusFg =
-              driver.isActive ? Colors.white : AppColors.textSecondary;
+            final statusBg = driver.isActive
+                ? AppColors.success
+                : AppColors.backgroundSecondary;
+            final statusFg = driver.isActive
+                ? Colors.white
+                : AppColors.textSecondary;
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.border),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadow,
-                  blurRadius: 18,
-                  offset: Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => showAddEditDriverSheet(context, driver: driver),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(14),
-                              color: AppColors.backgroundSecondary,
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(7),
-                              child: Image.asset(
-                                _vehicleAsset(driver.vehicleType),
-                                fit: BoxFit.contain,
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.border),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppColors.shadow,
+                    blurRadius: 18,
+                    offset: Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => showAddEditDriverSheet(context, driver: driver),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                color: AppColors.backgroundSecondary,
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(7),
+                                child: Image.asset(
+                                  _vehicleAsset(driver.vehicleType),
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    driver.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 16,
+                                      color: AppColors.textPrimary,
+                                      letterSpacing: -0.45,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    vehicleLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 11,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusBg,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                driver.isActive ? 'Available' : 'Off duty',
+                                style: TextStyle(
+                                  color: statusFg,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ),
+                            PopupMenuButton<String>(
+                              icon: const Icon(
+                                Icons.more_vert_rounded,
+                                size: 20,
+                                color: AppColors.textLight,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              itemBuilder: (context) => [
+                                _menuItem(
+                                  'edit',
+                                  Icons.edit_rounded,
+                                  'Edit driver',
+                                ),
+                                _menuItem(
+                                  'share_login',
+                                  Icons.chat_rounded,
+                                  'Share sign-in (WhatsApp)',
+                                ),
+                                _menuItem(
+                                  'toggle',
+                                  driver.isActive
+                                      ? Icons.pause_circle_outline_rounded
+                                      : Icons.play_circle_outline_rounded,
+                                  driver.isActive
+                                      ? 'Set unavailable'
+                                      : 'Set available',
+                                ),
+                                _menuItem(
+                                  'delete',
+                                  Icons.delete_outline_rounded,
+                                  'Delete driver',
+                                  isDestructive: true,
+                                ),
+                              ],
+                              onSelected: (val) async {
+                                if (val == 'edit') {
+                                  showAddEditDriverSheet(
+                                    context,
+                                    driver: driver,
+                                  );
+                                  return;
+                                }
+                                if (val == 'share_login') {
+                                  showReshareDriverLoginDialog(
+                                    context,
+                                    driver: driver,
+                                  );
+                                  return;
+                                }
+                                if (val == 'toggle') {
+                                  final updated = driver.copyWith(
+                                    isActive: !driver.isActive,
+                                    updatedAt: DateTime.now(),
+                                  );
+                                  ref
+                                      .read(driversProvider.notifier)
+                                      .updateDriver(updated);
+                                  return;
+                                }
+                                if (val == 'delete') {
+                                  final confirmed = await _confirmDeleteDriver(
+                                    context,
+                                  );
+                                  if (confirmed == true) {
+                                    ref
+                                        .read(driversProvider.notifier)
+                                        .deleteDriver(driver.id);
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.border),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  driver.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 16,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.45,
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Phone',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 12,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            driver.phone,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 15,
+                                              color: AppColors.textPrimary,
+                                              letterSpacing: -0.3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          const Text(
+                                            'Current route',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 12,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            routeName ?? 'No route',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.right,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 15,
+                                              letterSpacing: -0.3,
+                                              color: routeName == null
+                                                  ? AppColors.textLight
+                                                  : AppColors.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  child: Divider(
+                                    height: 1,
+                                    thickness: 1,
+                                    color: AppColors.border.withValues(
+                                      alpha: 0.65,
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 2),
                                 Text(
-                                  vehicleLabel,
-                                  maxLines: 1,
+                                  'Summary',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                    color: AppColors.textLight,
+                                    letterSpacing: 0.35,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  [
+                                    vehicleLabel,
+                                    if (routeName != null) 'Route: $routeName',
+                                    driver.isActive
+                                        ? 'On duty'
+                                        : 'Not taking orders',
+                                  ].join(' · '),
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: -0.12,
+                                    height: 1.3,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 11,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusBg,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              driver.isActive ? 'Available' : 'Off duty',
-                              style: TextStyle(
-                                color: statusFg,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 11,
-                                height: 1.1,
-                              ),
-                            ),
-                          ),
-                          PopupMenuButton<String>(
-                            icon: const Icon(
-                              Icons.more_vert_rounded,
-                              size: 20,
-                              color: AppColors.textLight,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            itemBuilder: (context) => [
-                              _menuItem(
-                                'edit',
-                                Icons.edit_rounded,
-                                'Edit driver',
-                              ),
-                              _menuItem(
-                                'share_login',
-                                Icons.chat_rounded,
-                                'Share sign-in (WhatsApp)',
-                              ),
-                              _menuItem(
-                                'toggle',
-                                driver.isActive
-                                    ? Icons.pause_circle_outline_rounded
-                                    : Icons.play_circle_outline_rounded,
-                                driver.isActive
-                                    ? 'Set unavailable'
-                                    : 'Set available',
-                              ),
-                              _menuItem(
-                                'delete',
-                                Icons.delete_outline_rounded,
-                                'Delete driver',
-                                isDestructive: true,
-                              ),
-                            ],
-                            onSelected: (val) async {
-                              if (val == 'edit') {
-                                showAddEditDriverSheet(
-                                  context,
-                                  driver: driver,
-                                );
-                                return;
-                              }
-                              if (val == 'share_login') {
-                                showReshareDriverLoginDialog(
-                                  context,
-                                  driver: driver,
-                                );
-                                return;
-                              }
-                              if (val == 'toggle') {
-                                final updated = driver.copyWith(
-                                  isActive: !driver.isActive,
-                                  updatedAt: DateTime.now(),
-                                );
-                                ref
-                                    .read(driversProvider.notifier)
-                                    .updateDriver(updated);
-                                return;
-                              }
-                              if (val == 'delete') {
-                                final confirmed =
-                                    await _confirmDeleteDriver(context);
-                                if (confirmed == true) {
-                                  ref
-                                      .read(driversProvider.notifier)
-                                      .deleteDriver(driver.id);
-                                }
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: AppColors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Phone',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          driver.phone,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 15,
-                                            color: AppColors.textPrimary,
-                                            letterSpacing: -0.3,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        const Text(
-                                          'Current route',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          routeName ?? 'No route',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.right,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 15,
-                                            letterSpacing: -0.3,
-                                            color: routeName == null
-                                                ? AppColors.textLight
-                                                : AppColors.primary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                                child: Divider(
-                                  height: 1,
-                                  thickness: 1,
-                                  color: AppColors.border.withValues(
-                                    alpha: 0.65,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                'Summary',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 11,
-                                  color: AppColors.textLight,
-                                  letterSpacing: 0.35,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                [
-                                  vehicleLabel,
-                                  if (routeName != null) 'Route: $routeName',
-                                  driver.isActive
-                                      ? 'On duty'
-                                      : 'Not taking orders',
-                                ].join(' · '),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13,
-                                  color: AppColors.textPrimary,
-                                  letterSpacing: -0.12,
-                                  height: 1.3,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
+            );
           }),
           if (visible.isEmpty)
             Padding(
