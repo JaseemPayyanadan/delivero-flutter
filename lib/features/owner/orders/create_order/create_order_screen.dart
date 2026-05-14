@@ -127,7 +127,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         widget.orderId == null
             ? 'Step 1 of 4 — Search and choose who this order is for.'
             : 'Step 1 of 4 — Customer for this order.',
-      1 => 'Step 2 of 4 — Daily recurring or a single one-time delivery.',
+      1 => 'Step 2 of 4 — Daily, one-time, or special order.',
       2 => 'Step 3 of 4 — Add products and set quantities.',
       _ => 'Step 4 of 4 — Check everything before you save.',
     };

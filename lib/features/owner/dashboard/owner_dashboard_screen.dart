@@ -13,6 +13,39 @@ import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_skeleton.dart';
 import '../../../data/models/order.dart';
 
+const List<_QuickAction> _ownerQuickActions = [
+  _QuickAction(
+    label: 'Products',
+    icon: Icons.inventory_2_rounded,
+    color: AppColors.secondary,
+    path: '/owner/food-items',
+  ),
+  _QuickAction(
+    label: 'New Order',
+    icon: Icons.shopping_cart_checkout_rounded,
+    color: AppColors.primary,
+    path: '/owner/orders/create',
+  ),
+  _QuickAction(
+    label: 'Customers',
+    icon: Icons.people_alt_rounded,
+    color: AppColors.success,
+    path: '/owner/customers',
+  ),
+  _QuickAction(
+    label: 'Routes',
+    icon: Icons.alt_route_rounded,
+    color: AppColors.info,
+    path: '/owner/routes',
+  ),
+  _QuickAction(
+    label: 'Drivers',
+    icon: Icons.person_add_alt_1_rounded,
+    color: AppColors.warning,
+    path: '/owner/routes?tab=drivers',
+  ),
+];
+
 // ---------------------------------------------------------------------------
 // Public screen
 // ---------------------------------------------------------------------------
@@ -139,38 +172,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     _QuickActionsGrid(
-                      actions: const [
-                        _QuickAction(
-                          label: 'New Order',
-                          icon: Icons.shopping_cart_checkout_rounded,
-                          color: AppColors.primary,
-                          path: '/owner/orders/create',
-                        ),
-                        _QuickAction(
-                          label: 'Products',
-                          icon: Icons.inventory_2_rounded,
-                          color: AppColors.secondary,
-                          path: '/owner/food-items',
-                        ),
-                        _QuickAction(
-                          label: 'Customers',
-                          icon: Icons.people_alt_rounded,
-                          color: AppColors.success,
-                          path: '/owner/customers',
-                        ),
-                        _QuickAction(
-                          label: 'Routes',
-                          icon: Icons.alt_route_rounded,
-                          color: AppColors.info,
-                          path: '/owner/routes',
-                        ),
-                        _QuickAction(
-                          label: 'Drivers',
-                          icon: Icons.person_add_alt_1_rounded,
-                          color: AppColors.warning,
-                          path: '/owner/routes?tab=drivers',
-                        ),
-                      ],
+                      actions: _ownerQuickActions,
                     ),
                     const SizedBox(height: 32),
                     const _SectionHeader(
