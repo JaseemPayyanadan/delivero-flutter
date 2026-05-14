@@ -83,11 +83,11 @@ class LastTouchedOrderState {
 }
 
 final lastTouchedOrderProvider =
-    NotifierProvider<_LastTouchedOrderNotifier, LastTouchedOrderState?>(
-      _LastTouchedOrderNotifier.new,
+    NotifierProvider<LastTouchedOrderNotifier, LastTouchedOrderState?>(
+      LastTouchedOrderNotifier.new,
     );
 
-class _LastTouchedOrderNotifier extends Notifier<LastTouchedOrderState?> {
+class LastTouchedOrderNotifier extends Notifier<LastTouchedOrderState?> {
   @override
   LastTouchedOrderState? build() => null;
 

@@ -433,8 +433,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     ];
 
     final existing = _editingOrder;
-    final mergeTarget =
-        existing == null && _orderType != OrderType.special ? _findMergeTarget() : null;
+    final mergeTarget = existing == null && _orderType != OrderType.special
+        ? _findMergeTarget()
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1288,7 +1289,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     final now = DateTime.now();
     final existing = _editingOrder;
-    final mergeTarget = existing == null &&
+    final mergeTarget =
+        existing == null &&
             !_createSeparateOrder &&
             _orderType != OrderType.special
         ? _findMergeTarget()
@@ -1358,9 +1360,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     } else {
       ref.read(ordersProvider.notifier).updateOrder(nextOrder);
     }
-    ref
-        .read(lastTouchedOrderProvider.notifier)
-        .set(id: nextOrder.id, wasCreated: wasCreated);
+    try {
+      ref
+          .read(lastTouchedOrderProvider.notifier)
+          .set(id: nextOrder.id, wasCreated: wasCreated);
+    } catch (_) {}
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
