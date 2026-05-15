@@ -39,10 +39,11 @@ android {
         create("dev") {
             dimension = "env"
             isDefault = true
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
         }
         create("prod") {
             dimension = "env"
-            applicationId = "webnhue.delivero"
         }
     }
 
