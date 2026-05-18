@@ -44,7 +44,7 @@ class RouterNotifier extends ChangeNotifier {
     final isAtOwner = loc.startsWith('/owner');
     final isAtDelivery = loc.startsWith('/delivery');
 
-    if (!startupState.isInitialized) {
+    if (!startupState.isInitialized || !authState.isInitialized) {
       return isAtSplash ? null : '/splash';
     }
 

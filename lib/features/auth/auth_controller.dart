@@ -20,6 +20,7 @@ import '../../data/models/user.dart';
 /// onboarding wizard then collects the business name and other details.
 class AuthState {
   final User? user;
+  final bool isInitialized;
   final bool isLoading;
   final String? error;
 
@@ -30,6 +31,7 @@ class AuthState {
 
   const AuthState({
     this.user,
+    this.isInitialized = false,
     this.isLoading = false,
     this.error,
     this.pendingPhone,
@@ -41,6 +43,7 @@ class AuthState {
 
   AuthState copyWith({
     User? user,
+    bool? isInitialized,
     bool? isLoading,
     Object? error = _sentinel,
     Object? pendingPhone = _sentinel,
@@ -49,6 +52,7 @@ class AuthState {
   }) {
     return AuthState(
       user: user ?? this.user,
+      isInitialized: isInitialized ?? this.isInitialized,
       isLoading: isLoading ?? this.isLoading,
       error: error == _sentinel ? this.error : error as String?,
       pendingPhone: pendingPhone == _sentinel
@@ -64,7 +68,7 @@ class AuthState {
   }
 
   AuthState withClearedUser() {
-    return const AuthState();
+    return const AuthState(isInitialized: true);
   }
 
   static const _sentinel = Object();
@@ -91,6 +95,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
     if (!FirebaseService.isInitialized) {
       debugPrint('[Auth] Firebase not initialised; skipping session restore.');
+      state = state.copyWith(isInitialized: true);
       return;
     }
 
@@ -100,7 +105,7 @@ class AuthNotifier extends Notifier<AuthState> {
         final user = await _loadUserFromFirestore(uid: current.uid);
         if (user != null) {
           debugPrint('[Auth] Loaded Firebase user: ${user.phone}');
-          state = state.copyWith(user: user);
+          state = state.copyWith(user: user, isInitialized: true);
           await _prefs!.setString(_kUserKey, jsonEncode(user.toJson()));
           return;
         }
@@ -121,12 +126,13 @@ class AuthNotifier extends Notifier<AuthState> {
       try {
         final user = User.fromJson(jsonDecode(userJson));
         debugPrint('[Auth] Loaded cached user: ${user.phone}');
-        state = state.copyWith(user: user);
+        state = state.copyWith(user: user, isInitialized: true);
       } catch (e) {
         debugPrint('[Auth] Error loading cached user: $e');
         await _prefs!.remove(_kUserKey);
       }
     }
+    state = state.copyWith(isInitialized: true);
   }
 
   /// Sends an OTP to [phoneE164] (must already be in `+CCNNNNNNNNNN` form).
@@ -301,14 +307,14 @@ class AuthNotifier extends Notifier<AuthState> {
       final existing = await _loadUserFromFirestore(uid: uid);
       if (existing != null) {
         await _persistSession(existing);
-        state = AuthState(user: existing);
+        state = AuthState(user: existing, isInitialized: true);
         return;
       }
 
       final linked = await _tryAutoLinkDriver(uid: uid, phone: phone);
       if (linked != null) {
         await _persistSession(linked);
-        state = AuthState(user: linked);
+        state = AuthState(user: linked, isInitialized: true);
         return;
       }
 
@@ -432,7 +438,7 @@ class AuthNotifier extends Notifier<AuthState> {
       await batch.commit();
 
       await _persistSession(user);
-      state = AuthState(user: user);
+      state = AuthState(user: user, isInitialized: true);
     } catch (e) {
       debugPrint('[Auth] _autoCreateOwnerProfile error: $e');
       state = state.copyWith(
@@ -562,7 +568,7 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       await FirebaseService.auth.signOut();
     } catch (_) {}
-    state = const AuthState();
+    state = const AuthState(isInitialized: true);
   }
 
   void clearError() {

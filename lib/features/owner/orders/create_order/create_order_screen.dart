@@ -44,7 +44,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   ];
 
   Customer? _selectedCustomer;
-  OrderType _orderType = OrderType.daily;
+  OrderType? _orderType;
   Map<String, int> _selectedItems = {}; // foodItemId -> quantity
   Map<String, double> _customUnitPrices = {}; // foodItemId -> unit price
   bool _isSubmitting = false;
@@ -353,7 +353,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   bool _canGoNextFromStep({required bool hasSelectedUnits}) {
     return switch (_step) {
       0 => _selectedCustomer != null,
-      1 => true,
+      1 => _orderType != null,
       2 => hasSelectedUnits,
       _ => true,
     };
@@ -374,6 +374,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           OrderType.daily => 'Daily order is selected.',
           OrderType.oneTime => 'One-time order is selected.',
           OrderType.special => 'Special order is selected.',
+          null => 'Choose an order type to continue.',
         };
       case 2:
         if (!hasSelectedUnits) {
@@ -512,12 +513,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   Order? _findMergeTarget() {
     final customer = _selectedCustomer;
     if (customer == null) return null;
-    if (_orderType == OrderType.special) return null;
+    final orderType = _orderType;
+    if (orderType == null) return null;
+    if (orderType == OrderType.special) return null;
     final today = DateTime.now();
     final orders = ref.read(ordersProvider);
     final candidates = orders.where((o) {
       if (o.customerId != customer.id) return false;
-      if (o.orderType != _orderType) return false;
+      if (o.orderType != orderType) return false;
       if (!_isSameDay(o.orderDate, today)) return false;
       if (o.status == OrderStatus.cancelled) return false;
       if (o.status == OrderStatus.delivered) return false;
@@ -1231,6 +1234,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               'A single delivery — labeled as a one-time order everywhere.',
             OrderType.special =>
               'A separate order labeled as special. Special orders won’t merge with existing orders.',
+            null =>
+              'Pick how this order should be treated before moving to menu items.',
           },
           style: context.appTextStyles.caption.copyWith(
             color: AppColors.textSecondary,
@@ -1245,6 +1250,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   void _submitOrder() {
     if (_isSubmitting) return;
     if (_selectedCustomer == null) return;
+    final orderType = _orderType;
+    if (orderType == null) return;
     if (_selectedItems.values.every((v) => v <= 0)) return;
     setState(() => _isSubmitting = true);
     FocusScope.of(context).unfocus();
@@ -1292,7 +1299,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final mergeTarget =
         existing == null &&
             !_createSeparateOrder &&
-            _orderType != OrderType.special
+            orderType != OrderType.special
         ? _findMergeTarget()
         : null;
     final (Order nextOrder, bool wasCreated) = switch ((
@@ -1303,7 +1310,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         Order(
           id: const Uuid().v4(),
           factoryId: _selectedCustomer!.factoryId,
-          orderType: _orderType,
+          orderType: orderType,
           customerId: _selectedCustomer!.id,
           customerName: _selectedCustomer!.name,
           customerEmail: _selectedCustomer!.email,
@@ -1325,7 +1332,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       (final existing?, _) => (
         existing.copyWith(
           factoryId: _selectedCustomer!.factoryId,
-          orderType: _orderType,
+          orderType: orderType,
           customerId: _selectedCustomer!.id,
           customerName: _selectedCustomer!.name,
           customerEmail: _selectedCustomer!.email,
@@ -1346,7 +1353,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           mergeTarget: mergeTarget,
           addedItems: items,
           customer: _selectedCustomer!,
-          orderType: _orderType,
+          orderType: orderType,
           assignedRoute: normalizedRouteId,
           assignedDriver: assignedDriver,
           now: now,

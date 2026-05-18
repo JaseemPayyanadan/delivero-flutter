@@ -376,7 +376,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
               final scheduleLabel =
                   customerOrders.any((o) => o.orderType == OrderType.daily)
                   ? 'Daily'
-                  : _scheduleLabelForCustomer(customer);
+                  : _scheduleLabelForCustomer(customerOrders);
 
               final paymentStatus = latest?.paymentStatus;
               final customerReport = reports.customerRevenue[customer.name];
@@ -424,17 +424,15 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     return slivers;
   }
 
-  String _scheduleLabelForCustomer(Customer customer) {
-    // The reference UI shows a simple schedule string (e.g. Mon, Wed, Fri).
-    // We don't yet have a dedicated schedule model, so we derive a stable label
-    // from the customer id as a lightweight placeholder.
-    final seed = customer.id.hashCode.abs();
-    final mode = seed % 3;
-    return switch (mode) {
-      0 => 'Mon, Wed, Fri',
-      1 => 'Tue, Thu, Sat',
-      _ => 'Daily',
-    };
+  String _scheduleLabelForCustomer(List<Order> customerOrders) {
+    if (customerOrders.isEmpty) return 'No orders yet';
+    if (customerOrders.any((o) => o.orderType == OrderType.oneTime)) {
+      return 'One-time';
+    }
+    if (customerOrders.any((o) => o.orderType == OrderType.special)) {
+      return 'Special';
+    }
+    return 'No orders yet';
   }
 
   // Customer list intentionally avoids quick actions (call, etc.)
