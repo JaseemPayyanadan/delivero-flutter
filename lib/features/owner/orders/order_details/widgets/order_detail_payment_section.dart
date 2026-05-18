@@ -109,8 +109,46 @@ class OrderDetailPaymentSection extends StatelessWidget {
     );
   }
 
+  double? _normalizedAmountForStatus(
+    PaymentStatus status, {
+    required double? amount,
+  }) {
+    return switch (status) {
+      PaymentStatus.unpaid => null,
+      PaymentStatus.paid => order.totalAmount,
+      PaymentStatus.partial => amount,
+    };
+  }
+
+  double? _parsedDraftAmount() {
+    final raw = partialAmountController.text.trim().replaceAll(',', '');
+    if (raw.isEmpty) return draftAmountPaid;
+    return double.tryParse(raw) ?? draftAmountPaid;
+  }
+
+  bool _amountEquals(double? a, double? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return (a - b).abs() < 0.001;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final originalStatus = order.paymentStatus ?? PaymentStatus.unpaid;
+    final originalMethod = order.paymentMethod ?? PaymentMethod.cash;
+    final originalAmount = _normalizedAmountForStatus(
+      originalStatus,
+      amount: order.amountPaid,
+    );
+    final draftNormalizedAmount = _normalizedAmountForStatus(
+      draftPaymentStatus,
+      amount: _parsedDraftAmount(),
+    );
+    final hasPaymentChanges =
+        draftPaymentStatus != originalStatus ||
+        draftPaymentMethod != originalMethod ||
+        !_amountEquals(draftNormalizedAmount, originalAmount);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -252,35 +290,37 @@ class OrderDetailPaymentSection extends StatelessWidget {
                         ],
                       ),
                     ],
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => _onApply(context),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor:
-                              Theme.of(context).colorScheme.onPrimary,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                    if (hasPaymentChanges) ...[
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () => _onApply(context),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onPrimary,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                        ),
-                        icon: Icon(
-                          Icons.check_rounded,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                        label: Text(
-                          'Save payment',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
+                          icon: Icon(
+                            Icons.check_rounded,
+                            size: 18,
                             color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                          label: Text(
+                            'Save payment',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

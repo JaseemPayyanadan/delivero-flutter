@@ -474,6 +474,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    _OrderSummaryCard(
+                      reports: reports,
+                      isLoading: isLoading,
+                    ),
                     const SizedBox(height: 20),
                     _ReportCard(
                       title: 'Sales trend',
@@ -1086,6 +1091,118 @@ class _StaffRow extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _OrderSummaryCard extends StatelessWidget {
+  final ReportsData reports;
+  final bool isLoading;
+
+  const _OrderSummaryCard({
+    required this.reports,
+    required this.isLoading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ReportCard(
+      title: 'Order summary',
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _OrderSummaryTile(
+                  label: 'Total',
+                  value: isLoading ? '—' : reports.totalOrders.toString(),
+                  color: AppColors.primary,
+                  background: AppColors.primary.withValues(alpha: 0.10),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _OrderSummaryTile(
+                  label: 'Delivered',
+                  value: isLoading ? '—' : reports.completedOrders.toString(),
+                  color: AppColors.success,
+                  background: AppColors.success.withValues(alpha: 0.10),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _OrderSummaryTile(
+                  label: 'Pending',
+                  value: isLoading ? '—' : reports.pendingOrders.toString(),
+                  color: AppColors.warning,
+                  background: AppColors.warning.withValues(alpha: 0.10),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _OrderSummaryTile(
+                  label: 'Cancelled',
+                  value: isLoading ? '—' : reports.cancelledOrders.toString(),
+                  color: AppColors.error,
+                  background: AppColors.error.withValues(alpha: 0.08),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrderSummaryTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final Color background;
+
+  const _OrderSummaryTile({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: context.appTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: context.appTextStyles.sectionHeader.copyWith(
+              color: color,
+              fontSize: 20,
+              letterSpacing: -0.4,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

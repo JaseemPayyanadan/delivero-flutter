@@ -44,13 +44,6 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
       return Scaffold(
         appBar: DeliveroAppBar(
           title: 'Order',
-          leading: Navigator.of(context).canPop()
-              ? IconButton(
-                  tooltip: 'Back',
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: () => context.pop(),
-                )
-              : null,
         ),
         body: const Center(child: Text('Order not found')),
       );
@@ -66,13 +59,6 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
       backgroundColor: AppColors.backgroundPrimary,
       appBar: DeliveroAppBar(
         title: 'Order Details',
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                tooltip: 'Back',
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => context.pop(),
-              )
-            : null,
         actions: [
           Center(
             child: Padding(
