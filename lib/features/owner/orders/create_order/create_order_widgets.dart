@@ -509,6 +509,8 @@ class _CustomerSuggestions extends StatelessWidget {
   final List<DeliveryRoute> routes;
   final ValueChanged<Customer> onSelect;
   final String emptyHint;
+  final String searchQuery;
+  final VoidCallback? onClearSearch;
 
   const _CustomerSuggestions({
     required this.customers,
@@ -516,68 +518,140 @@ class _CustomerSuggestions extends StatelessWidget {
     required this.routes,
     required this.onSelect,
     this.emptyHint = 'No matching customers',
+    this.searchQuery = '',
+    this.onClearSearch,
   });
 
   @override
   Widget build(BuildContext context) {
     if (customers.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Text(
-          emptyHint,
-          style: const TextStyle(
-            color: AppColors.textLight,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+        decoration: BoxDecoration(
+          color: AppColors.backgroundSecondary,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.storefront_rounded,
+              size: 24,
+              color: AppColors.textLight.withValues(alpha: 0.95),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              emptyHint,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+            if (searchQuery.isNotEmpty && onClearSearch != null) ...[
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: onClearSearch,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                ),
+                child: const Text(
+                  'Clear search',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ],
         ),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < customers.length; i++) ...[
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            visualDensity: VisualDensity.compact,
-            onTap: () => onSelect(customers[i]),
-            leading: CircleAvatar(
-              radius: 18,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-              child: const Icon(
-                Icons.person_rounded,
-                color: AppColors.primary,
-                size: 20,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < customers.length; i++) ...[
+            InkWell(
+              onTap: () => onSelect(customers[i]),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                      child: const Icon(
+                        Icons.storefront_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            customers[i].name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                              letterSpacing: -0.35,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            customers[i].ownerName?.trim().isNotEmpty == true
+                                ? customers[i].ownerName!.trim()
+                                : 'Owner not added',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${showRouteLoading ? 'Loading route…' : (routes.firstWhereOrNull((r) => r.id == customers[i].assignedRoute || r.name == customers[i].assignedRoute)?.name ?? 'No route')} • ${customers[i].phone.trim().isEmpty ? 'No phone' : customers[i].phone.trim()}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: AppColors.textLight,
+                    ),
+                  ],
+                ),
               ),
             ),
-            title: Text(
-              customers[i].name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
-                letterSpacing: -0.45,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            subtitle: Text(
-              '${showRouteLoading ? 'Loading route…' : (routes.firstWhereOrNull((r) => r.id == customers[i].assignedRoute || r.name == customers[i].assignedRoute)?.name ?? 'No Route')} • ${customers[i].phone}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          if (i != customers.length - 1)
-            const Divider(height: 1, color: AppColors.divider),
+            if (i != customers.length - 1)
+              const Divider(height: 1, color: AppColors.divider),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

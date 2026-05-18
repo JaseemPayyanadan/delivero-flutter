@@ -264,7 +264,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
                   ],
                 ),
                 child: Icon(
-                  Icons.person_rounded,
+                  Icons.storefront_rounded,
                   color: Theme.of(context).colorScheme.onPrimary,
                   size: 34,
                 ),
@@ -346,37 +346,6 @@ class CustomerDetailsScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-            ),
-            const SizedBox(height: 16),
-            _ProfileCard(
-              icon: Icons.location_on_rounded,
-              iconBg: AppColors.infoLighter.withValues(alpha: 0.75),
-              title: 'Delivery Info',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _MetaPair(label: 'Address', value: displayAddress),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _MetaPair(label: 'Route', value: displayRoute),
-                      ),
-                      Expanded(
-                        child: _MetaPair(
-                          label: 'Schedule',
-                          value: scheduleLabel,
-                          alignEnd: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (ownerDisplay != 'Not added') ...[
-                    const SizedBox(height: 14),
-                    _MetaPair(label: 'Owner', value: ownerDisplay),
-                  ],
-                ],
-              ),
             ),
             const SizedBox(height: 16),
             _ProfileCard(
