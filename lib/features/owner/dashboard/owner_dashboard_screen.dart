@@ -80,7 +80,9 @@ class OwnerDashboardScreen extends ConsumerWidget {
 
     final now = DateTime.now();
     final dateStr = DateFormat('EEEE, d MMMM').format(now);
-    final totalRevenue = reports.totalRevenue + reports.totalPendingRevenue;
+    final collectedRevenue = reports.totalRevenue;
+    final pendingRevenue = reports.totalPendingRevenue;
+    final totalRevenue = collectedRevenue + pendingRevenue;
     final fulfillmentRate = reports.totalOrders == 0
         ? 0.0
         : reports.completedOrders / reports.totalOrders;
@@ -89,6 +91,13 @@ class OwnerDashboardScreen extends ConsumerWidget {
           o.orderDate.month == now.month &&
           o.orderDate.day == now.day;
     }).length;
+    final todayRevenue = orders
+        .where((o) {
+          return o.orderDate.year == now.year &&
+              o.orderDate.month == now.month &&
+              o.orderDate.day == now.day;
+        })
+        .fold<double>(0, (sum, order) => sum + order.totalAmount);
 
     final bool isEmpty =
         customers.isEmpty &&
@@ -136,9 +145,10 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 dateStr: dateStr,
                 isLoading: isLoading,
                 totalRevenue: totalRevenue,
+                collectedRevenue: collectedRevenue,
+                pendingRevenue: pendingRevenue,
                 todayOrdersCount: todayOrdersCount,
-                customersCount: customers.length,
-                fulfillmentRate: fulfillmentRate,
+                todayRevenue: todayRevenue,
               ),
             ),
             if (isEmpty && isLoading)
@@ -270,18 +280,20 @@ class _DashboardHero extends StatelessWidget {
   final String dateStr;
   final bool isLoading;
   final double totalRevenue;
+  final double collectedRevenue;
+  final double pendingRevenue;
   final int todayOrdersCount;
-  final int customersCount;
-  final double fulfillmentRate;
+  final double todayRevenue;
 
   const _DashboardHero({
     required this.displayName,
     required this.dateStr,
     required this.isLoading,
     required this.totalRevenue,
+    required this.collectedRevenue,
+    required this.pendingRevenue,
     required this.todayOrdersCount,
-    required this.customersCount,
-    required this.fulfillmentRate,
+    required this.todayRevenue,
   });
 
   String _greeting() {
@@ -345,14 +357,16 @@ class _DashboardHero extends StatelessWidget {
               _HeroRevenue(
                 isLoading: isLoading,
                 totalRevenue: totalRevenue,
+                collectedRevenue: collectedRevenue,
+                pendingRevenue: pendingRevenue,
                 todayOrdersCount: todayOrdersCount,
               ),
               const SizedBox(height: 22),
               _KpiStrip(
                 isLoading: isLoading,
                 todayOrdersCount: todayOrdersCount,
-                customersCount: customersCount,
-                fulfillmentRate: fulfillmentRate,
+                todayRevenue: todayRevenue,
+                pendingRevenue: pendingRevenue,
               ),
             ],
           ),
@@ -491,21 +505,27 @@ class _HeroIconButton extends StatelessWidget {
 class _HeroRevenue extends StatelessWidget {
   final bool isLoading;
   final double totalRevenue;
+  final double collectedRevenue;
+  final double pendingRevenue;
   final int todayOrdersCount;
 
   const _HeroRevenue({
     required this.isLoading,
     required this.totalRevenue,
+    required this.collectedRevenue,
+    required this.pendingRevenue,
     required this.todayOrdersCount,
   });
 
   @override
   Widget build(BuildContext context) {
+    final money0 = NumberFormat.decimalPattern('en_IN');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'TOTAL REVENUE',
+          'GROSS REVENUE',
           style: context.appTextStyles.caption.copyWith(
             color: Colors.white.withValues(alpha: 0.7),
             fontSize: 10,
@@ -529,7 +549,7 @@ class _HeroRevenue extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      '₹${NumberFormat.decimalPattern('en_IN').format(totalRevenue.round())}',
+                      '₹${money0.format(totalRevenue.round())}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.appTextStyles.sliverTitle.copyWith(
@@ -581,7 +601,85 @@ class _HeroRevenue extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        if (isLoading)
+          Container(
+            height: 32,
+            width: 220,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _HeroRevenueSplitPill(
+                label: 'Collected',
+                value: '₹${money0.format(collectedRevenue.round())}',
+                color: AppColors.success,
+              ),
+              _HeroRevenueSplitPill(
+                label: 'Pending',
+                value: '₹${money0.format(pendingRevenue.round())}',
+                color: AppColors.warning,
+              ),
+            ],
+          ),
       ],
+    );
+  }
+}
+
+class _HeroRevenueSplitPill extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _HeroRevenueSplitPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$label ',
+            style: context.appTextStyles.caption.copyWith(
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            value,
+            style: context.appTextStyles.caption.copyWith(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -616,18 +714,24 @@ class _GlowBlob extends StatelessWidget {
 class _KpiStrip extends StatelessWidget {
   final bool isLoading;
   final int todayOrdersCount;
-  final int customersCount;
-  final double fulfillmentRate;
+  final double todayRevenue;
+  final double pendingRevenue;
 
   const _KpiStrip({
     required this.isLoading,
     required this.todayOrdersCount,
-    required this.customersCount,
-    required this.fulfillmentRate,
+    required this.todayRevenue,
+    required this.pendingRevenue,
   });
 
   @override
   Widget build(BuildContext context) {
+    final moneyCompact = NumberFormat.compactCurrency(
+      locale: 'en_IN',
+      symbol: 'Rs ',
+      decimalDigits: 0,
+    );
+
     return Transform.translate(
       offset: const Offset(0, 36),
       child: Container(
@@ -665,11 +769,11 @@ class _KpiStrip extends StatelessWidget {
               ),
               Expanded(
                 child: _KpiPill(
-                  icon: Icons.people_alt_rounded,
-                  iconTone: AppColors.warning,
-                  title: 'Customers',
+                  icon: Icons.currency_rupee_rounded,
+                  iconTone: AppColors.success,
+                  title: 'Today Revenue',
                   isLoading: isLoading,
-                  value: isLoading ? '—' : customersCount.toString(),
+                  value: isLoading ? '—' : moneyCompact.format(todayRevenue),
                 ),
               ),
               const VerticalDivider(
@@ -681,13 +785,11 @@ class _KpiStrip extends StatelessWidget {
               ),
               Expanded(
                 child: _KpiPill(
-                  icon: Icons.check_circle_rounded,
-                  iconTone: AppColors.success,
-                  title: 'Fulfillment',
+                  icon: Icons.pending_actions_rounded,
+                  iconTone: AppColors.warning,
+                  title: 'Pending Dues',
                   isLoading: isLoading,
-                  value: isLoading
-                      ? '—'
-                      : '${(fulfillmentRate * 100).round()}%',
+                  value: isLoading ? '—' : moneyCompact.format(pendingRevenue),
                 ),
               ),
             ],

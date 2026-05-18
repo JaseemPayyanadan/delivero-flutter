@@ -906,85 +906,78 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  customerName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 16,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.45,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: statusChipBg.withValues(alpha: 0.32),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  statusText,
-                                  style: TextStyle(
-                                    color: statusChipFg,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 11,
-                                    height: 1.1,
-                                    letterSpacing: 0.05,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          Text(
+                            customerName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.45,
+                            ),
                           ),
                           const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  metaLine,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AppColors.textLight,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 11,
-                                    height: 1.1,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.backgroundSecondary,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: Text(
-                                  typeLabel,
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 10,
-                                    letterSpacing: 0.15,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          Text(
+                            metaLine,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textLight,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              height: 1.1,
+                            ),
                           ),
                         ],
                       ),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusChipBg.withValues(alpha: 0.32),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            statusText,
+                            style: TextStyle(
+                              color: statusChipFg,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                              height: 1.1,
+                              letterSpacing: 0.05,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Text(
+                            typeLabel,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 10,
+                              letterSpacing: 0.15,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

@@ -538,7 +538,7 @@ class _CustomerListCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(4, 10, 4, 10),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
                 width: 34,
@@ -574,16 +574,23 @@ class _CustomerListCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (hasPending) ...[
-                          const SizedBox(width: 10),
-                          payment.pill,
-                        ],
-                        const SizedBox(width: 6),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: AppColors.textLight.withValues(alpha: 0.9),
-                        ),
+                        const SizedBox(width: 10),
+                        if (hasScheduleInfo)
+                          _Pill(
+                            label: scheduleLabel!,
+                            fg: AppColors.primary,
+                            bg: AppColors.primaryLighter,
+                            isUppercase: false,
+                            compact: true,
+                          )
+                        else
+                          _Pill(
+                            label: 'No orders yet',
+                            fg: AppColors.textLight,
+                            bg: AppColors.backgroundSecondary,
+                            isUppercase: false,
+                            compact: true,
+                          ),
                       ],
                     ),
                     if (phone.trim().isNotEmpty) ...[
@@ -602,31 +609,10 @@ class _CustomerListCard extends StatelessWidget {
                     ],
                     const SizedBox(height: 6),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.calendar_month_rounded,
-                          size: 15,
-                          color: hasScheduleInfo
-                              ? AppColors.primary
-                              : AppColors.textLight,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            scheduleLabel ?? 'No orders yet',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontWeight: hasScheduleInfo
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
-                              fontSize: 12,
-                              color: hasScheduleInfo
-                                  ? AppColors.textSecondary
-                                  : AppColors.textLight,
-                            ),
-                          ),
-                        ),
+                        if (hasPending) payment.pill,
+                        const Spacer(),
                         if (!hasRoute)
                           TextButton.icon(
                             onPressed: onAssignRoute,
