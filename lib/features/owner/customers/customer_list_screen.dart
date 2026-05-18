@@ -92,6 +92,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
             final bn = routesById[b]?.name ?? '';
             return an.compareTo(bn);
           });
+    final showRouteFilterButton = availableRouteIds.length > 1;
 
     final filteredCustomers = customers.where((customer) {
       final q = _searchQuery.toLowerCase().trim();
@@ -114,7 +115,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       return matchesSearch && matchesRoute;
     }).toList();
 
-    filteredCustomers.sort((a, b) => a.name.compareTo(b.name));
+    filteredCustomers.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     final bool noCustomersYet = customers.isEmpty;
     int totalOrdersCount = 0;
@@ -144,17 +145,21 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
               color: AppColors.textPrimary,
             ),
           ),
-          IconButton(
-            tooltip: 'Filter',
-            onPressed: () => _openRouteFilterSheet(
-              context,
-              availableRouteIds: availableRouteIds,
-              routesById: routesById,
-              routesLoaded: routesLoaded,
-              routes: routes,
+          if (showRouteFilterButton)
+            IconButton(
+              tooltip: 'Filter',
+              onPressed: () => _openRouteFilterSheet(
+                context,
+                availableRouteIds: availableRouteIds,
+                routesById: routesById,
+                routesLoaded: routesLoaded,
+                routes: routes,
+              ),
+              icon: const Icon(
+                Icons.tune_rounded,
+                color: AppColors.textPrimary,
+              ),
             ),
-            icon: const Icon(Icons.tune_rounded, color: AppColors.textPrimary),
-          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -176,7 +181,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
             parent: BouncingScrollPhysics(),
           ),
           slivers: [
-            if (!noCustomersYet)
+            if (!noCustomersYet && availableRouteIds.length > 1)
               SliverToBoxAdapter(
                 child: _RouteChipsRow(
                   selectedRouteId: _selectedRouteId,
@@ -347,7 +352,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
 
     final slivers = <Widget>[];
     for (final key in groupKeys) {
-      final items = grouped[key]!..sort((a, b) => a.name.compareTo(b.name));
+      final items = grouped[key]!
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
       slivers.add(
         SliverToBoxAdapter(
           child: Padding(
@@ -424,15 +430,15 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
     return slivers;
   }
 
-  String _scheduleLabelForCustomer(List<Order> customerOrders) {
-    if (customerOrders.isEmpty) return 'No orders yet';
+  String? _scheduleLabelForCustomer(List<Order> customerOrders) {
+    if (customerOrders.isEmpty) return null;
     if (customerOrders.any((o) => o.orderType == OrderType.oneTime)) {
       return 'One-time';
     }
     if (customerOrders.any((o) => o.orderType == OrderType.special)) {
       return 'Special';
     }
-    return 'No orders yet';
+    return null;
   }
 
   // Customer list intentionally avoids quick actions (call, etc.)
@@ -504,7 +510,7 @@ class _CustomerListCard extends StatelessWidget {
   final PaymentStatus? paymentStatus;
   final bool hasPending;
   final bool hasRoute;
-  final String scheduleLabel;
+  final String? scheduleLabel;
   final VoidCallback onTap;
   final VoidCallback onAssignRoute;
 
@@ -522,6 +528,7 @@ class _CustomerListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final payment = _PaymentPill.from(paymentStatus);
+    final hasScheduleInfo = scheduleLabel != null;
 
     return Container(
       decoration: BoxDecoration(
@@ -548,23 +555,23 @@ class _CustomerListCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 35,
+                      height: 35,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.surface,
                         border: Border.all(color: AppColors.border),
                       ),
                       child: const Icon(
-                        Icons.person_outline_rounded,
+                        Icons.storefront_rounded,
                         color: AppColors.textSecondary,
-                        size: 18,
+                        size: 17,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,18 +587,20 @@ class _CustomerListCard extends StatelessWidget {
                               letterSpacing: -0.45,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            phone.trim().isEmpty ? '—' : phone.trim(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.1,
+                          if (phone.trim().isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              phone.trim(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                letterSpacing: 0.1,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -604,21 +613,27 @@ class _CustomerListCard extends StatelessWidget {
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.calendar_month_rounded,
                       size: 16,
-                      color: AppColors.primary,
+                      color: hasScheduleInfo
+                          ? AppColors.primary
+                          : AppColors.textLight,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        scheduleLabel,
+                        scheduleLabel ?? 'No orders yet',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
+                        style: TextStyle(
+                          fontWeight: hasScheduleInfo
+                              ? FontWeight.w700
+                              : FontWeight.w600,
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: hasScheduleInfo
+                              ? AppColors.textSecondary
+                              : AppColors.textLight,
                         ),
                       ),
                     ),

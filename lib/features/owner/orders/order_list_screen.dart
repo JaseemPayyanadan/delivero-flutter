@@ -419,7 +419,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             parent: BouncingScrollPhysics(),
           ),
           slivers: [
-            if (!noOrdersYet)
+            if (!noOrdersYet && availableRouteIds.length > 1)
               SliverToBoxAdapter(
                 child: _buildFilters(
                   routes,
@@ -934,6 +934,19 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           const SizedBox(height: 4),
                           Row(
                             children: [
+                              Expanded(
+                                child: Text(
+                                  metaLine,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.textLight,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
@@ -951,19 +964,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                     fontWeight: FontWeight.w800,
                                     fontSize: 10,
                                     letterSpacing: 0.15,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  metaLine,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AppColors.textLight,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 11,
                                   ),
                                 ),
                               ),

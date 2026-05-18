@@ -257,6 +257,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (_isEditMode) ...[
+                      _buildCustomerDetailsCard(routes),
+                      const SizedBox(height: 28),
+                    ],
                     _buildSectionHeader('Basics'),
                     const SizedBox(height: 16),
                     _buildTextField(
@@ -351,6 +355,107 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         fontWeight: FontWeight.w900,
         color: AppColors.textLight,
         letterSpacing: 1.5,
+      ),
+    );
+  }
+
+  Widget _buildCustomerDetailsCard(List<DeliveryRoute> routes) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLighter,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.storefront_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Customer details',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Quick view before editing',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _CustomerDetailTile(
+                  label: 'Business',
+                  value: _nameController.text.trim().isEmpty
+                      ? '—'
+                      : _nameController.text.trim(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _CustomerDetailTile(
+                  label: 'Owner',
+                  value: _ownerNameController.text.trim().isEmpty
+                      ? 'Not added'
+                      : _ownerNameController.text.trim(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _CustomerDetailTile(
+                  label: 'Phone',
+                  value: _phoneController.text.trim().isEmpty
+                      ? 'Not added'
+                      : _phoneController.text.trim(),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -915,6 +1020,52 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _CustomerDetailTile extends StatelessWidget {
+  const _CustomerDetailTile({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textLight,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -350,6 +350,57 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     super.dispose();
   }
 
+  String _digitsOnly(String value) {
+    return value.replaceAll(RegExp(r'\D'), '');
+  }
+
+  String _routeLabelForCustomer(
+    Customer customer,
+    List<DeliveryRoute> routes, {
+    required bool routesLoaded,
+  }) {
+    if (!routesLoaded && routes.isEmpty) return 'Loading route…';
+    return routes
+            .firstWhereOrNull(
+              (r) =>
+                  r.id == customer.assignedRoute || r.name == customer.assignedRoute,
+            )
+            ?.name ??
+        (customer.assignedRoute?.trim().isNotEmpty == true
+            ? customer.assignedRoute!.trim()
+            : 'No route');
+  }
+
+  int _customerMatchScore(
+    Customer customer,
+    String query,
+    String queryDigits,
+    List<DeliveryRoute> routes, {
+    required bool routesLoaded,
+  }) {
+    if (query.isEmpty && queryDigits.isEmpty) return 100;
+
+    final name = customer.name.trim().toLowerCase();
+    final owner = (customer.ownerName ?? '').trim().toLowerCase();
+    final phoneDigits = _digitsOnly(customer.phone);
+    final route = _routeLabelForCustomer(
+      customer,
+      routes,
+      routesLoaded: routesLoaded,
+    ).toLowerCase();
+
+    if (query.isNotEmpty && name == query) return 0;
+    if (queryDigits.isNotEmpty && phoneDigits == queryDigits) return 1;
+    if (query.isNotEmpty && name.startsWith(query)) return 2;
+    if (query.isNotEmpty && owner.startsWith(query)) return 3;
+    if (query.isNotEmpty && route.startsWith(query)) return 4;
+    if (query.isNotEmpty && name.contains(query)) return 5;
+    if (query.isNotEmpty && owner.contains(query)) return 6;
+    if (query.isNotEmpty && route.contains(query)) return 7;
+    if (queryDigits.isNotEmpty && phoneDigits.contains(queryDigits)) return 8;
+    return 999;
+  }
+
   bool _canGoNextFromStep({required bool hasSelectedUnits}) {
     return switch (_step) {
       0 => _selectedCustomer != null,
@@ -691,13 +742,29 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final showRouteLoading = !routesLoaded && routes.isEmpty;
 
     final q = _customerSearchQuery.trim().toLowerCase();
-    final filteredCustomers =
-        customers.where((c) {
-          if (q.isEmpty) return true;
-          return c.name.toLowerCase().contains(q) || c.phone.contains(q);
-        }).toList()..sort(
-          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-        );
+    final qDigits = _digitsOnly(_customerSearchQuery);
+    final filteredCustomers = customers
+        .map(
+          (customer) => (
+            customer: customer,
+            score: _customerMatchScore(
+              customer,
+              q,
+              qDigits,
+              routes,
+              routesLoaded: routesLoaded,
+            ),
+          ),
+        )
+        .where((entry) => q.isEmpty && qDigits.isEmpty ? true : entry.score < 999)
+        .toList()
+      ..sort((a, b) {
+        final byScore = a.score.compareTo(b.score);
+        if (byScore != 0) return byScore;
+        return a.customer.name.toLowerCase().compareTo(b.customer.name.toLowerCase());
+      });
+    final visibleCustomers = filteredCustomers.map((entry) => entry.customer).toList();
+    final searchActive = q.isNotEmpty || qDigits.isNotEmpty;
 
     final selected = _selectedCustomer;
 
@@ -731,11 +798,24 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             color: AppColors.textPrimary,
           ),
           decoration: InputDecoration(
-            hintText: 'Search by name or phone (optional)',
+            hintText: 'Search by customer, owner, route, or phone',
             prefixIcon: const Icon(
               Icons.search_rounded,
               color: AppColors.textLight,
             ),
+            suffixIcon: searchActive
+                ? IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _customerSearchController?.clear();
+                      setState(() => _customerSearchQuery = '');
+                    },
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: AppColors.textLight,
+                    ),
+                  )
+                : null,
             filled: true,
             fillColor: AppColors.backgroundSecondary,
             border: OutlineInputBorder(
@@ -752,16 +832,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         if (selected != null)
           _SelectedPartnerCard(
             customer: selected,
-            routeName: routesLoaded
-                ? routes
-                          .firstWhereOrNull(
-                            (r) =>
-                                r.id == selected.assignedRoute ||
-                                r.name == selected.assignedRoute,
-                          )
-                          ?.name ??
-                      (selected.assignedRoute ?? 'No route')
-                : 'Loading route…',
+            routeName: _routeLabelForCustomer(
+              selected,
+              routes,
+              routesLoaded: routesLoaded,
+            ),
             onChange: () => setState(() => _selectedCustomer = null),
           )
         else if (customers.isEmpty)
@@ -779,23 +854,47 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           )
         else ...[
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              'All customers (${filteredCustomers.length})',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-              ),
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    searchActive
+                        ? '${visibleCustomers.length} match${visibleCustomers.length == 1 ? '' : 'es'}'
+                        : 'All customers (${visibleCustomers.length})',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                if (searchActive)
+                  Text(
+                    'Tap a result to continue',
+                    style: TextStyle(
+                      color: AppColors.textLight.withValues(alpha: 0.95),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+              ],
             ),
           ),
           _CustomerSuggestions(
-            customers: filteredCustomers,
+            customers: visibleCustomers,
             showRouteLoading: showRouteLoading,
             routes: routes,
-            emptyHint: q.isEmpty
+            searchQuery: _customerSearchQuery.trim(),
+            onClearSearch: searchActive
+                ? () {
+                    _customerSearchController?.clear();
+                    setState(() => _customerSearchQuery = '');
+                  }
+                : null,
+            emptyHint: q.isEmpty && qDigits.isEmpty
                 ? 'No customers to show.'
-                : 'No customers match that search. Try a different name or phone.',
+                : 'No customers match that search. Try a different name, owner, route, or phone.',
             onSelect: onCustomerChosen,
           ),
         ],

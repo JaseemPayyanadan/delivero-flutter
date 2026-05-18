@@ -363,6 +363,24 @@ class _ProfileHeroCard extends StatelessWidget {
     return (first + second).toUpperCase();
   }
 
+  String _planName(SubscriptionPlan plan) {
+    return switch (plan) {
+      SubscriptionPlan.free => 'Free',
+      SubscriptionPlan.pro => 'Pro',
+    };
+  }
+
+  String _planDescription(SubscriptionPlan plan, bool isDelivery) {
+    return switch (plan) {
+      SubscriptionPlan.free => isDelivery
+          ? 'Using the workspace free plan'
+          : 'Basic workspace features are active',
+      SubscriptionPlan.pro => isDelivery
+          ? 'Using the workspace pro plan'
+          : 'Advanced workspace features are active',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -410,8 +428,8 @@ class _ProfileHeroCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            width: 60,
-                            height: 60,
+                            width: 52,
+                            height: 52,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: AppColors.surface,
@@ -429,8 +447,8 @@ class _ProfileHeroCard extends StatelessWidget {
                             ),
                             alignment: Alignment.center,
                             child: Container(
-                              width: 50,
-                              height: 50,
+                              width: 44,
+                              height: 44,
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: AppColors.primaryLighter,
@@ -440,7 +458,7 @@ class _ProfileHeroCard extends StatelessWidget {
                                 _initials(user!.name),
                                 style: const TextStyle(
                                   color: AppColors.primary,
-                                  fontSize: 18,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: -0.4,
                                 ),
@@ -525,6 +543,16 @@ class _ProfileHeroCard extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      _ProfileInfoTile(
+                        icon: Icons.workspace_premium_rounded,
+                        label: 'Plan',
+                        title: _planName(user!.plan),
+                        subtitle: _planDescription(user!.plan, isDelivery),
+                        accentColor: user!.plan == SubscriptionPlan.pro
+                            ? AppColors.warning
+                            : AppColors.primary,
                       ),
                       if (isDelivery && driver != null) ...[
                         const SizedBox(height: 16),
@@ -650,18 +678,6 @@ class _ProfileHeroCard extends StatelessWidget {
                                   ? '—'
                                   : user!.phone.trim(),
                             ),
-                            if (user!.factoryId != null &&
-                                user!.factoryId!.trim().isNotEmpty) ...[
-                              const Divider(
-                                height: 1,
-                                color: AppColors.divider,
-                              ),
-                              _ProfileContactLine(
-                                icon: Icons.factory_outlined,
-                                label: 'Workspace',
-                                text: user!.factoryId!.trim(),
-                              ),
-                            ],
                           ],
                         ),
                       ),
@@ -684,8 +700,8 @@ class _ProfileHeroSkeleton extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 60,
-              height: 60,
+              width: 52,
+              height: 52,
               decoration: const BoxDecoration(
                 color: AppColors.backgroundSecondary,
                 shape: BoxShape.circle,
@@ -745,6 +761,89 @@ class _ProfileHeroSkeleton extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProfileInfoTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String title;
+  final String subtitle;
+  final Color accentColor;
+
+  const _ProfileInfoTile({
+    required this.icon,
+    required this.label,
+    required this.title,
+    required this.subtitle,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: accentColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: context.appTextStyles.caption.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.4,
+                    color: AppColors.textLight,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: context.appTextStyles.sectionHeader.copyWith(
+                    fontSize: 14,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: context.appTextStyles.caption.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
