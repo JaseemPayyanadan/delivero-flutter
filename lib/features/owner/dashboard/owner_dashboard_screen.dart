@@ -1702,6 +1702,14 @@ class _RecentOrderTile extends StatelessWidget {
   final Order order;
   const _RecentOrderTile({required this.order});
 
+  Color _chipTextColor(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    if (hsl.lightness > 0.6) {
+      return hsl.withLightness(0.35).toColor();
+    }
+    return base;
+  }
+
   Color _getStatusColor(OrderStatus status) {
     switch (status) {
       case OrderStatus.pending:
@@ -1744,9 +1752,10 @@ class _RecentOrderTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor(order.status);
     final statusChipBg = switch (order.status) {
-      OrderStatus.pending => const Color(0xFF6D5EF6),
+      OrderStatus.pending => AppColors.warning,
       _ => statusColor,
     };
+    final statusChipFg = _chipTextColor(statusChipBg);
     final amountLabel =
         '₹${NumberFormat.decimalPattern('en_IN').format(order.totalAmount)}';
     return Semantics(
@@ -1852,21 +1861,18 @@ class _RecentOrderTile extends StatelessWidget {
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
+                        horizontal: 12,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: statusChipBg.withValues(alpha: 0.12),
+                        color: statusChipBg.withValues(alpha: 0.32),
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: statusChipBg.withValues(alpha: 0.35),
-                        ),
                       ),
                       child: Text(
                         _humanStatus(order.status),
                         style: context.appTextStyles.caption.copyWith(
-                          color: statusChipBg,
-                          fontWeight: FontWeight.w900,
+                          color: statusChipFg,
+                          fontWeight: FontWeight.w800,
                           fontSize: 11,
                           height: 1.1,
                         ),

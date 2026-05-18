@@ -273,6 +273,14 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     }
   }
 
+  Color _chipTextColor(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    if (hsl.lightness > 0.6) {
+      return hsl.withLightness(0.35).toColor();
+    }
+    return base;
+  }
+
   Widget _buildOrderCard(BuildContext context, WidgetRef ref, Order order) {
     final isDelivered = order.status == OrderStatus.delivered;
     final customerName = order.customerName.trim().isEmpty
@@ -287,11 +295,12 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
 
     final statusText = _humanStatus(order.status);
     final statusColor = _getStatusColor(order.status);
-    final statusChipBg = switch (order.status) {
-      OrderStatus.pending => const Color(0xFF6D5EF6),
+    final statusChipBase = switch (order.status) {
+      OrderStatus.pending => AppColors.warning,
       _ => statusColor,
     };
-    const statusChipFg = Colors.white;
+    final statusChipBg = statusChipBase.withValues(alpha: 0.32);
+    final statusChipFg = _chipTextColor(statusChipBase);
 
     final details = order.items
         .take(4)
@@ -392,7 +401,7 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
                   ),
                   child: Text(
                     statusText,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: statusChipFg,
                       fontWeight: FontWeight.w800,
                       fontSize: 11,

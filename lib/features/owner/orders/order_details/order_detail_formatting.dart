@@ -35,13 +35,13 @@ Color orderDetailStatusAccent(OrderStatus status) {
 Color orderDetailStatusBg(OrderStatus status) {
   switch (status) {
     case OrderStatus.pending:
-      return AppColors.warningLighter.withValues(alpha: 0.9);
+      return AppColors.warningLighter.withValues(alpha: 0.72);
     case OrderStatus.delivered:
-      return AppColors.backgroundTertiary.withValues(alpha: 0.8);
+      return AppColors.backgroundTertiary.withValues(alpha: 0.64);
     case OrderStatus.cancelled:
-      return AppColors.errorLighter.withValues(alpha: 0.85);
+      return AppColors.errorLighter.withValues(alpha: 0.68);
     default:
-      return AppColors.infoLighter.withValues(alpha: 0.85);
+      return AppColors.infoLighter.withValues(alpha: 0.68);
   }
 }
 

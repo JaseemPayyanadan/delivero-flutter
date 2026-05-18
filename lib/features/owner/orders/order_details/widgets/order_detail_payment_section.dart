@@ -119,8 +119,8 @@ class OrderDetailPaymentSection extends StatelessWidget {
           trailingWidget: OrderDetailPillBadge(
             label: orderDetailHumanize(paymentStatus.name).toUpperCase(),
             background: paymentColor == AppColors.error
-                ? AppColors.errorLighter.withValues(alpha: 0.85)
-                : paymentColor.withValues(alpha: 0.12),
+                ? AppColors.errorLighter.withValues(alpha: 0.68)
+                : paymentColor.withValues(alpha: 0.096),
             foreground: paymentColor,
             border: paymentColor.withValues(alpha: 0.22),
           ),

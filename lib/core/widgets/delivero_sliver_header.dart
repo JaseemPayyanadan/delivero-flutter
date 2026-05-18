@@ -11,6 +11,7 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
   final Widget? leading;
   final double leadingSlotWidth;
+  final Color backgroundColor;
 
   const DeliveroAppBar({
     super.key,
@@ -20,6 +21,7 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.actions,
     this.leading,
     this.leadingSlotWidth = kToolbarHeight,
+    this.backgroundColor = AppColors.backgroundPrimary,
   });
 
   @override
@@ -44,7 +46,7 @@ class DeliveroAppBar extends StatelessWidget implements PreferredSizeWidget {
         );
 
     return AppBar(
-      backgroundColor: AppColors.backgroundPrimary,
+      backgroundColor: backgroundColor,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,

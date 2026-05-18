@@ -1034,7 +1034,7 @@ class _DeliveryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor(order.status);
     final statusChipBg = switch (order.status) {
-      OrderStatus.pending => const Color(0xFF6D5EF6),
+      OrderStatus.pending => AppColors.warning,
       _ => statusColor,
     };
     final amount = '₹${NumberFormat.compact().format(order.totalAmount)}';
@@ -1142,21 +1142,30 @@ class _StatusChip extends StatelessWidget {
     this.solid = false,
   });
 
+  Color _chipTextColor(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    if (hsl.lightness > 0.6) {
+      return hsl.withLightness(0.35).toColor();
+    }
+    return base;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final fg = _chipTextColor(color);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: solid ? color : color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: solid ? 0.32 : 0.096),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: solid ? Colors.white : color,
+          color: fg,
           fontSize: 11,
           fontWeight: FontWeight.w800,
-          height: solid ? 1.1 : null,
+          height: 1.1,
         ),
       ),
     );

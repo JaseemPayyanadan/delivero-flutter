@@ -98,8 +98,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                 label: orderDetailHumanize(resolved.paymentStatus.name)
                     .toUpperCase(),
                 background: paymentColor == AppColors.error
-                    ? AppColors.errorLighter.withValues(alpha: 0.85)
-                    : paymentColor.withValues(alpha: 0.12),
+                    ? AppColors.errorLighter.withValues(alpha: 0.68)
+                    : paymentColor.withValues(alpha: 0.096),
                 foreground: paymentColor,
                 border: paymentColor.withValues(alpha: 0.22),
               ),
@@ -176,7 +176,11 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                     for (int idx = 0; idx < order.items.length; idx++) ...[
                       OrderDetailItemRow(item: order.items[idx]),
                       if (idx != order.items.length - 1)
-                        const Divider(height: 1, color: AppColors.divider),
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.blue,
+                        ),
                     ],
                   ],
                 ),

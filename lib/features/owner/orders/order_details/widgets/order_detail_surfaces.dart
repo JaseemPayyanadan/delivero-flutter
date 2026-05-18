@@ -93,18 +93,19 @@ class OrderDetailStatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        label.toUpperCase(),
+        label,
         style: TextStyle(
           color: fg,
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.8,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          height: 1.1,
+          letterSpacing: 0.05,
         ),
       ),
     );
@@ -130,7 +131,7 @@ class OrderDetailPillBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
@@ -147,8 +148,9 @@ class OrderDetailPillBadge extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: foreground,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w800,
+                height: 1.1,
                 letterSpacing: 0.1,
               ),
             ),
