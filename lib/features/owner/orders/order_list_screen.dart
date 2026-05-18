@@ -828,6 +828,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final statusChipFg = _chipTextColor(statusChipBg);
 
     final dateLabel = DateFormat('EEE, d MMM').format(order.orderDate);
+    final metaLine = '$displayId · $dateLabel';
 
     final payment = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentColor(payment);
@@ -880,7 +881,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 10, 10),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -905,46 +906,58 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            customerName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                              color: AppColors.textPrimary,
-                              letterSpacing: -0.45,
-                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  customerName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: -0.45,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: statusChipBg.withValues(alpha: 0.32),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  statusText,
+                                  style: TextStyle(
+                                    color: statusChipFg,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                    height: 1.1,
+                                    letterSpacing: 0.05,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Row(
                             children: [
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      displayId,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: AppColors.textLight,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 1),
-                                    Text(
-                                      dateLabel,
-                                      maxLines: 2,
-                                      style: const TextStyle(
-                                        color: AppColors.textLight,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 11,
-                                        height: 1.1,
-                                      ),
-                                    ),
-                                  ],
+                                child: Text(
+                                  metaLine,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.textLight,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                    height: 1.1,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -972,38 +985,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusChipBg.withValues(alpha: 0.32),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            statusText,
-                            style: TextStyle(
-                              color: statusChipFg,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 11,
-                              height: 1.1,
-                              letterSpacing: 0.05,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 22,
-                          color: AppColors.textLight.withValues(alpha: 0.85),
-                        ),
-                      ],
                     ),
                   ],
                 ),
