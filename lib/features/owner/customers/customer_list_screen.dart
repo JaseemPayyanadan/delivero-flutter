@@ -364,10 +364,11 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       );
       slivers.add(
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
           sliver: SliverList.separated(
             itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 14),
+            separatorBuilder: (_, __) =>
+                const Divider(height: 1, color: AppColors.divider),
             itemBuilder: (context, index) {
               final customer = items[index];
               final customerOrders = ordersByCustomer[customer.id] ?? const [];
@@ -425,7 +426,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
           ),
         ),
       );
-      slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 8)));
+      slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 4)));
     }
     return slivers;
   }
@@ -530,53 +531,38 @@ class _CustomerListCard extends StatelessWidget {
     final payment = _PaymentPill.from(paymentStatus);
     final hasScheduleInfo = scheduleLabel != null;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 22,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+    return Material(
+      color: AppColors.surface,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(4, 10, 4, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.storefront_rounded,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 35,
-                      height: 35,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.surface,
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(
-                        Icons.storefront_rounded,
-                        color: AppColors.textSecondary,
-                        size: 17,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(
                             customer.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -587,89 +573,79 @@ class _CustomerListCard extends StatelessWidget {
                               letterSpacing: -0.45,
                             ),
                           ),
-                          if (phone.trim().isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              phone.trim(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                                letterSpacing: 0.1,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 10),
+                        if (hasScheduleInfo)
+                          _Pill(
+                            label: scheduleLabel!,
+                            fg: AppColors.primary,
+                            bg: AppColors.primaryLighter,
+                            isUppercase: false,
+                            compact: true,
+                          )
+                        else
+                          _Pill(
+                            label: 'No orders yet',
+                            fg: AppColors.textLight,
+                            bg: AppColors.backgroundSecondary,
+                            isUppercase: false,
+                            compact: true,
+                          ),
+                      ],
                     ),
-                    if (hasPending) ...[
-                      const SizedBox(width: 10),
-                      payment.pill,
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_month_rounded,
-                      size: 16,
-                      color: hasScheduleInfo
-                          ? AppColors.primary
-                          : AppColors.textLight,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        scheduleLabel ?? 'No orders yet',
+                    if (phone.trim().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        phone.trim(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: hasScheduleInfo
-                              ? FontWeight.w700
-                              : FontWeight.w600,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
                           fontSize: 12,
-                          color: hasScheduleInfo
-                              ? AppColors.textSecondary
-                              : AppColors.textLight,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.1,
                         ),
                       ),
+                    ],
+                    const SizedBox(height: 6),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (hasPending) payment.pill,
+                        const Spacer(),
+                        if (!hasRoute)
+                          TextButton.icon(
+                            onPressed: onAssignRoute,
+                            icon: const Icon(
+                              Icons.alt_route_rounded,
+                              size: 16,
+                            ),
+                            label: const Text(
+                              'Assign route',
+                              style: TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.08,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
-                if (!hasRoute) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: onAssignRoute,
-                      icon: const Icon(Icons.alt_route_rounded, size: 16),
-                      label: const Text('Assign a route'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: BorderSide(
-                          color: AppColors.primary.withValues(alpha: 0.4),
-                        ),
-                        backgroundColor: AppColors.primary.withValues(
-                          alpha: 0.06,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          letterSpacing: -0.1,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -741,7 +717,7 @@ class _Pill extends StatelessWidget {
           ? const EdgeInsets.symmetric(horizontal: 12, vertical: 4)
           : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: bg.withValues(alpha: compact ? 1 : 0.85),
+        color: bg.withValues(alpha: compact ? 0.8 : 0.68),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: fg.withValues(alpha: compact ? 0.14 : 0.18)),
       ),

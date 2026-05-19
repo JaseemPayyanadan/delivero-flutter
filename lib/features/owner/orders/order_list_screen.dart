@@ -367,23 +367,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     }).toList();
 
     filteredOrders.sort((a, b) {
-      // Priority sorting: Pending (1), Confirmed (2), Preparing (3), Ready (4), Cancelled (5), Delivered (6)
-      final statusPriority = {
-        OrderStatus.pending: 1,
-        OrderStatus.confirmed: 2,
-        OrderStatus.preparing: 3,
-        OrderStatus.ready: 4,
-        OrderStatus.cancelled: 5,
-        OrderStatus.delivered: 6,
-      };
-
-      final aPriority = statusPriority[a.status] ?? 7;
-      final bPriority = statusPriority[b.status] ?? 7;
-
-      if (aPriority != bPriority) {
-        return aPriority.compareTo(bPriority);
-      }
-      return b.orderDate.compareTo(a.orderDate);
+      final c = a.createdAt.compareTo(b.createdAt);
+      if (c != 0) return c;
+      return a.orderDate.compareTo(b.orderDate);
     });
 
     return Scaffold(
@@ -516,7 +502,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     final widgets = <Widget>[];
     for (final key in sortedKeys) {
-      final orders = groups[key]!;
+      final orders = groups[key]!
+        ..sort((a, b) {
+          final c = a.createdAt.compareTo(b.createdAt);
+          if (c != 0) return c;
+          return a.orderDate.compareTo(b.orderDate);
+        });
       final count = orders.length;
 
       if (key.trim().isNotEmpty) {
@@ -831,24 +822,17 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     };
 
     final statusChipBg = switch (order.status) {
-      OrderStatus.pending => const Color(0xFF6D5EF6),
+      OrderStatus.pending => AppColors.warning,
       _ => _getStatusColor(order.status),
     };
+    final statusChipFg = _chipTextColor(statusChipBg);
 
-    const statusChipFg = Colors.white;
-
-    final lineTypes = order.items.length;
-    final unitCount = order.items.fold<int>(0, (sum, i) => sum + i.quantity);
-    final metaParts = <String>[
-      DateFormat('EEE, d MMM').format(order.orderDate),
-      if (lineTypes > 0)
-        '$lineTypes ${lineTypes == 1 ? 'product' : 'products'}',
-      if (unitCount > 0) '$unitCount units',
-    ];
-    final metaLine = metaParts.join(' · ');
+    final dateLabel = DateFormat('EEE, d MMM').format(order.orderDate);
+    final metaLine = '$displayId · $dateLabel';
 
     final payment = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentColor(payment);
+    final paymentChipFg = _chipTextColor(paymentColor);
     final paymentLabel = switch (payment) {
       PaymentStatus.paid => 'Paid',
       PaymentStatus.partial => 'Partial',
@@ -858,11 +842,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     const previewMax = 3;
     final previewItems = order.items.take(previewMax).toList();
     final moreLines = order.items.length - previewItems.length;
-    final detailsBody = previewItems.isEmpty
-        ? '—'
-        : previewItems
-              .map((i) => '${i.foodItemName} · ${_formatRupee(i.totalPrice)}')
-              .join('\n');
+    const emptyLineItemsText = '—';
+    final lineItemParts = previewItems.isEmpty
+        ? const <String>[]
+        : [
+            ...previewItems.map((i) => '${i.foodItemName} x${i.quantity}'),
+            if (moreLines > 0) '+$moreLines more',
+          ];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -895,7 +881,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 10, 10),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -921,7 +907,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            displayId,
+                            customerName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -932,82 +918,64 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  metaLine,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AppColors.textLight,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.backgroundSecondary,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: Text(
-                                  typeLabel,
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 10,
-                                    letterSpacing: 0.15,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          Text(
+                            metaLine,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textLight,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              height: 1.1,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 10),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
+                            horizontal: 12,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: statusChipBg,
+                            color: statusChipBg.withValues(alpha: 0.32),
                             borderRadius: BorderRadius.circular(999),
-                            boxShadow: [
-                              BoxShadow(
-                                color: statusChipBg.withValues(alpha: 0.35),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
                           ),
                           child: Text(
                             statusText,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: statusChipFg,
                               fontWeight: FontWeight.w800,
-                              fontSize: 10,
+                              fontSize: 11,
                               height: 1.1,
                               letterSpacing: 0.05,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 22,
-                          color: AppColors.textLight.withValues(alpha: 0.85),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Text(
+                            typeLabel,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 10,
+                              letterSpacing: 0.15,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -1035,23 +1003,35 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'Customer',
+                                    'Payment',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 12,
                                       color: AppColors.textSecondary,
                                     ),
                                   ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    customerName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 15,
-                                      color: AppColors.textPrimary,
-                                      letterSpacing: -0.3,
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: paymentColor.withValues(alpha: 0.32),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: paymentColor.withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      paymentLabel,
+                                      style: TextStyle(
+                                        color: paymentChipFg,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 11,
+                                        height: 1.1,
+                                        letterSpacing: 0.1,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1083,42 +1063,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            const Text(
-                              'Payment',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: paymentColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: paymentColor.withValues(alpha: 0.35),
-                                ),
-                              ),
-                              child: Text(
-                                paymentLabel,
-                                style: TextStyle(
-                                  color: paymentColor,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 11,
-                                  letterSpacing: 0.1,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Divider(
@@ -1137,56 +1081,46 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        previewItems.isEmpty
-                            ? Text(
-                                detailsBody,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                  color: AppColors.textPrimary,
-                                  letterSpacing: -0.1,
-                                  height: 1.35,
-                                ),
-                              )
-                            : moreLines > 0
-                            ? Text.rich(
-                                TextSpan(
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.1,
-                                    height: 1.35,
-                                  ),
-                                  children: [
-                                    TextSpan(text: detailsBody),
-                                    TextSpan(
-                                      text: '\n+$moreLines more',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 12,
-                                        color: AppColors.primary.withValues(
-                                          alpha: 0.95,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                maxLines: 5,
+                        Builder(
+                          builder: (context) {
+                            const textStyle = TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.1,
+                              height: 1.35,
+                            );
+                            final separatorStyle = textStyle.copyWith(
+                              color: AppColors.textLight,
+                            );
+
+                            if (lineItemParts.isEmpty) {
+                              return const Text(
+                                emptyLineItemsText,
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
-                              )
-                            : Text(
-                                detailsBody,
-                                maxLines: 4,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                  color: AppColors.textPrimary,
-                                  letterSpacing: -0.1,
-                                  height: 1.35,
-                                ),
-                              ),
+                                style: textStyle,
+                              );
+                            }
+
+                            final spans = <TextSpan>[];
+                            for (int i = 0; i < lineItemParts.length; i++) {
+                              if (i > 0) {
+                                spans.add(
+                                  TextSpan(text: ' | ', style: separatorStyle),
+                                );
+                              }
+                              spans.add(TextSpan(text: lineItemParts[i]));
+                            }
+
+                            return Text.rich(
+                              TextSpan(children: spans),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: textStyle,
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -1283,6 +1217,14 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       default:
         return AppColors.info;
     }
+  }
+
+  Color _chipTextColor(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    if (hsl.lightness > 0.6) {
+      return hsl.withLightness(0.35).toColor();
+    }
+    return base;
   }
 
   Widget _buildEmptyState({required bool hasAnyOrders}) {

@@ -61,7 +61,7 @@ class DeliveroButton extends StatelessWidget {
     final buttonStyle = FilledButton.styleFrom(
       backgroundColor: backgroundColor ?? AppColors.primary,
       foregroundColor: foregroundColor ?? theme.colorScheme.onPrimary,
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
       ),

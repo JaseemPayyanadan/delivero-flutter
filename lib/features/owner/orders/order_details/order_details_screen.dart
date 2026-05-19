@@ -36,6 +36,19 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   final TextEditingController _partialAmountController =
       TextEditingController();
 
+  void _resetPaymentDrafts(Order order) {
+    _draftPaymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
+    _draftPaymentMethod = order.paymentMethod ?? PaymentMethod.cash;
+    _draftAmountPaid = order.amountPaid;
+
+    if (_draftPaymentStatus == PaymentStatus.partial) {
+      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
+      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
+    } else {
+      _partialAmountController.clear();
+    }
+  }
+
   @override
   void dispose() {
     _partialAmountController.dispose();
@@ -83,13 +96,6 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       backgroundColor: AppColors.backgroundPrimary,
       appBar: DeliveroAppBar(
         title: 'Order Details',
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                tooltip: 'Back',
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => context.pop(),
-              )
-            : null,
         actions: [
           Center(
             child: Padding(
@@ -98,8 +104,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                 label: orderDetailHumanize(resolved.paymentStatus.name)
                     .toUpperCase(),
                 background: paymentColor == AppColors.error
-                    ? AppColors.errorLighter.withValues(alpha: 0.85)
-                    : paymentColor.withValues(alpha: 0.12),
+                    ? AppColors.errorLighter.withValues(alpha: 0.68)
+                    : paymentColor.withValues(alpha: 0.096),
                 foreground: paymentColor,
                 border: paymentColor.withValues(alpha: 0.22),
               ),
@@ -176,7 +182,11 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                     for (int idx = 0; idx < order.items.length; idx++) ...[
                       OrderDetailItemRow(item: order.items[idx]),
                       if (idx != order.items.length - 1)
-                        const Divider(height: 1, color: AppColors.divider),
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.blue,
+                        ),
                     ],
                   ],
                 ),
@@ -212,6 +222,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                   final parsed = double.tryParse(raw);
                   setState(() => _draftAmountPaid = parsed);
                 },
+                onResetPaymentDrafts: () => setState(() {
+                  _resetPaymentDrafts(order);
+                }),
                 ref: ref,
               ),
               const SizedBox(height: 20),

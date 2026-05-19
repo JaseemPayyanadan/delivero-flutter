@@ -13,9 +13,9 @@ class AppColors {
   static const primaryGradientEnd = Color(0xFF1E3A8A); // Deep Indigo-Blue
 
   // Backgrounds
-  static const backgroundPrimary = Color(0xFFF8FAFC); // Very light slate
-  static const backgroundSecondary = Color(0xFFF1F5F9);
-  static const backgroundTertiary = Color(0xFFE2E8F0);
+  static const backgroundPrimary = Color(0xFFFFFFFF); // White
+  static const backgroundSecondary = Color(0xFFF8FAFC); // Very light slate
+  static const backgroundTertiary = Color(0xFFF1F5F9);
 
   static const surface = Color(0xFFFFFFFF);
   static const surfaceElevated = Color(

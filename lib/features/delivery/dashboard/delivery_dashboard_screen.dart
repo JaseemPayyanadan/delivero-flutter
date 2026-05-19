@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/order.dart';
+import '../driver_order_scope.dart';
 import '../delivery_nav_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -28,12 +30,11 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     final me = drivers.firstWhereOrNull((d) => d.id == driverId);
     final myRouteId = me?.currentRoute?.trim();
 
-    final myOrders = allOrders.where((o) {
-      if (driverId == null) return false;
-      if (o.assignedDriver == driverId) return true;
-      if (myRouteId == null || myRouteId.isEmpty) return false;
-      return o.assignedRoute == myRouteId;
-    }).toList();
+    final myOrders = driverScopedOrders(
+      allOrders,
+      driverId: driverId,
+      routeId: myRouteId,
+    );
 
     final today = DateTime.now();
     final todayOrders = myOrders.where((o) {
@@ -68,15 +69,11 @@ class DeliveryDashboardScreen extends ConsumerWidget {
     final completedCount = myOrders
         .where((o) => o.status == OrderStatus.delivered)
         .length;
-    final pendingCount = myOrders
-        .where((o) => o.status == OrderStatus.pending)
-        .length;
+    final activeCount = myOrders.where(isDriverActiveOrder).length;
     final todayDeliveredCount = todayOrders
         .where((o) => o.status == OrderStatus.delivered)
         .length;
-    final todayPendingCount = todayOrders
-        .where((o) => o.status == OrderStatus.pending)
-        .length;
+    final todayActiveCount = todayOrders.where(isDriverActiveOrder).length;
     final todayTotal = todayCash + todayUpi;
     final dateLabel = DateFormat('EEEE, d MMMM').format(today);
 
@@ -110,7 +107,7 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                 todayTotal: todayTotal,
                 todayPending: todayPending,
                 todayTaskCount: todayOrders.length,
-                todayPendingCount: todayPendingCount,
+                todayActiveCount: todayActiveCount,
                 todayDeliveredCount: todayDeliveredCount,
               ),
             ),
@@ -120,11 +117,6 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                 child: Center(
                   child: CircularProgressIndicator(color: AppColors.primary),
                 ),
-              )
-            else if (myOrders.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: _NoDeliveriesEmpty(),
               )
             else
               SliverPadding(
@@ -140,9 +132,15 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                     _QuickActionsGrid(
                       actions: [
                         _QuickAction(
+                          label: 'New order',
+                          icon: Icons.add_shopping_cart_rounded,
+                          color: AppColors.primary,
+                          onTap: () => context.push('/delivery/new-order'),
+                        ),
+                        _QuickAction(
                           label: 'Assigned',
                           icon: Icons.list_alt_rounded,
-                          color: AppColors.primary,
+                          color: AppColors.secondary,
                           onTap: () => ref
                               .read(deliveryNavIndexProvider.notifier)
                               .setIndex(1),
@@ -164,38 +162,43 @@ class DeliveryDashboardScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 28),
-                    const _SectionHeader(
-                      eyebrow: 'TODAY',
-                      title: 'Deliveries',
-                      subtitle: 'Focus on pending stops first',
-                    ),
-                    const SizedBox(height: 14),
-                    _TodayDeliveriesCard(orders: upcomingToday),
-                    const SizedBox(height: 28),
-                    const _SectionHeader(
-                      eyebrow: 'TODAY',
-                      title: 'Collections',
-                      subtitle: 'Cash, UPI and outstanding amounts',
-                    ),
-                    const SizedBox(height: 14),
-                    _CollectionBreakdownCard(
-                      cash: todayCash,
-                      upi: todayUpi,
-                      pending: todayPending,
-                    ),
-                    const SizedBox(height: 28),
-                    const _SectionHeader(
-                      eyebrow: 'OVERVIEW',
-                      title: 'All-time performance',
-                      subtitle: 'Your overall delivery summary',
-                    ),
-                    const SizedBox(height: 14),
-                    _PerformanceCard(
-                      total: myOrders.length,
-                      completed: completedCount,
-                      pending: pendingCount,
-                    ),
+                    if (myOrders.isEmpty) ...[
+                      const SizedBox(height: 28),
+                      const _NoDeliveriesEmpty(),
+                    ] else ...[
+                      const SizedBox(height: 28),
+                      const _SectionHeader(
+                        eyebrow: 'TODAY',
+                        title: 'Deliveries',
+                        subtitle: 'Focus on pending stops first',
+                      ),
+                      const SizedBox(height: 14),
+                      _TodayDeliveriesCard(orders: upcomingToday),
+                      const SizedBox(height: 28),
+                      const _SectionHeader(
+                        eyebrow: 'TODAY',
+                        title: 'Collections',
+                        subtitle: 'Cash, UPI and outstanding amounts',
+                      ),
+                      const SizedBox(height: 14),
+                      _CollectionBreakdownCard(
+                        cash: todayCash,
+                        upi: todayUpi,
+                        pending: todayPending,
+                      ),
+                      const SizedBox(height: 28),
+                      const _SectionHeader(
+                        eyebrow: 'OVERVIEW',
+                        title: 'All-time performance',
+                        subtitle: 'Your overall delivery summary',
+                      ),
+                      const SizedBox(height: 14),
+                      _PerformanceCard(
+                        total: myOrders.length,
+                        completed: completedCount,
+                        active: activeCount,
+                      ),
+                    ],
                     SizedBox(height: bottomInset),
                   ]),
                 ),
@@ -235,7 +238,7 @@ class _DriverHero extends StatelessWidget {
   final double todayTotal;
   final double todayPending;
   final int todayTaskCount;
-  final int todayPendingCount;
+  final int todayActiveCount;
   final int todayDeliveredCount;
 
   const _DriverHero({
@@ -245,7 +248,7 @@ class _DriverHero extends StatelessWidget {
     required this.todayTotal,
     required this.todayPending,
     required this.todayTaskCount,
-    required this.todayPendingCount,
+    required this.todayActiveCount,
     required this.todayDeliveredCount,
   });
 
@@ -296,18 +299,7 @@ class _DriverHero extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _HeroTopRow(greeting: _greeting(), name: displayName),
-              const SizedBox(height: 22),
-              const Text(
-                'Dashboard',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.1,
-                  height: 1.0,
-                ),
-              ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 16),
               Text(
                 dateStr,
                 style: TextStyle(
@@ -327,7 +319,7 @@ class _DriverHero extends StatelessWidget {
               _KpiStrip(
                 isLoading: isLoading,
                 todayTaskCount: todayTaskCount,
-                todayPendingCount: todayPendingCount,
+                todayActiveCount: todayActiveCount,
                 todayDeliveredCount: todayDeliveredCount,
               ),
             ],
@@ -363,45 +355,16 @@ class _HeroTopRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25),
-                      ),
-                    ),
-                    child: const Text(
-                      'DRIVER',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ),
-                ],
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                ),
               ),
             ],
           ),
@@ -574,13 +537,13 @@ class _GlowBlob extends StatelessWidget {
 class _KpiStrip extends StatelessWidget {
   final bool isLoading;
   final int todayTaskCount;
-  final int todayPendingCount;
+  final int todayActiveCount;
   final int todayDeliveredCount;
 
   const _KpiStrip({
     required this.isLoading,
     required this.todayTaskCount,
-    required this.todayPendingCount,
+    required this.todayActiveCount,
     required this.todayDeliveredCount,
   });
 
@@ -625,9 +588,9 @@ class _KpiStrip extends StatelessWidget {
                 child: _KpiPill(
                   icon: Icons.timer_rounded,
                   iconTone: AppColors.warning,
-                  title: 'Pending',
+                  title: 'Active',
                   isLoading: isLoading,
-                  value: isLoading ? '—' : todayPendingCount.toString(),
+                  value: isLoading ? '—' : todayActiveCount.toString(),
                 ),
               ),
               const VerticalDivider(
@@ -1034,7 +997,7 @@ class _DeliveryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor(order.status);
     final statusChipBg = switch (order.status) {
-      OrderStatus.pending => const Color(0xFF6D5EF6),
+      OrderStatus.pending => AppColors.warning,
       _ => statusColor,
     };
     final amount = '₹${NumberFormat.compact().format(order.totalAmount)}';
@@ -1142,21 +1105,30 @@ class _StatusChip extends StatelessWidget {
     this.solid = false,
   });
 
+  Color _chipTextColor(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    if (hsl.lightness > 0.6) {
+      return hsl.withLightness(0.35).toColor();
+    }
+    return base;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final fg = _chipTextColor(color);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: solid ? color : color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: solid ? 0.32 : 0.096),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: solid ? Colors.white : color,
+          color: fg,
           fontSize: 11,
           fontWeight: FontWeight.w800,
-          height: solid ? 1.1 : null,
+          height: 1.1,
         ),
       ),
     );
@@ -1293,12 +1265,12 @@ class _BreakdownItem extends StatelessWidget {
 class _PerformanceCard extends StatelessWidget {
   final int total;
   final int completed;
-  final int pending;
+  final int active;
 
   const _PerformanceCard({
     required this.total,
     required this.completed,
-    required this.pending,
+    required this.active,
   });
 
   @override
@@ -1328,8 +1300,8 @@ class _PerformanceCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _MiniStat(
-                  label: 'Pending',
-                  value: pending.toString(),
+                  label: 'Active',
+                  value: active.toString(),
                   color: AppColors.warning,
                 ),
               ),
@@ -1431,77 +1403,75 @@ class _NoDeliveriesEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        children: [
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.local_shipping_outlined,
+              color: AppColors.primary,
+              size: 40,
+            ),
+          ),
+          const SizedBox(height: 28),
+          const Text(
+            'No deliveries yet',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Create an order for a customer on your route and it will show up here.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textSecondary.withValues(alpha: 0.85),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: () {
+                try {
+                  HapticFeedback.lightImpact();
+                } catch (_) {}
+                context.push('/delivery/new-order');
+              },
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: const Text(
+                'New order',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
               ),
-              child: const Icon(
-                Icons.local_shipping_outlined,
-                color: AppColors.primary,
-                size: 40,
+              style: FilledButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                backgroundColor: AppColors.primaryLighter.withValues(alpha: 0.65),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
-            const SizedBox(height: 28),
-            const Text(
-              'No deliveries yet',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Orders assigned to you will appear here. Check back once your manager has created a delivery.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textSecondary.withValues(alpha: 0.85),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundSecondary,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.tips_and_updates_outlined,
-                    size: 16,
-                    color: AppColors.textLight,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Pull down to refresh',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

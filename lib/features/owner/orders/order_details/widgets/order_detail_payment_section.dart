@@ -24,6 +24,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
   final ValueChanged<PaymentStatus> onDraftPaymentStatusChanged;
   final ValueChanged<PaymentMethod> onDraftPaymentMethodChanged;
   final ValueChanged<String> onPartialAmountChanged;
+  final VoidCallback onResetPaymentDrafts;
   final WidgetRef ref;
 
   const OrderDetailPaymentSection({
@@ -42,6 +43,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
     required this.onDraftPaymentStatusChanged,
     required this.onDraftPaymentMethodChanged,
     required this.onPartialAmountChanged,
+    required this.onResetPaymentDrafts,
     required this.ref,
   });
 
@@ -109,8 +111,46 @@ class OrderDetailPaymentSection extends StatelessWidget {
     );
   }
 
+  double? _normalizedAmountForStatus(
+    PaymentStatus status, {
+    required double? amount,
+  }) {
+    return switch (status) {
+      PaymentStatus.unpaid => null,
+      PaymentStatus.paid => order.totalAmount,
+      PaymentStatus.partial => amount,
+    };
+  }
+
+  double? _parsedDraftAmount() {
+    final raw = partialAmountController.text.trim().replaceAll(',', '');
+    if (raw.isEmpty) return draftAmountPaid;
+    return double.tryParse(raw) ?? draftAmountPaid;
+  }
+
+  bool _amountEquals(double? a, double? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return (a - b).abs() < 0.001;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final originalStatus = order.paymentStatus ?? PaymentStatus.unpaid;
+    final originalMethod = order.paymentMethod ?? PaymentMethod.cash;
+    final originalAmount = _normalizedAmountForStatus(
+      originalStatus,
+      amount: order.amountPaid,
+    );
+    final draftNormalizedAmount = _normalizedAmountForStatus(
+      draftPaymentStatus,
+      amount: _parsedDraftAmount(),
+    );
+    final hasPaymentChanges =
+        draftPaymentStatus != originalStatus ||
+        draftPaymentMethod != originalMethod ||
+        !_amountEquals(draftNormalizedAmount, originalAmount);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -119,8 +159,8 @@ class OrderDetailPaymentSection extends StatelessWidget {
           trailingWidget: OrderDetailPillBadge(
             label: orderDetailHumanize(paymentStatus.name).toUpperCase(),
             background: paymentColor == AppColors.error
-                ? AppColors.errorLighter.withValues(alpha: 0.85)
-                : paymentColor.withValues(alpha: 0.12),
+                ? AppColors.errorLighter.withValues(alpha: 0.68)
+                : paymentColor.withValues(alpha: 0.096),
             foreground: paymentColor,
             border: paymentColor.withValues(alpha: 0.22),
           ),
@@ -252,35 +292,60 @@ class OrderDetailPaymentSection extends StatelessWidget {
                         ],
                       ),
                     ],
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => _onApply(context),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor:
-                              Theme.of(context).colorScheme.onPrimary,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                    if (hasPaymentChanges) ...[
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: onResetPaymentDrafts,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.textSecondary,
+                                side: const BorderSide(
+                                  color: AppColors.border,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                minimumSize: const Size(0, 40),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              child: const Text('Cancel'),
+                            ),
                           ),
-                        ),
-                        icon: Icon(
-                          Icons.check_rounded,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                        label: Text(
-                          'Save payment',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: Theme.of(context).colorScheme.onPrimary,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () => _onApply(context),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.onPrimary,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                minimumSize: const Size(0, 40),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              child: const Text('Update'),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

@@ -145,11 +145,11 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
                   NavigationDestination(
                     icon: Icon(CupertinoIcons.chart_bar),
                     selectedIcon: Icon(CupertinoIcons.chart_bar_fill),
-                    label: 'Insights',
+                    label: 'Report',
                   ),
                   NavigationDestination(
-                    icon: Icon(CupertinoIcons.settings),
-                    selectedIcon: Icon(CupertinoIcons.settings_solid),
+                    icon: Icon(CupertinoIcons.person),
+                    selectedIcon: Icon(CupertinoIcons.person_fill),
                     label: 'Profile',
                   ),
                 ],

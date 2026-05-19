@@ -212,6 +212,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
       appBar: DeliveroAppBar(
         title: 'Customer Profile',
         centerTitle: true,
+        backgroundColor: AppColors.backgroundSecondary,
         leading: IconButton(
           tooltip: 'Back',
           onPressed: () => context.pop(),
@@ -245,137 +246,152 @@ class CustomerDetailsScreen extends ConsumerWidget {
       body: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+          padding: const EdgeInsets.only(bottom: 100),
           children: [
-            const SizedBox(height: 10),
-            Center(
-              child: Container(
-                width: 74,
-                height: 74,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppColors.shadow,
-                      blurRadius: 18,
-                      offset: Offset(0, 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+              color: AppColors.backgroundSecondary,
+              child: Column(
+                children: [
+                  const SizedBox(height: 6),
+                  Center(
+                    child: Container(
+                      width: 74,
+                      height: 74,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: AppColors.shadow,
+                            blurRadius: 18,
+                            offset: Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.storefront_rounded,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        size: 34,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Center(
+                    child: Text(
+                      customer.name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 24,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Center(
+                    child: Text(
+                      customer.phone.trim().isEmpty ? '—' : customer.phone.trim(),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Center(child: _StatusPill(active: customer.isActive)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _ProfileCard(
+                icon: Icons.autorenew_rounded,
+                iconBg: AppColors.warningLighter.withValues(alpha: 0.75),
+                title: 'Recurring Order',
+                child: recurringItems.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: Text(
+                          'No recurring items set yet.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          for (final item in recurringItems.take(3)) ...[
+                            _RecurringItemRow(
+                              name: item.name,
+                              quantity: item.quantity,
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _MetaPair(
+                                  label: 'Frequency',
+                                  value: scheduleLabel == '—'
+                                      ? 'Weekly'
+                                      : 'Weekly ($scheduleLabel)',
+                                ),
+                              ),
+                              Expanded(
+                                child: _MetaPair(
+                                  label: 'Estimated total',
+                                  value: estimatedPerDelivery == null
+                                      ? '—'
+                                      : '₹${NumberFormat.compact().format(estimatedPerDelivery)} /deliv.',
+                                  alignEnd: true,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _ProfileCard(
+                icon: Icons.account_balance_wallet_rounded,
+                iconBg: AppColors.successLighter.withValues(alpha: 0.75),
+                title: 'Financial Overview',
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _FinancialTile(
+                        label: 'Payment status',
+                        child: _PaymentPill(paid: pendingRevenue <= 0),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _FinancialTile(
+                        label: 'Outstanding',
+                        child: Text(
+                          '₹${NumberFormat.decimalPattern().format(pendingRevenue)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                child: Icon(
-                  Icons.storefront_rounded,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  size: 34,
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Center(
-              child: Text(
-                customer.name,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 24,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.4,
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Center(
-              child: Text(
-                customer.phone.trim().isEmpty ? '—' : customer.phone.trim(),
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Center(child: _StatusPill(active: customer.isActive)),
-            const SizedBox(height: 18),
-            _ProfileCard(
-              icon: Icons.autorenew_rounded,
-              iconBg: AppColors.warningLighter.withValues(alpha: 0.75),
-              title: 'Recurring Order',
-              child: recurringItems.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.only(top: 6),
-                      child: Text(
-                        'No recurring items set yet.',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        for (final item in recurringItems.take(3)) ...[
-                          _RecurringItemRow(
-                            name: item.name,
-                            quantity: item.quantity,
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _MetaPair(
-                                label: 'Frequency',
-                                value: scheduleLabel == '—'
-                                    ? 'Weekly'
-                                    : 'Weekly ($scheduleLabel)',
-                              ),
-                            ),
-                            Expanded(
-                              child: _MetaPair(
-                                label: 'Estimated total',
-                                value: estimatedPerDelivery == null
-                                    ? '—'
-                                    : '₹${NumberFormat.compact().format(estimatedPerDelivery)} /deliv.',
-                                alignEnd: true,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-            ),
-            const SizedBox(height: 16),
-            _ProfileCard(
-              icon: Icons.account_balance_wallet_rounded,
-              iconBg: AppColors.successLighter.withValues(alpha: 0.75),
-              title: 'Financial Overview',
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _FinancialTile(
-                      label: 'Payment status',
-                      child: _PaymentPill(paid: pendingRevenue <= 0),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _FinancialTile(
-                      label: 'Outstanding',
-                      child: Text(
-                        '₹${NumberFormat.decimalPattern().format(pendingRevenue)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ],

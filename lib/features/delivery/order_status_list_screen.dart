@@ -7,10 +7,10 @@ import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/maps_launch.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/order.dart';
+import 'driver_order_scope.dart';
 
 class OrderStatusListScreen extends ConsumerStatefulWidget {
   const OrderStatusListScreen({super.key});
@@ -69,12 +69,12 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     final drivers = ref.watch(driversProvider);
     final me = drivers.firstWhereOrNull((d) => d.id == driverId);
     final myRouteId = me?.currentRoute?.trim();
-    var myOrders = allOrders.where((o) {
-      if (driverId == null) return false;
-      if (o.assignedDriver == driverId) return true;
-      if (myRouteId == null || myRouteId.isEmpty) return false;
-      return o.assignedRoute == myRouteId;
-    }).toList();
+    final myAllOrders = driverScopedOrders(
+      allOrders,
+      driverId: driverId,
+      routeId: myRouteId,
+    );
+    var myOrders = List<Order>.from(myAllOrders);
 
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
@@ -91,9 +91,7 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
 
     // Filter by status tab
     if (_selectedStatus == 'all') {
-      myOrders = myOrders
-          .where((o) => o.status != OrderStatus.delivered)
-          .toList();
+      myOrders = myOrders.where(isDriverActiveOrder).toList();
     } else if (_selectedStatus == 'delivered') {
       myOrders = myOrders
           .where((o) => o.status == OrderStatus.delivered)
@@ -101,26 +99,10 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     }
 
     myOrders.sort((a, b) {
-      final statusPriority = {
-        OrderStatus.pending: 1,
-        OrderStatus.confirmed: 2,
-        OrderStatus.preparing: 3,
-        OrderStatus.ready: 4,
-        OrderStatus.cancelled: 5,
-        OrderStatus.delivered: 6,
-      };
-      final aP = statusPriority[a.status] ?? 7;
-      final bP = statusPriority[b.status] ?? 7;
-      if (aP != bP) return aP.compareTo(bP);
-      return b.orderDate.compareTo(a.orderDate);
+      final c = a.createdAt.compareTo(b.createdAt);
+      if (c != 0) return c;
+      return a.orderDate.compareTo(b.orderDate);
     });
-
-    final myAllOrders = allOrders.where((o) {
-      if (driverId == null) return false;
-      if (o.assignedDriver == driverId) return true;
-      if (myRouteId == null || myRouteId.isEmpty) return false;
-      return o.assignedRoute == myRouteId;
-    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -128,6 +110,14 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
         title: 'Assigned Orders',
         leading: null,
         actions: [
+          IconButton(
+            tooltip: 'New order',
+            onPressed: () => context.push('/delivery/new-order'),
+            icon: const Icon(
+              Icons.add_circle_outline_rounded,
+              color: AppColors.textPrimary,
+            ),
+          ),
           IconButton(
             tooltip: 'Search',
             onPressed: () => _openSearchSheet(context),
@@ -174,10 +164,10 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
   }
 
   Widget _buildFilters(List<Order> myAllOrders) {
-    final activeCount =
-        myAllOrders.where((o) => o.status != OrderStatus.delivered).length;
-    final deliveredCount =
-        myAllOrders.where((o) => o.status == OrderStatus.delivered).length;
+    final activeCount = myAllOrders.where(isDriverActiveOrder).length;
+    final deliveredCount = myAllOrders
+        .where((o) => o.status == OrderStatus.delivered)
+        .length;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -186,14 +176,8 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
         physics: const BouncingScrollPhysics(),
         child: Row(
           children: [
-            _buildStatusPill(
-              'all',
-              'Active ($activeCount)',
-            ),
-            _buildStatusPill(
-              'delivered',
-              'Delivered ($deliveredCount)',
-            ),
+            _buildStatusPill('all', 'Active ($activeCount)'),
+            _buildStatusPill('delivered', 'Delivered ($deliveredCount)'),
           ],
         ),
       ),
@@ -273,315 +257,362 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     }
   }
 
+  Color _chipTextColor(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    if (hsl.lightness > 0.6) {
+      return hsl.withLightness(0.35).toColor();
+    }
+    return base;
+  }
+
+  Color _getPaymentColor(PaymentStatus status) {
+    switch (status) {
+      case PaymentStatus.paid:
+        return AppColors.success;
+      case PaymentStatus.partial:
+        return AppColors.warning;
+      case PaymentStatus.unpaid:
+        return AppColors.error;
+    }
+  }
+
   Widget _buildOrderCard(BuildContext context, WidgetRef ref, Order order) {
-    final isDelivered = order.status == OrderStatus.delivered;
+    final lastTouched = ref.watch(lastTouchedOrderProvider);
+    final shouldHighlight =
+        lastTouched != null &&
+        lastTouched.id == order.id &&
+        DateTime.now().difference(lastTouched.at) <= const Duration(seconds: 8);
+    final highlightColor = lastTouched?.wasCreated == true
+        ? AppColors.success
+        : AppColors.primary;
+
     final customerName = order.customerName.trim().isEmpty
         ? 'Unknown'
         : order.customerName.trim();
     final displayId = _displayOrderId(order.id);
+    final dateLabel = DateFormat('EEE, d MMM').format(order.orderDate);
+    final metaLine = '$displayId · $dateLabel';
     final typeLabel = switch (order.orderType) {
-      OrderType.daily => 'Daily order',
-      OrderType.oneTime => 'One-time order',
-      OrderType.special => 'Special order',
+      OrderType.daily => 'Daily',
+      OrderType.oneTime => 'One-time',
+      OrderType.special => 'Special',
     };
 
     final statusText = _humanStatus(order.status);
     final statusColor = _getStatusColor(order.status);
-    final statusChipBg = switch (order.status) {
-      OrderStatus.pending => const Color(0xFF6D5EF6),
+    final statusChipBase = switch (order.status) {
+      OrderStatus.pending => AppColors.warning,
       _ => statusColor,
     };
-    const statusChipFg = Colors.white;
-
-    final details = order.items
-        .take(4)
-        .map((i) {
-          final price = i.totalPrice;
-          final priceLabel = price == price.roundToDouble()
-              ? price.toStringAsFixed(0)
-              : price.toStringAsFixed(2);
-          return '${i.foodItemName} ($priceLabel)';
-        })
-        .join(', ');
+    final statusChipBg = statusChipBase.withValues(alpha: 0.32);
+    final statusChipFg = _chipTextColor(statusChipBase);
+    final payment = order.paymentStatus ?? PaymentStatus.unpaid;
+    final paymentColor = _getPaymentColor(payment);
+    final paymentChipFg = _chipTextColor(paymentColor);
+    final paymentLabel = switch (payment) {
+      PaymentStatus.paid => 'Paid',
+      PaymentStatus.partial => 'Partial',
+      PaymentStatus.unpaid => 'Unpaid',
+    };
+    const previewMax = 3;
+    final previewItems = order.items.take(previewMax).toList();
+    final moreLines = order.items.length - previewItems.length;
+    const emptyLineItemsText = '—';
+    final lineItemParts = previewItems.isEmpty
+        ? const <String>[]
+        : [
+            ...previewItems.map((i) => '${i.foodItemName} x${i.quantity}'),
+            if (moreLines > 0) '+$moreLines more',
+          ];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        color: shouldHighlight
+            ? highlightColor.withValues(alpha: 0.06)
+            : AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: shouldHighlight
+              ? highlightColor.withValues(alpha: 0.75)
+              : AppColors.border,
+          width: shouldHighlight ? 2 : 1,
+        ),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 22,
-            offset: Offset(0, 8),
+            blurRadius: 18,
+            offset: Offset(0, 6),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          borderRadius: BorderRadius.circular(24),
           onTap: () {
             try {
               HapticFeedback.selectionClick();
             } catch (_) {}
             context.push('/delivery/orders/${order.id}');
           },
-          child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.surface,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Icon(
-                    Icons.inventory_2_outlined,
-                    color: AppColors.textSecondary,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayId,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.45,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        typeLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusChipBg,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    statusText,
-                    style: const TextStyle(
-                      color: statusChipFg,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                      height: 1.1,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Customer Name:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        customerName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Total Amount',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.receipt_long_rounded,
+                        color: AppColors.primary,
+                        size: 22,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _formatRupee(order.totalAmount),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.3,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            customerName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.45,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            metaLine,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textLight,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusChipBg,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            statusText,
+                            style: TextStyle(
+                              color: statusChipFg,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                              height: 1.1,
+                              letterSpacing: 0.05,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Text(
+                            typeLabel,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 10,
+                              letterSpacing: 0.15,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            const Divider(height: 1, color: AppColors.divider),
-            const SizedBox(height: 18),
-            const Text(
-              'Order Details',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-                color: AppColors.textSecondary,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              details.isEmpty ? '—' : details,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.15,
-                height: 1.25,
-              ),
-            ),
-            if (order.customerAddress.trim().isNotEmpty) ...[
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _openMaps(context, order.customerAddress),
-                  icon: const Icon(Icons.navigation_rounded, size: 18),
-                  label: const Text('Navigate'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Payment',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: paymentColor.withValues(
+                                        alpha: 0.32,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: paymentColor.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      paymentLabel,
+                                      style: TextStyle(
+                                        color: paymentChipFg,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 11,
+                                        height: 1.1,
+                                        letterSpacing: 0.1,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                const Text(
+                                  'Total',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  _formatRupee(order.totalAmount),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16,
+                                    color: AppColors.primary,
+                                    letterSpacing: -0.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: AppColors.border.withValues(alpha: 0.65),
+                          ),
+                        ),
+                        Text(
+                          'LINE ITEMS',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 10,
+                            color: AppColors.textLight,
+                            letterSpacing: 0.9,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Builder(
+                          builder: (context) {
+                            const textStyle = TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.1,
+                              height: 1.35,
+                            );
+                            final separatorStyle = textStyle.copyWith(
+                              color: AppColors.textLight,
+                            );
+
+                            if (lineItemParts.isEmpty) {
+                              return const Text(
+                                emptyLineItemsText,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: textStyle,
+                              );
+                            }
+
+                            final spans = <TextSpan>[];
+                            for (int i = 0; i < lineItemParts.length; i++) {
+                              if (i > 0) {
+                                spans.add(
+                                  TextSpan(text: ' | ', style: separatorStyle),
+                                );
+                              }
+                              spans.add(TextSpan(text: lineItemParts[i]));
+                            }
+
+                            return Text.rich(
+                              TextSpan(children: spans),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: textStyle,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ],
-            const SizedBox(height: 12),
-            if (!isDelivered)
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => _confirmDelivery(context, ref, order),
-                  icon: const Icon(Icons.check, size: 18),
-                  label: const Text('Deliver'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                  ),
-                ),
-              )
-            else
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.success.withValues(alpha: 0.20),
-                  ),
-                ),
-                child: const Center(
-                  child: Text(
-                    'DELIVERED',
-                    style: TextStyle(
-                      color: AppColors.success,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openMaps(BuildContext context, String address) async {
-    final ok = await openMapsForAddress(address);
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Could not open maps')));
-    }
-  }
-
-  void _confirmDelivery(BuildContext context, WidgetRef ref, Order order) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Delivery'),
-        content: Text(
-          'Are you sure you want to mark order for ${order.customerName} as delivered?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            onPressed: () {
-              final updatedOrder = order.copyWith(
-                status: OrderStatus.delivered,
-              );
-              ref.read(ordersProvider.notifier).updateOrder(updatedOrder);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Order marked as delivered')),
-              );
-            },
-            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
-            child: const Text('Confirm'),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -593,6 +624,10 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
           ? 'Try switching Active / Delivered or changing your search.'
           : 'Great job! You have no pending deliveries at the moment.',
       icon: Icons.local_shipping_outlined,
+      actionLabel: hasAnyAssigned ? null : 'New order',
+      onActionPressed: hasAnyAssigned
+          ? null
+          : () => context.push('/delivery/new-order'),
     );
   }
 }

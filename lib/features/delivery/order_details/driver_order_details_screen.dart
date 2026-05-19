@@ -2,7 +2,6 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -11,47 +10,78 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/maps_launch.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/order.dart';
+import '../driver_order_scope.dart';
 import '../../owner/orders/order_details/order_detail_formatting.dart';
 import '../../owner/orders/order_details/resolved_order_detail.dart';
 import '../../owner/orders/order_details/widgets/order_detail_bottom_actions.dart';
 import '../../owner/orders/order_details/widgets/order_detail_item_row.dart';
+import '../../owner/orders/order_details/widgets/order_detail_payment_section.dart';
 import '../../owner/orders/order_details/widgets/order_detail_summary_card.dart';
 import '../../owner/orders/order_details/widgets/order_detail_surfaces.dart';
 
-/// Read-only details view for a driver's assigned order. Drivers can mark
-/// the order as delivered, open the address in maps, and tap the customer's
-/// phone number to call. Editing/cancelling stays owner-only.
-class DriverOrderDetailsScreen extends ConsumerWidget {
+class DriverOrderDetailsScreen extends ConsumerStatefulWidget {
   final String orderId;
 
   const DriverOrderDetailsScreen({super.key, required this.orderId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DriverOrderDetailsScreen> createState() =>
+      _DriverOrderDetailsScreenState();
+}
+
+class _DriverOrderDetailsScreenState
+    extends ConsumerState<DriverOrderDetailsScreen> {
+  PaymentStatus? _draftPaymentStatus;
+  PaymentMethod? _draftPaymentMethod;
+  double? _draftAmountPaid;
+  final TextEditingController _partialAmountController =
+      TextEditingController();
+
+  void _resetPaymentDrafts(Order order) {
+    _draftPaymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
+    _draftPaymentMethod = order.paymentMethod ?? PaymentMethod.cash;
+    _draftAmountPaid = order.amountPaid;
+
+    if (_draftPaymentStatus == PaymentStatus.partial) {
+      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
+      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
+    } else {
+      _partialAmountController.clear();
+    }
+  }
+
+  @override
+  void dispose() {
+    _partialAmountController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final money0 = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹',
       decimalDigits: 0,
     );
 
+    final user = ref.watch(authProvider).user;
+    final drivers = ref.watch(driversProvider);
+    final driverId = user?.linkedEntityId ?? user?.id;
+    final me = drivers.firstWhereOrNull((d) => d.id == driverId);
+    final myRouteId = me?.currentRoute?.trim();
     final order = ref
         .watch(ordersProvider)
-        .firstWhereOrNull((o) => o.id == orderId);
+        .where(
+          (o) =>
+              canDriverAccessOrder(o, driverId: driverId, routeId: myRouteId),
+        )
+        .firstWhereOrNull((o) => o.id == widget.orderId);
     final routes = ref.watch(routesProvider);
     final customers = ref.watch(customersProvider);
 
     if (order == null) {
       return Scaffold(
-        appBar: DeliveroAppBar(
-          title: 'Order',
-          leading: Navigator.of(context).canPop()
-              ? IconButton(
-                  tooltip: 'Back',
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: () => context.pop(),
-                )
-              : null,
-        ),
+        appBar: DeliveroAppBar(title: 'Order'),
         body: const Center(child: Text('Order not found')),
       );
     }
@@ -62,17 +92,20 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
     final statusFg = orderDetailStatusFg(order.status);
     final hasAddress = order.customerAddress.trim().isNotEmpty;
 
+    _draftPaymentStatus ??= order.paymentStatus ?? PaymentStatus.unpaid;
+    _draftPaymentMethod ??= order.paymentMethod ?? PaymentMethod.cash;
+    _draftAmountPaid ??= order.amountPaid;
+    if ((_draftPaymentStatus ?? PaymentStatus.unpaid) ==
+            PaymentStatus.partial &&
+        _partialAmountController.text.trim().isEmpty) {
+      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
+      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
+    }
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: DeliveroAppBar(
         title: 'Order Details',
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                tooltip: 'Back',
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => context.pop(),
-              )
-            : null,
         actions: [
           Center(
             child: Padding(
@@ -82,8 +115,8 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
                   resolved.paymentStatus.name,
                 ).toUpperCase(),
                 background: paymentColor == AppColors.error
-                    ? AppColors.errorLighter.withValues(alpha: 0.85)
-                    : paymentColor.withValues(alpha: 0.12),
+                    ? AppColors.errorLighter.withValues(alpha: 0.68)
+                    : paymentColor.withValues(alpha: 0.096),
                 foreground: paymentColor,
                 border: paymentColor.withValues(alpha: 0.22),
               ),
@@ -143,10 +176,48 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
                     for (int idx = 0; idx < order.items.length; idx++) ...[
                       OrderDetailItemRow(item: order.items[idx]),
                       if (idx != order.items.length - 1)
-                        const Divider(height: 1, color: AppColors.divider),
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.blue,
+                        ),
                     ],
                   ],
                 ),
+              ),
+              const SizedBox(height: 22),
+              OrderDetailPaymentSection(
+                order: order,
+                money0: money0,
+                paymentStatus: resolved.paymentStatus,
+                paymentColor: paymentColor,
+                deliveryFee: resolved.deliveryFee,
+                effectivePaid: resolved.effectivePaid,
+                balanceDue: resolved.balanceDue,
+                draftPaymentStatus: _draftPaymentStatus ?? PaymentStatus.unpaid,
+                draftPaymentMethod: _draftPaymentMethod ?? PaymentMethod.cash,
+                partialAmountController: _partialAmountController,
+                draftAmountPaid: _draftAmountPaid,
+                onDraftPaymentStatusChanged: (v) => setState(() {
+                  _draftPaymentStatus = v;
+                  if (v != PaymentStatus.partial) {
+                    _draftAmountPaid = null;
+                    _partialAmountController.clear();
+                  } else {
+                    _draftAmountPaid = order.amountPaid;
+                  }
+                }),
+                onDraftPaymentMethodChanged: (v) =>
+                    setState(() => _draftPaymentMethod = v),
+                onPartialAmountChanged: (val) {
+                  final raw = val.trim().replaceAll(',', '');
+                  final parsed = double.tryParse(raw);
+                  setState(() => _draftAmountPaid = parsed);
+                },
+                onResetPaymentDrafts: () => setState(() {
+                  _resetPaymentDrafts(order);
+                }),
+                ref: ref,
               ),
               if ((order.notes ?? '').trim().isNotEmpty) ...[
                 const SizedBox(height: 24),
@@ -168,11 +239,8 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               OrderDetailBottomActions(
                 isDelivered: order.status == OrderStatus.delivered,
-                onMarkDelivered: () => _confirmMarkDelivered(
-                  context,
-                  ref,
-                  order,
-                ),
+                onMarkDelivered: () =>
+                    _confirmMarkDelivered(context, ref, order),
                 onOpenMaps: hasAddress
                     ? () => _openMaps(context, order.customerAddress)
                     : null,
@@ -288,9 +356,7 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
                 ),
               );
             },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.success,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
             child: const Text(
               'Confirm',
               style: TextStyle(fontWeight: FontWeight.w900),

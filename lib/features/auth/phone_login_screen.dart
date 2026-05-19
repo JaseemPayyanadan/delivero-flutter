@@ -27,25 +27,12 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
   final _phoneController = TextEditingController();
   final _phoneFocusNode = FocusNode();
   PhoneNumber? _phone;
-  bool _hasFocus = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _phoneFocusNode.addListener(_onFocusChanged);
-  }
 
   @override
   void dispose() {
-    _phoneFocusNode.removeListener(_onFocusChanged);
     _phoneFocusNode.dispose();
     _phoneController.dispose();
     super.dispose();
-  }
-
-  void _onFocusChanged() {
-    if (!mounted) return;
-    setState(() => _hasFocus = _phoneFocusNode.hasFocus);
   }
 
   Future<void> _handleSendOtp() async {
@@ -178,6 +165,8 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
       initialCountryCode: _defaultCountryCode,
       disableLengthCheck: false,
       enabled: !isLoading,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       invalidNumberMessage: 'Please enter a valid mobile number',
       dropdownIconPosition: IconPosition.trailing,
       flagsButtonPadding: const EdgeInsets.only(left: 12, right: 4),
@@ -223,63 +212,57 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final footerBottomInset = MediaQuery.paddingOf(context).bottom + 84;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildHeader(),
-              if (authState.error case final String message) ...[
-                _buildErrorBanner(message),
-                const SizedBox(height: 20),
-              ],
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Mobile number',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 180),
-                    opacity: _hasFocus ? 1 : 0,
-                    child: const Text(
-                      'Tap send to receive OTP',
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(24, 16, 24, footerBottomInset),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildHeader(),
+                    if (authState.error case final String message) ...[
+                      _buildErrorBanner(message),
+                      const SizedBox(height: 20),
+                    ],
+                    const Text(
+                      'Mobile number',
                       style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                        letterSpacing: 0.2,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        letterSpacing: 0.3,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    _buildPhoneField(isLoading: authState.isLoading),
+                    const SizedBox(height: 22),
+                    DeliveroButton(
+                      label: 'Send OTP',
+                      onPressed: authState.isLoading ? null : _handleSendOtp,
+                      isLoading: authState.isLoading,
+                      icon: Icons.sms_outlined,
+                      borderRadius: 12,
+                    ),
+                    const Spacer(),
+                    Padding(
+                      padding: EdgeInsets.only(bottom: footerBottomInset),
+                      child: _LegalFooter(
+                        onPrivacyTap: () => _openExternal(_kPrivacyPolicyUrl),
+                        onTermsTap: () => _openExternal(_kTermsOfServiceUrl),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
-              _buildPhoneField(isLoading: authState.isLoading),
-              const SizedBox(height: 22),
-              DeliveroButton(
-                label: 'Send OTP',
-                onPressed: authState.isLoading ? null : _handleSendOtp,
-                isLoading: authState.isLoading,
-                icon: Icons.sms_outlined,
-                borderRadius: 12,
-              ),
-              const SizedBox(height: 18),
-              _LegalFooter(
-                onPrivacyTap: () => _openExternal(_kPrivacyPolicyUrl),
-                onTermsTap: () => _openExternal(_kTermsOfServiceUrl),
-              ),
-            ],
+            ),
           ),
         ),
       ),
