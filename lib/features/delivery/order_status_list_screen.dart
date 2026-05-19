@@ -7,10 +7,10 @@ import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/maps_launch.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/order.dart';
+import 'driver_order_scope.dart';
 
 class OrderStatusListScreen extends ConsumerStatefulWidget {
   const OrderStatusListScreen({super.key});
@@ -69,12 +69,12 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     final drivers = ref.watch(driversProvider);
     final me = drivers.firstWhereOrNull((d) => d.id == driverId);
     final myRouteId = me?.currentRoute?.trim();
-    var myOrders = allOrders.where((o) {
-      if (driverId == null) return false;
-      if (o.assignedDriver == driverId) return true;
-      if (myRouteId == null || myRouteId.isEmpty) return false;
-      return o.assignedRoute == myRouteId;
-    }).toList();
+    final myAllOrders = driverScopedOrders(
+      allOrders,
+      driverId: driverId,
+      routeId: myRouteId,
+    );
+    var myOrders = List<Order>.from(myAllOrders);
 
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
@@ -91,9 +91,7 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
 
     // Filter by status tab
     if (_selectedStatus == 'all') {
-      myOrders = myOrders
-          .where((o) => o.status != OrderStatus.delivered)
-          .toList();
+      myOrders = myOrders.where(isDriverActiveOrder).toList();
     } else if (_selectedStatus == 'delivered') {
       myOrders = myOrders
           .where((o) => o.status == OrderStatus.delivered)
@@ -101,26 +99,10 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     }
 
     myOrders.sort((a, b) {
-      final statusPriority = {
-        OrderStatus.pending: 1,
-        OrderStatus.confirmed: 2,
-        OrderStatus.preparing: 3,
-        OrderStatus.ready: 4,
-        OrderStatus.cancelled: 5,
-        OrderStatus.delivered: 6,
-      };
-      final aP = statusPriority[a.status] ?? 7;
-      final bP = statusPriority[b.status] ?? 7;
-      if (aP != bP) return aP.compareTo(bP);
-      return b.orderDate.compareTo(a.orderDate);
+      final c = a.createdAt.compareTo(b.createdAt);
+      if (c != 0) return c;
+      return a.orderDate.compareTo(b.orderDate);
     });
-
-    final myAllOrders = allOrders.where((o) {
-      if (driverId == null) return false;
-      if (o.assignedDriver == driverId) return true;
-      if (myRouteId == null || myRouteId.isEmpty) return false;
-      return o.assignedRoute == myRouteId;
-    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -128,6 +110,14 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
         title: 'Assigned Orders',
         leading: null,
         actions: [
+          IconButton(
+            tooltip: 'New order',
+            onPressed: () => context.push('/delivery/new-order'),
+            icon: const Icon(
+              Icons.add_circle_outline_rounded,
+              color: AppColors.textPrimary,
+            ),
+          ),
           IconButton(
             tooltip: 'Search',
             onPressed: () => _openSearchSheet(context),
@@ -174,10 +164,10 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
   }
 
   Widget _buildFilters(List<Order> myAllOrders) {
-    final activeCount =
-        myAllOrders.where((o) => o.status != OrderStatus.delivered).length;
-    final deliveredCount =
-        myAllOrders.where((o) => o.status == OrderStatus.delivered).length;
+    final activeCount = myAllOrders.where(isDriverActiveOrder).length;
+    final deliveredCount = myAllOrders
+        .where((o) => o.status == OrderStatus.delivered)
+        .length;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -186,14 +176,8 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
         physics: const BouncingScrollPhysics(),
         child: Row(
           children: [
-            _buildStatusPill(
-              'all',
-              'Active ($activeCount)',
-            ),
-            _buildStatusPill(
-              'delivered',
-              'Delivered ($deliveredCount)',
-            ),
+            _buildStatusPill('all', 'Active ($activeCount)'),
+            _buildStatusPill('delivered', 'Delivered ($deliveredCount)'),
           ],
         ),
       ),
@@ -293,7 +277,15 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
   }
 
   Widget _buildOrderCard(BuildContext context, WidgetRef ref, Order order) {
-    final isDelivered = order.status == OrderStatus.delivered;
+    final lastTouched = ref.watch(lastTouchedOrderProvider);
+    final shouldHighlight =
+        lastTouched != null &&
+        lastTouched.id == order.id &&
+        DateTime.now().difference(lastTouched.at) <= const Duration(seconds: 8);
+    final highlightColor = lastTouched?.wasCreated == true
+        ? AppColors.success
+        : AppColors.primary;
+
     final customerName = order.customerName.trim().isEmpty
         ? 'Unknown'
         : order.customerName.trim();
@@ -336,9 +328,16 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: shouldHighlight
+            ? highlightColor.withValues(alpha: 0.06)
+            : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: shouldHighlight
+              ? highlightColor.withValues(alpha: 0.75)
+              : AppColors.border,
+          width: shouldHighlight ? 2 : 1,
+        ),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
@@ -498,10 +497,14 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: paymentColor.withValues(alpha: 0.32),
+                                      color: paymentColor.withValues(
+                                        alpha: 0.32,
+                                      ),
                                       borderRadius: BorderRadius.circular(999),
                                       border: Border.all(
-                                        color: paymentColor.withValues(alpha: 0.35),
+                                        color: paymentColor.withValues(
+                                          alpha: 0.35,
+                                        ),
                                       ),
                                     ),
                                     child: Text(
@@ -602,67 +605,6 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
                             );
                           },
                         ),
-                        if (order.customerAddress.trim().isNotEmpty) ...[
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Divider(
-                              height: 1,
-                              thickness: 1,
-                              color: AppColors.border.withValues(alpha: 0.65),
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () =>
-                                      _openMaps(context, order.customerAddress),
-                                  icon: const Icon(
-                                    Icons.navigation_rounded,
-                                    size: 18,
-                                  ),
-                                  label: const Text('Navigate'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.primary,
-                                    side: const BorderSide(
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (isDelivered) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.success.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: AppColors.success.withValues(alpha: 0.20),
-                                ),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'DELIVERED',
-                                  style: TextStyle(
-                                    color: AppColors.success,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.6,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -675,47 +617,6 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     );
   }
 
-  Future<void> _openMaps(BuildContext context, String address) async {
-    final ok = await openMapsForAddress(address);
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Could not open maps')));
-    }
-  }
-
-  void _confirmDelivery(BuildContext context, WidgetRef ref, Order order) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Delivery'),
-        content: Text(
-          'Are you sure you want to mark order for ${order.customerName} as delivered?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final updatedOrder = order.copyWith(
-                status: OrderStatus.delivered,
-              );
-              ref.read(ordersProvider.notifier).updateOrder(updatedOrder);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Order marked as delivered')),
-              );
-            },
-            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmptyState({required bool hasAnyAssigned}) {
     return DeliveroEmptyState(
       title: hasAnyAssigned ? 'No matching orders' : 'No orders for you today',
@@ -723,6 +624,10 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
           ? 'Try switching Active / Delivered or changing your search.'
           : 'Great job! You have no pending deliveries at the moment.',
       icon: Icons.local_shipping_outlined,
+      actionLabel: hasAnyAssigned ? null : 'New order',
+      onActionPressed: hasAnyAssigned
+          ? null
+          : () => context.push('/delivery/new-order'),
     );
   }
 }

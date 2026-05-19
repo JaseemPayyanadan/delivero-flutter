@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../data/models/user.dart';
 import '../features/auth/otp_verify_screen.dart';
 import '../features/auth/phone_login_screen.dart';
+import '../features/delivery/driver_create_order_screen.dart';
 import '../features/delivery/delivery_shell.dart';
 import '../features/delivery/order_details/driver_order_details_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
@@ -184,10 +185,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const DeliveryShell(),
         routes: [
           GoRoute(
+            path: 'new-order',
+            builder: (context, state) => const DriverCreateOrderScreen(),
+          ),
+          GoRoute(
             path: 'orders/:id',
-            builder: (context, state) => DriverOrderDetailsScreen(
-              orderId: state.pathParameters['id']!,
-            ),
+            builder: (context, state) =>
+                DriverOrderDetailsScreen(orderId: state.pathParameters['id']!),
           ),
         ],
       ),

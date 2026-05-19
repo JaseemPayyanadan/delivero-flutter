@@ -2,7 +2,6 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -11,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/maps_launch.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/order.dart';
+import '../driver_order_scope.dart';
 import '../../owner/orders/order_details/order_detail_formatting.dart';
 import '../../owner/orders/order_details/resolved_order_detail.dart';
 import '../../owner/orders/order_details/widgets/order_detail_bottom_actions.dart';
@@ -64,17 +64,24 @@ class _DriverOrderDetailsScreenState
       decimalDigits: 0,
     );
 
+    final user = ref.watch(authProvider).user;
+    final drivers = ref.watch(driversProvider);
+    final driverId = user?.linkedEntityId ?? user?.id;
+    final me = drivers.firstWhereOrNull((d) => d.id == driverId);
+    final myRouteId = me?.currentRoute?.trim();
     final order = ref
         .watch(ordersProvider)
+        .where(
+          (o) =>
+              canDriverAccessOrder(o, driverId: driverId, routeId: myRouteId),
+        )
         .firstWhereOrNull((o) => o.id == widget.orderId);
     final routes = ref.watch(routesProvider);
     final customers = ref.watch(customersProvider);
 
     if (order == null) {
       return Scaffold(
-        appBar: DeliveroAppBar(
-          title: 'Order',
-        ),
+        appBar: DeliveroAppBar(title: 'Order'),
         body: const Center(child: Text('Order not found')),
       );
     }
@@ -92,8 +99,7 @@ class _DriverOrderDetailsScreenState
             PaymentStatus.partial &&
         _partialAmountController.text.trim().isEmpty) {
       final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
-      _partialAmountController.text =
-          seed == 0 ? '' : seed.toStringAsFixed(0);
+      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
     }
 
     return Scaffold(
@@ -188,10 +194,8 @@ class _DriverOrderDetailsScreenState
                 deliveryFee: resolved.deliveryFee,
                 effectivePaid: resolved.effectivePaid,
                 balanceDue: resolved.balanceDue,
-                draftPaymentStatus:
-                    _draftPaymentStatus ?? PaymentStatus.unpaid,
-                draftPaymentMethod:
-                    _draftPaymentMethod ?? PaymentMethod.cash,
+                draftPaymentStatus: _draftPaymentStatus ?? PaymentStatus.unpaid,
+                draftPaymentMethod: _draftPaymentMethod ?? PaymentMethod.cash,
                 partialAmountController: _partialAmountController,
                 draftAmountPaid: _draftAmountPaid,
                 onDraftPaymentStatusChanged: (v) => setState(() {
@@ -235,11 +239,8 @@ class _DriverOrderDetailsScreenState
               const SizedBox(height: 20),
               OrderDetailBottomActions(
                 isDelivered: order.status == OrderStatus.delivered,
-                onMarkDelivered: () => _confirmMarkDelivered(
-                  context,
-                  ref,
-                  order,
-                ),
+                onMarkDelivered: () =>
+                    _confirmMarkDelivered(context, ref, order),
                 onOpenMaps: hasAddress
                     ? () => _openMaps(context, order.customerAddress)
                     : null,
@@ -355,9 +356,7 @@ class _DriverOrderDetailsScreenState
                 ),
               );
             },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.success,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
             child: const Text(
               'Confirm',
               style: TextStyle(fontWeight: FontWeight.w900),

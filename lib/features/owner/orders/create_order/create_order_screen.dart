@@ -28,7 +28,9 @@ String _formatRupee(double amount) {
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   final String? orderId;
-  const CreateOrderScreen({super.key, this.orderId});
+  final bool forDriver;
+
+  const CreateOrderScreen({super.key, this.orderId, this.forDriver = false});
 
   @override
   ConsumerState<CreateOrderScreen> createState() => _CreateOrderScreenState();
@@ -83,12 +85,32 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authProvider).user;
     final customers = ref.watch(customersProvider);
     final foodItems = ref.watch(foodItemsProvider);
     final routes = ref.watch(routesProvider);
+    final drivers = ref.watch(driversProvider);
     final customersLoaded = ref.watch(customersLoadedProvider);
     final foodItemsLoaded = ref.watch(foodItemsLoadedProvider);
     final routesLoaded = ref.watch(routesLoadedProvider);
+    final driverId = widget.forDriver
+        ? (user?.linkedEntityId ?? user?.id)
+        : null;
+    final currentDriver = widget.forDriver
+        ? drivers.firstWhereOrNull((d) => d.id == driverId)
+        : null;
+    final driverRouteId = currentDriver?.currentRoute?.trim();
+    final visibleCustomers = widget.forDriver
+        ? customers
+              .where(
+                (customer) => _customerMatchesRoute(
+                  customer,
+                  driverRouteId: driverRouteId,
+                  routes: routes,
+                ),
+              )
+              .toList()
+        : customers;
     final hasSelectedUnits = _selectedItems.values.any((v) => v > 0);
     final selection = _computeSelectionSummary(foodItems);
     final canPrimaryProceed =
@@ -141,7 +163,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       child: Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
         appBar: DeliveroAppBar(
-          title: widget.orderId == null ? 'Create order' : 'Edit order',
+          title: widget.orderId == null
+              ? (widget.forDriver ? 'New order' : 'Create order')
+              : 'Edit order',
           leading: (Navigator.of(context).canPop() || _step > 0)
               ? IconButton(
                   icon: const Icon(Icons.arrow_back_rounded),
@@ -189,10 +213,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       const SizedBox(height: 20),
                       switch (_step) {
                         0 => _buildCustomerPicker(
-                          customers,
+                          visibleCustomers,
                           routes,
                           customersLoaded: customersLoaded,
                           routesLoaded: routesLoaded,
+                          driverRouteId: driverRouteId,
                         ),
                         1 => _FormSectionCard(
                           title: 'Order type',
@@ -354,6 +379,32 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return value.replaceAll(RegExp(r'\D'), '');
   }
 
+  bool _customerMatchesRoute(
+    Customer customer, {
+    required String? driverRouteId,
+    required List<DeliveryRoute> routes,
+  }) {
+    final normalizedDriverRouteId = driverRouteId?.trim();
+    if (normalizedDriverRouteId == null || normalizedDriverRouteId.isEmpty) {
+      return false;
+    }
+
+    final assignedRoute = customer.assignedRoute?.trim();
+    if (assignedRoute == null || assignedRoute.isEmpty) {
+      return false;
+    }
+    if (assignedRoute == normalizedDriverRouteId) {
+      return true;
+    }
+
+    final route = routes.firstWhereOrNull(
+      (r) =>
+          r.id == normalizedDriverRouteId || r.name == normalizedDriverRouteId,
+    );
+    return route != null &&
+        (assignedRoute == route.id || assignedRoute == route.name);
+  }
+
   String _routeLabelForCustomer(
     Customer customer,
     List<DeliveryRoute> routes, {
@@ -363,7 +414,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return routes
             .firstWhereOrNull(
               (r) =>
-                  r.id == customer.assignedRoute || r.name == customer.assignedRoute,
+                  r.id == customer.assignedRoute ||
+                  r.name == customer.assignedRoute,
             )
             ?.name ??
         (customer.assignedRoute?.trim().isNotEmpty == true
@@ -498,7 +550,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           lineCount: selection.distinctItems,
           unitCount: selection.totalUnits,
         ),
-        if (existing == null) ...[
+        if (existing == null && !widget.forDriver) ...[
           const SizedBox(height: 12),
           DecoratedBox(
             decoration: BoxDecoration(
@@ -562,6 +614,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }
 
   Order? _findMergeTarget() {
+    if (widget.forDriver) return null;
     final customer = _selectedCustomer;
     if (customer == null) return null;
     final orderType = _orderType;
@@ -732,6 +785,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     List<DeliveryRoute> routes, {
     required bool customersLoaded,
     required bool routesLoaded,
+    required String? driverRouteId,
   }) {
     if (!customersLoaded && customers.isEmpty) {
       return const Padding(
@@ -743,27 +797,35 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     final q = _customerSearchQuery.trim().toLowerCase();
     final qDigits = _digitsOnly(_customerSearchQuery);
-    final filteredCustomers = customers
-        .map(
-          (customer) => (
-            customer: customer,
-            score: _customerMatchScore(
-              customer,
-              q,
-              qDigits,
-              routes,
-              routesLoaded: routesLoaded,
-            ),
-          ),
-        )
-        .where((entry) => q.isEmpty && qDigits.isEmpty ? true : entry.score < 999)
-        .toList()
-      ..sort((a, b) {
-        final byScore = a.score.compareTo(b.score);
-        if (byScore != 0) return byScore;
-        return a.customer.name.toLowerCase().compareTo(b.customer.name.toLowerCase());
-      });
-    final visibleCustomers = filteredCustomers.map((entry) => entry.customer).toList();
+    final filteredCustomers =
+        customers
+            .map(
+              (customer) => (
+                customer: customer,
+                score: _customerMatchScore(
+                  customer,
+                  q,
+                  qDigits,
+                  routes,
+                  routesLoaded: routesLoaded,
+                ),
+              ),
+            )
+            .where(
+              (entry) =>
+                  q.isEmpty && qDigits.isEmpty ? true : entry.score < 999,
+            )
+            .toList()
+          ..sort((a, b) {
+            final byScore = a.score.compareTo(b.score);
+            if (byScore != 0) return byScore;
+            return a.customer.name.toLowerCase().compareTo(
+              b.customer.name.toLowerCase(),
+            );
+          });
+    final visibleCustomers = filteredCustomers
+        .map((entry) => entry.customer)
+        .toList();
     final searchActive = q.isNotEmpty || qDigits.isNotEmpty;
 
     final selected = _selectedCustomer;
@@ -843,7 +905,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              'No customers yet — add one in Customers first.',
+              widget.forDriver
+                  ? ((driverRouteId == null || driverRouteId.isEmpty)
+                        ? 'No route assigned yet. Ask the owner to assign your route first.'
+                        : 'No customers found on your assigned route yet.')
+                  : 'No customers yet — add one in Customers first.',
               style: const TextStyle(
                 color: AppColors.textLight,
                 fontWeight: FontWeight.w600,
@@ -1356,6 +1422,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     FocusScope.of(context).unfocus();
     final foodItems = ref.read(foodItemsProvider);
     final routes = ref.read(routesProvider);
+    final user = ref.read(authProvider).user;
+    final drivers = ref.read(driversProvider);
+    final driverId = widget.forDriver
+        ? (user?.linkedEntityId ?? user?.id)
+        : null;
+    final currentDriver = widget.forDriver
+        ? drivers.firstWhereOrNull((d) => d.id == driverId)
+        : null;
+    final driverRouteId = currentDriver?.currentRoute?.trim();
     double subtotal = 0;
     final List<OrderItem> items = [];
 
@@ -1379,17 +1454,80 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       }
     });
 
-    final route = routes.firstWhereOrNull(
-      (r) =>
-          r.id == _selectedCustomer!.assignedRoute ||
-          r.name == _selectedCustomer!.assignedRoute,
-    );
-    final normalizedRouteId =
-        route?.id ??
-        (_selectedCustomer!.assignedRoute?.trim().isNotEmpty == true
-            ? _selectedCustomer!.assignedRoute!.trim()
-            : null);
-    final assignedDriver = route?.assignedDriver;
+    if (widget.forDriver) {
+      if (driverId == null || driverId.trim().isEmpty) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Driver account not linked. Please sign in again.',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.error,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        return;
+      }
+      if (driverRouteId == null || driverRouteId.isEmpty) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'No route assigned yet. Ask the owner to assign your route first.',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.warning,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        return;
+      }
+      if (!_customerMatchesRoute(
+        _selectedCustomer!,
+        driverRouteId: driverRouteId,
+        routes: routes,
+      )) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Choose a customer from your assigned route.',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.warning,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
+    final route = widget.forDriver
+        ? routes.firstWhereOrNull(
+            (r) => r.id == driverRouteId || r.name == driverRouteId,
+          )
+        : routes.firstWhereOrNull(
+            (r) =>
+                r.id == _selectedCustomer!.assignedRoute ||
+                r.name == _selectedCustomer!.assignedRoute,
+          );
+    final normalizedRouteId = widget.forDriver
+        ? (route?.id ?? driverRouteId)
+        : route?.id ??
+              (_selectedCustomer!.assignedRoute?.trim().isNotEmpty == true
+                  ? _selectedCustomer!.assignedRoute!.trim()
+                  : null);
+    final assignedDriver = widget.forDriver ? driverId : route?.assignedDriver;
     const discountAmount = 0.0;
     final totalAmount = subtotal.clamp(0, double.infinity).toDouble();
 
