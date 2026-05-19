@@ -24,6 +24,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
   final ValueChanged<PaymentStatus> onDraftPaymentStatusChanged;
   final ValueChanged<PaymentMethod> onDraftPaymentMethodChanged;
   final ValueChanged<String> onPartialAmountChanged;
+  final VoidCallback onResetPaymentDrafts;
   final WidgetRef ref;
 
   const OrderDetailPaymentSection({
@@ -42,6 +43,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
     required this.onDraftPaymentStatusChanged,
     required this.onDraftPaymentMethodChanged,
     required this.onPartialAmountChanged,
+    required this.onResetPaymentDrafts,
     required this.ref,
   });
 
@@ -292,33 +294,56 @@ class OrderDetailPaymentSection extends StatelessWidget {
                     ],
                     if (hasPaymentChanges) ...[
                       const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () => _onApply(context),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor:
-                                Theme.of(context).colorScheme.onPrimary,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: onResetPaymentDrafts,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.textSecondary,
+                                side: const BorderSide(
+                                  color: AppColors.border,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                minimumSize: const Size(0, 40),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              child: const Text('Cancel'),
                             ),
                           ),
-                          icon: Icon(
-                            Icons.check_rounded,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.onPrimary,
-                          ),
-                          label: Text(
-                            'Save payment',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              color: Theme.of(context).colorScheme.onPrimary,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () => _onApply(context),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.onPrimary,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                minimumSize: const Size(0, 40),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              child: const Text('Update'),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ],

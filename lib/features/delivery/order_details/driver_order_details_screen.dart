@@ -15,19 +15,49 @@ import '../../owner/orders/order_details/order_detail_formatting.dart';
 import '../../owner/orders/order_details/resolved_order_detail.dart';
 import '../../owner/orders/order_details/widgets/order_detail_bottom_actions.dart';
 import '../../owner/orders/order_details/widgets/order_detail_item_row.dart';
+import '../../owner/orders/order_details/widgets/order_detail_payment_section.dart';
 import '../../owner/orders/order_details/widgets/order_detail_summary_card.dart';
 import '../../owner/orders/order_details/widgets/order_detail_surfaces.dart';
 
-/// Read-only details view for a driver's assigned order. Drivers can mark
-/// the order as delivered, open the address in maps, and tap the customer's
-/// phone number to call. Editing/cancelling stays owner-only.
-class DriverOrderDetailsScreen extends ConsumerWidget {
+class DriverOrderDetailsScreen extends ConsumerStatefulWidget {
   final String orderId;
 
   const DriverOrderDetailsScreen({super.key, required this.orderId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DriverOrderDetailsScreen> createState() =>
+      _DriverOrderDetailsScreenState();
+}
+
+class _DriverOrderDetailsScreenState
+    extends ConsumerState<DriverOrderDetailsScreen> {
+  PaymentStatus? _draftPaymentStatus;
+  PaymentMethod? _draftPaymentMethod;
+  double? _draftAmountPaid;
+  final TextEditingController _partialAmountController =
+      TextEditingController();
+
+  void _resetPaymentDrafts(Order order) {
+    _draftPaymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
+    _draftPaymentMethod = order.paymentMethod ?? PaymentMethod.cash;
+    _draftAmountPaid = order.amountPaid;
+
+    if (_draftPaymentStatus == PaymentStatus.partial) {
+      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
+      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
+    } else {
+      _partialAmountController.clear();
+    }
+  }
+
+  @override
+  void dispose() {
+    _partialAmountController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final money0 = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹',
@@ -36,7 +66,7 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
 
     final order = ref
         .watch(ordersProvider)
-        .firstWhereOrNull((o) => o.id == orderId);
+        .firstWhereOrNull((o) => o.id == widget.orderId);
     final routes = ref.watch(routesProvider);
     final customers = ref.watch(customersProvider);
 
@@ -54,6 +84,17 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
     final statusBg = orderDetailStatusBg(order.status);
     final statusFg = orderDetailStatusFg(order.status);
     final hasAddress = order.customerAddress.trim().isNotEmpty;
+
+    _draftPaymentStatus ??= order.paymentStatus ?? PaymentStatus.unpaid;
+    _draftPaymentMethod ??= order.paymentMethod ?? PaymentMethod.cash;
+    _draftAmountPaid ??= order.amountPaid;
+    if ((_draftPaymentStatus ?? PaymentStatus.unpaid) ==
+            PaymentStatus.partial &&
+        _partialAmountController.text.trim().isEmpty) {
+      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
+      _partialAmountController.text =
+          seed == 0 ? '' : seed.toStringAsFixed(0);
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -137,6 +178,42 @@ class DriverOrderDetailsScreen extends ConsumerWidget {
                     ],
                   ],
                 ),
+              ),
+              const SizedBox(height: 22),
+              OrderDetailPaymentSection(
+                order: order,
+                money0: money0,
+                paymentStatus: resolved.paymentStatus,
+                paymentColor: paymentColor,
+                deliveryFee: resolved.deliveryFee,
+                effectivePaid: resolved.effectivePaid,
+                balanceDue: resolved.balanceDue,
+                draftPaymentStatus:
+                    _draftPaymentStatus ?? PaymentStatus.unpaid,
+                draftPaymentMethod:
+                    _draftPaymentMethod ?? PaymentMethod.cash,
+                partialAmountController: _partialAmountController,
+                draftAmountPaid: _draftAmountPaid,
+                onDraftPaymentStatusChanged: (v) => setState(() {
+                  _draftPaymentStatus = v;
+                  if (v != PaymentStatus.partial) {
+                    _draftAmountPaid = null;
+                    _partialAmountController.clear();
+                  } else {
+                    _draftAmountPaid = order.amountPaid;
+                  }
+                }),
+                onDraftPaymentMethodChanged: (v) =>
+                    setState(() => _draftPaymentMethod = v),
+                onPartialAmountChanged: (val) {
+                  final raw = val.trim().replaceAll(',', '');
+                  final parsed = double.tryParse(raw);
+                  setState(() => _draftAmountPaid = parsed);
+                },
+                onResetPaymentDrafts: () => setState(() {
+                  _resetPaymentDrafts(order);
+                }),
+                ref: ref,
               ),
               if ((order.notes ?? '').trim().isNotEmpty) ...[
                 const SizedBox(height: 24),

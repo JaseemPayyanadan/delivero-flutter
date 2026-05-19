@@ -36,6 +36,19 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   final TextEditingController _partialAmountController =
       TextEditingController();
 
+  void _resetPaymentDrafts(Order order) {
+    _draftPaymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
+    _draftPaymentMethod = order.paymentMethod ?? PaymentMethod.cash;
+    _draftAmountPaid = order.amountPaid;
+
+    if (_draftPaymentStatus == PaymentStatus.partial) {
+      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
+      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
+    } else {
+      _partialAmountController.clear();
+    }
+  }
+
   @override
   void dispose() {
     _partialAmountController.dispose();
@@ -209,6 +222,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                   final parsed = double.tryParse(raw);
                   setState(() => _draftAmountPaid = parsed);
                 },
+                onResetPaymentDrafts: () => setState(() {
+                  _resetPaymentDrafts(order);
+                }),
                 ref: ref,
               ),
               const SizedBox(height: 20),

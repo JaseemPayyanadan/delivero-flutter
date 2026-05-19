@@ -235,25 +235,76 @@ class OrderDetailLabeledDropdown<T> extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(18),
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<T>(
-              value: value,
-              isExpanded: true,
-              icon: const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: AppColors.textLight,
-              ),
-              items: items
-                  .map(
-                    (v) => DropdownMenuItem<T>(
-                      value: v,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () async {
+                final selected = await showModalBottomSheet<T>(
+                  context: context,
+                  showDragHandle: true,
+                  backgroundColor: AppColors.surface,
+                  builder: (sheetContext) {
+                    return SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                            child: Text(
+                              label,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textSecondary,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                          for (final item in items)
+                            ListTile(
+                              title: Text(
+                                itemLabel(item),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              trailing: item == value
+                                  ? const Icon(
+                                      Icons.check_rounded,
+                                      color: AppColors.primary,
+                                    )
+                                  : null,
+                              onTap: () => Navigator.of(sheetContext).pop(item),
+                            ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    );
+                  },
+                );
+                if (!context.mounted || selected == null) return;
+                onChanged(selected);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
                       child: Text(
-                        itemLabel(v),
+                        itemLabel(value),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
@@ -261,12 +312,14 @@ class OrderDetailLabeledDropdown<T> extends StatelessWidget {
                         ),
                       ),
                     ),
-                  )
-                  .toList(),
-              onChanged: (next) {
-                if (next == null) return;
-                onChanged(next);
-              },
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.textLight,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
