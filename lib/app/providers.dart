@@ -692,7 +692,7 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
     }
   }
 
-  void addRoute(DeliveryRoute route) => FirebaseService.firestore
+  Future<void> addRoute(DeliveryRoute route) => FirebaseService.firestore
       .collection('routes')
       .doc(route.id)
       .set(route.toJson());
