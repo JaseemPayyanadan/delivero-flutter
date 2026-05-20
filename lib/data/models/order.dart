@@ -96,6 +96,7 @@ class Order {
   final PaymentMethod? paymentMethod;
   final double? amountPaid;
   final OrderStatus status;
+  /// Canonical [DeliveryRoute.id] for fulfillment routing.
   final String? assignedRoute;
   final String? assignedDriver;
   final DateTime orderDate;

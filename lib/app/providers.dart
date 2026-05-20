@@ -14,6 +14,21 @@ import '../data/models/driver.dart';
 import '../core/services/firebase_service.dart';
 import '../core/services/factory_service.dart';
 import '../core/services/local_notifications_service.dart';
+import '../core/services/route_ref_migration.dart';
+import '../core/utils/route_refs.dart';
+
+void _scheduleRouteRefMigration(Ref ref, String factoryId) {
+  Future.microtask(() async {
+    final routes = ref.read(routesProvider);
+    if (routes.isEmpty) return;
+    await RouteRefMigration.syncIfNeeded(
+      factoryId: factoryId,
+      routes: routes,
+      customers: ref.read(customersProvider),
+      orders: ref.read(ordersProvider),
+    );
+  });
+}
 
 CollectionReference<Map<String, dynamic>> _mapCollection(String path) {
   return FirebaseService.firestore
@@ -264,13 +279,11 @@ class OrdersNotifier extends Notifier<List<Order>> {
           }
 
           String? normalizeRouteId(String? key) {
-            if (key == null) return null;
-            final k = key.trim();
-            if (k.isEmpty) return null;
-            final route = routes.firstWhereOrNull(
-              (r) => r.id == k || r.name == k,
-            );
-            return route == null ? k : route.id;
+            final resolved = RouteRefs.routeIdForRef(key, routes);
+            if (resolved != null) return resolved;
+            final k = key?.trim();
+            if (k == null || k.isEmpty) return null;
+            return k;
           }
 
           String? normalizeDriverId(String? routeId) {
@@ -316,6 +329,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
           _emitOrderNotifications(nextOrders);
 
           state = nextOrders;
+          _scheduleRouteRefMigration(ref, factoryId);
           Future.microtask(() {
             ref.read(ordersLoadedProvider.notifier).state = true;
           });
@@ -462,6 +476,7 @@ class CustomersNotifier extends Notifier<List<Customer>> {
                     (doc) => Customer.fromJson({...doc.data(), 'id': doc.id}),
                   )
                   .toList();
+              _scheduleRouteRefMigration(ref, factoryId);
               Future.microtask(() {
                 ref.read(customersLoadedProvider.notifier).state = true;
               });
@@ -657,6 +672,7 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
                         DeliveryRoute.fromJson({...doc.data(), 'id': doc.id}),
                   )
                   .toList();
+              _scheduleRouteRefMigration(ref, factoryId);
               Future.microtask(() {
                 ref.read(routesLoadedProvider.notifier).state = true;
               });
@@ -680,10 +696,12 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
       .collection('routes')
       .doc(route.id)
       .set(route.toJson());
-  void updateRoute(DeliveryRoute route) => FirebaseService.firestore
+
+  Future<void> updateRoute(DeliveryRoute route) => FirebaseService.firestore
       .collection('routes')
       .doc(route.id)
       .set(route.toJson());
+
   void deleteRoute(String id) =>
       FirebaseService.firestore.collection('routes').doc(id).delete();
 

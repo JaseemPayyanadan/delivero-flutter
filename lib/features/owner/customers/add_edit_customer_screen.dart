@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
+import '../../../core/utils/route_refs.dart';
 import '../../../data/models/food_item.dart';
 
 class AddEditCustomerScreen extends ConsumerStatefulWidget {
@@ -50,9 +51,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     _phoneController.text = customer.phone;
 
     final routes = ref.read(routesProvider);
-    final route = routes.firstWhereOrNull(
-      (r) => r.id == customer.assignedRoute || r.name == customer.assignedRoute,
-    );
+    final route = RouteRefs.routeForRef(customer.assignedRoute, routes);
     _selectedRouteId = route?.id ?? customer.assignedRoute;
 
     for (final c in _quantityControllers.values) {
@@ -112,7 +111,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     final selectedRoute = routes.firstWhereOrNull(
       (r) => r.id == _selectedRouteId,
     );
-    final routeName = selectedRoute?.name ?? _selectedRouteId;
+    final assignedRouteId =
+        selectedRoute?.id ??
+        RouteRefs.routeIdForRef(_selectedRouteId, routes) ??
+        _selectedRouteId;
 
     final factoryId = await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
     final existingCustomer = _isEditMode
@@ -135,7 +137,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       area: selectedRoute?.area ?? 'Central',
       isActive: existingCustomer?.isActive ?? true,
       discountPercentage: existingCustomer?.discountPercentage,
-      assignedRoute: routeName,
+      assignedRoute: assignedRouteId,
       products: products,
       createdAt: _isEditMode
           ? (existingCustomer?.createdAt ?? DateTime.now())
@@ -162,8 +164,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     final id = _selectedRouteId;
     if (id != null && routes.any((r) => r.id == id)) return id;
     if (id != null) {
-      final byName = routes.firstWhereOrNull((r) => r.name == id);
-      if (byName != null) return byName.id;
+      final legacyId = RouteRefs.routeIdForRef(id, routes);
+      if (legacyId != null) return legacyId;
     }
     return null;
   }

@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/utils/route_refs.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/food_item.dart';
 import '../../../data/models/order.dart';
@@ -170,10 +171,6 @@ class CustomerDetailsScreen extends ConsumerWidget {
       );
     }
 
-    final route = routes.firstWhereOrNull(
-      (r) => r.id == customer.assignedRoute || r.name == customer.assignedRoute,
-    );
-
     final customerOrders = orders
         .where((o) => o.customerId == customer.id)
         .toList();
@@ -186,10 +183,10 @@ class CustomerDetailsScreen extends ConsumerWidget {
       for (final FoodItem item in foodItems) item.id: item.price,
     };
 
-    final displayRoute = route?.name ??
-        (customer.assignedRoute?.trim().isNotEmpty == true
-            ? customer.assignedRoute!.trim()
-            : 'No route');
+    final displayRoute = RouteRefs.routeLabelForRef(
+      customer.assignedRoute,
+      routes,
+    );
     final rawAddress = customer.address.trim();
     final displayAddress = rawAddress.isEmpty
         ? 'Address not available'

@@ -625,7 +625,7 @@ class _CustomerSuggestions extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${showRouteLoading ? 'Loading route…' : (routes.firstWhereOrNull((r) => r.id == customers[i].assignedRoute || r.name == customers[i].assignedRoute)?.name ?? 'No route')} • ${customers[i].phone.trim().isEmpty ? 'No phone' : customers[i].phone.trim()}',
+                            '${showRouteLoading ? 'Loading route…' : RouteRefs.routeLabelForRef(customers[i].assignedRoute, routes, routesLoaded: !showRouteLoading)} • ${customers[i].phone.trim().isEmpty ? 'No phone' : customers[i].phone.trim()}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

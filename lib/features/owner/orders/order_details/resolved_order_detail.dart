@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 
+import '../../../../core/utils/route_refs.dart';
 import '../../../../data/models/customer.dart';
 import '../../../../data/models/delivery_route.dart';
 import '../../../../data/models/order.dart';
@@ -29,44 +30,43 @@ class ResolvedOrderDetail {
     List<DeliveryRoute> routes,
     List<Customer> customers,
   ) {
-    final route = routes.firstWhereOrNull(
-      (r) => r.id == order.assignedRoute || r.name == order.assignedRoute,
-    );
+    final route = RouteRefs.routeForRef(order.assignedRoute, routes);
 
     final derivedCustomerRoute =
-        customers
-            .firstWhereOrNull((c) => c.id == order.customerId)
-            ?.assignedRoute
-            ?.trim() ??
-        customers
-            .firstWhereOrNull(
-              (c) => c.phone.trim() == order.customerPhone.trim(),
-            )
-            ?.assignedRoute
-            ?.trim() ??
-        customers
-            .firstWhereOrNull(
-              (c) =>
-                  c.name.trim().toLowerCase() ==
-                  order.customerName.trim().toLowerCase(),
-            )
-            ?.assignedRoute
-            ?.trim();
+        RouteRefs.routeIdForRef(
+          customers
+              .firstWhereOrNull((c) => c.id == order.customerId)
+              ?.assignedRoute,
+          routes,
+        ) ??
+        RouteRefs.routeIdForRef(
+          customers
+              .firstWhereOrNull(
+                (c) => c.phone.trim() == order.customerPhone.trim(),
+              )
+              ?.assignedRoute,
+          routes,
+        ) ??
+        RouteRefs.routeIdForRef(
+          customers
+              .firstWhereOrNull(
+                (c) =>
+                    c.name.trim().toLowerCase() ==
+                    order.customerName.trim().toLowerCase(),
+              )
+              ?.assignedRoute,
+          routes,
+        );
 
-    final effectiveRouteKey = (order.assignedRoute?.trim().isNotEmpty == true)
-        ? order.assignedRoute!.trim()
-        : derivedCustomerRoute;
-    final effectiveRoute = effectiveRouteKey == null
-        ? null
-        : routes.firstWhereOrNull(
-            (r) => r.id == effectiveRouteKey || r.name == effectiveRouteKey,
-          );
+    final effectiveRouteKey =
+        RouteRefs.routeIdForRef(order.assignedRoute, routes) ??
+        derivedCustomerRoute;
+    final effectiveRoute = RouteRefs.routeForRef(effectiveRouteKey, routes);
 
-    final summaryRouteLabel =
-        (effectiveRoute ?? route)?.name ??
-        (order.assignedRoute?.trim().isNotEmpty == true
-            ? order.assignedRoute!.trim()
-            : 'No route');
+    final summaryRouteLabel = RouteRefs.routeLabelForRef(
+      effectiveRouteKey ?? order.assignedRoute,
+      routes,
+    );
 
     final paymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
 

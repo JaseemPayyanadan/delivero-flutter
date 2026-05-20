@@ -10,6 +10,7 @@ import '../../../../app/providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/delivero_sliver_header.dart';
+import '../../../../core/utils/route_refs.dart';
 import '../../../../data/models/customer.dart';
 import '../../../../data/models/food_item.dart';
 import '../../../../data/models/order.dart';
@@ -389,20 +390,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       return false;
     }
 
-    final assignedRoute = customer.assignedRoute?.trim();
-    if (assignedRoute == null || assignedRoute.isEmpty) {
-      return false;
-    }
-    if (assignedRoute == normalizedDriverRouteId) {
-      return true;
-    }
-
-    final route = routes.firstWhereOrNull(
-      (r) =>
-          r.id == normalizedDriverRouteId || r.name == normalizedDriverRouteId,
+    final customerRouteId = RouteRefs.routeIdForRef(
+      customer.assignedRoute,
+      routes,
     );
-    return route != null &&
-        (assignedRoute == route.id || assignedRoute == route.name);
+    return customerRouteId != null &&
+        customerRouteId == normalizedDriverRouteId;
   }
 
   String _routeLabelForCustomer(
@@ -410,17 +403,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     List<DeliveryRoute> routes, {
     required bool routesLoaded,
   }) {
-    if (!routesLoaded && routes.isEmpty) return 'Loading route…';
-    return routes
-            .firstWhereOrNull(
-              (r) =>
-                  r.id == customer.assignedRoute ||
-                  r.name == customer.assignedRoute,
-            )
-            ?.name ??
-        (customer.assignedRoute?.trim().isNotEmpty == true
-            ? customer.assignedRoute!.trim()
-            : 'No route');
+    return RouteRefs.routeLabelForRef(
+      customer.assignedRoute,
+      routes,
+      routesLoaded: routesLoaded,
+    );
   }
 
   int _customerMatchScore(
@@ -1513,20 +1500,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
 
     final route = widget.forDriver
-        ? routes.firstWhereOrNull(
-            (r) => r.id == driverRouteId || r.name == driverRouteId,
-          )
-        : routes.firstWhereOrNull(
-            (r) =>
-                r.id == _selectedCustomer!.assignedRoute ||
-                r.name == _selectedCustomer!.assignedRoute,
-          );
-    final normalizedRouteId = widget.forDriver
-        ? (route?.id ?? driverRouteId)
-        : route?.id ??
-              (_selectedCustomer!.assignedRoute?.trim().isNotEmpty == true
-                  ? _selectedCustomer!.assignedRoute!.trim()
-                  : null);
+        ? RouteRefs.routeForRef(driverRouteId, routes)
+        : RouteRefs.routeForRef(_selectedCustomer!.assignedRoute, routes);
+    final normalizedRouteId = route?.id ??
+        RouteRefs.routeIdForRef(
+          widget.forDriver
+              ? driverRouteId
+              : _selectedCustomer!.assignedRoute,
+          routes,
+        );
     final assignedDriver = widget.forDriver ? driverId : route?.assignedDriver;
     const discountAmount = 0.0;
     final totalAmount = subtotal.clamp(0, double.infinity).toDouble();

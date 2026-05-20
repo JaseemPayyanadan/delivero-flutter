@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
@@ -9,7 +8,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/customer.dart';
-import '../../../data/models/delivery_route.dart';
+import '../../../core/utils/route_refs.dart';
 import '../../../data/models/order.dart';
 
 class GlobalSearchScreen extends ConsumerStatefulWidget {
@@ -99,13 +98,12 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen> {
                 if (matchedOrders.isNotEmpty) ...[
                   _SectionTitle('Orders (${matchedOrders.length})'),
                   ...matchedOrders.map((o) {
-                    final route = routes.firstWhereOrNull(
-                      (r) =>
-                          r.id == o.assignedRoute || r.name == o.assignedRoute,
-                    );
                     return _OrderHitTile(
                       order: o,
-                      route: route,
+                      routeLabel: RouteRefs.routeLabelForRef(
+                        o.assignedRoute,
+                        routes,
+                      ),
                       onTap: () => context.push('/owner/orders/${o.id}'),
                     );
                   }),
@@ -156,19 +154,17 @@ class _SectionTitle extends StatelessWidget {
 
 class _OrderHitTile extends StatelessWidget {
   final Order order;
+  final String routeLabel;
   final VoidCallback onTap;
 
-  final DeliveryRoute? route;
-
-  const _OrderHitTile({required this.order, required this.onTap, this.route});
+  const _OrderHitTile({
+    required this.order,
+    required this.routeLabel,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final routeLabel =
-        route?.name ??
-        (order.assignedRoute?.trim().isNotEmpty == true
-            ? order.assignedRoute!.trim()
-            : 'No route');
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(

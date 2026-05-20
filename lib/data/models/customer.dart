@@ -11,6 +11,7 @@ class Customer {
   final String area;
   final bool isActive;
   final double? discountPercentage;
+  /// Canonical [DeliveryRoute.id] for this customer's delivery route.
   final String? assignedRoute;
   final List<CustomerProduct>? products;
   final DateTime createdAt;
