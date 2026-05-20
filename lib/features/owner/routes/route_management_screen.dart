@@ -236,7 +236,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
                 updatedAt: DateTime.now(),
               );
               if (isEdit) {
-                ref.read(routesProvider.notifier).updateRoute(newRoute);
+                await ref.read(routesProvider.notifier).updateRoute(newRoute);
               } else {
                 ref.read(routesProvider.notifier).addRoute(newRoute);
               }
@@ -775,7 +775,8 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                 createdAt: route.createdAt,
                 updatedAt: DateTime.now(),
               );
-              ref.read(routesProvider.notifier).updateRoute(updated);
+              await ref.read(routesProvider.notifier).updateRoute(updated);
+              if (!context.mounted) return;
               Navigator.pop(context);
             },
             style: FilledButton.styleFrom(

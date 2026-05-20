@@ -10,6 +10,7 @@ import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
+import '../../../core/utils/route_refs.dart';
 import '../../../data/models/order.dart';
 
 // ignore_for_file: unnecessary_underscores, unused_element_parameter, unused_local_variable
@@ -64,21 +65,14 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       for (final r in routes) r.id: r,
     };
 
-    DeliveryRoute? routeForCustomer(Customer c) {
-      if (c.assignedRoute == null) return null;
-      final direct = routesById[c.assignedRoute];
-      if (direct != null) return direct;
-      return routes.firstWhereOrNull((r) => r.name == c.assignedRoute);
-    }
+    DeliveryRoute? routeForCustomer(Customer c) =>
+        RouteRefs.routeForRef(c.assignedRoute, routes);
 
-    String routeNameForCustomer(Customer c) {
-      final r = routeForCustomer(c);
-      if (!routesLoaded && routes.isEmpty) return 'Loading route…';
-      return r?.name ??
-          (c.assignedRoute?.trim().isNotEmpty == true
-              ? c.assignedRoute!.trim()
-              : 'No route');
-    }
+    String routeNameForCustomer(Customer c) => RouteRefs.routeLabelForRef(
+          c.assignedRoute,
+          routes,
+          routesLoaded: routesLoaded,
+        );
 
     String? routeIdForCustomer(Customer c) {
       final r = routeForCustomer(c);
@@ -320,7 +314,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       area: customer.area.isEmpty ? picked.area : customer.area,
       isActive: customer.isActive,
       discountPercentage: customer.discountPercentage,
-      assignedRoute: picked.name,
+      assignedRoute: picked.id,
       products: customer.products,
       createdAt: customer.createdAt,
       updatedAt: DateTime.now(),

@@ -12,6 +12,7 @@ import 'package:printing/printing.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/route_refs.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/customer.dart';
@@ -318,14 +319,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final customers = ref.watch(customersProvider);
     final bool noOrdersYet = orders.isEmpty;
 
-    String? routeIdForOrder(Order o) {
-      final raw = o.assignedRoute?.trim();
-      if (raw == null || raw.isEmpty) return null;
-      final route = routes.firstWhereOrNull(
-        (r) => r.id == raw || r.name == raw,
-      );
-      return route?.id ?? raw;
-    }
+    String? routeIdForOrder(Order o) =>
+        RouteRefs.routeIdForRef(o.assignedRoute, routes) ??
+        o.assignedRoute?.trim();
 
     // Get unique route IDs from existing orders
     final availableRouteIds = orders
@@ -448,23 +444,23 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     List<Customer> customers,
   ) {
     String routeLabelFor(Order order) {
-      final raw = order.assignedRoute?.trim();
       String? customerRoute() {
         final byId = customers.firstWhereOrNull(
           (c) => c.id == order.customerId,
         );
-        if (byId?.assignedRoute?.trim().isNotEmpty == true) {
-          return byId!.assignedRoute!.trim();
-        }
+        final fromId = RouteRefs.routeIdForRef(byId?.assignedRoute, routes);
+        if (fromId != null) return fromId;
 
         final phone = order.customerPhone.trim();
         if (phone.isNotEmpty) {
           final byPhone = customers.firstWhereOrNull(
             (c) => c.phone.trim() == phone,
           );
-          if (byPhone?.assignedRoute?.trim().isNotEmpty == true) {
-            return byPhone!.assignedRoute!.trim();
-          }
+          final fromPhone = RouteRefs.routeIdForRef(
+            byPhone?.assignedRoute,
+            routes,
+          );
+          if (fromPhone != null) return fromPhone;
         }
 
         final name = order.customerName.trim().toLowerCase();
@@ -472,19 +468,18 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           final byName = customers.firstWhereOrNull(
             (c) => c.name.trim().toLowerCase() == name,
           );
-          if (byName?.assignedRoute?.trim().isNotEmpty == true) {
-            return byName!.assignedRoute!.trim();
-          }
+          final fromName = RouteRefs.routeIdForRef(
+            byName?.assignedRoute,
+            routes,
+          );
+          if (fromName != null) return fromName;
         }
         return null;
       }
 
-      final effective = (raw == null || raw.isEmpty) ? customerRoute() : raw;
-      if (effective == null || effective.isEmpty) return '';
-      final route = routes.firstWhereOrNull(
-        (r) => r.id == effective || r.name == effective,
-      );
-      return route?.name ?? effective;
+      final orderRouteId = RouteRefs.routeIdForRef(order.assignedRoute, routes);
+      final effective = orderRouteId ?? customerRoute();
+      return RouteRefs.routeLabelForRef(effective, routes);
     }
 
     final groups = <String, List<Order>>{};
