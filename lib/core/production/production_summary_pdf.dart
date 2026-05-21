@@ -59,9 +59,9 @@ Future<Uint8List> buildProductionSummaryPdfBytes({
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.6),
               columnWidths: {
-                0: const pw.FlexColumnWidth(2.4),
-                1: const pw.FlexColumnWidth(1.2),
-                2: const pw.FlexColumnWidth(3.4),
+                0: const pw.FlexColumnWidth(2.2),
+                1: const pw.FlexColumnWidth(1),
+                2: const pw.FlexColumnWidth(2.8),
               },
               children: [
                 pw.TableRow(
@@ -69,21 +69,16 @@ Future<Uint8List> buildProductionSummaryPdfBytes({
                       const pw.BoxDecoration(color: PdfColors.grey100),
                   children: [
                     _headerCell('Item'),
-                    _headerCell('Total units'),
-                    _headerCell('Pack breakdown'),
+                    _headerCell('Total'),
+                    _headerCell('Split'),
                   ],
                 ),
                 ...summary.lines.map((line) {
-                  final packs = formatPackBreakdown(line.packBreakdown);
                   return pw.TableRow(
                     children: [
                       _bodyCell(line.productName),
                       _bodyCell('${line.totalUnits}'),
-                      _bodyCell(
-                        packs.isEmpty
-                            ? '${line.orderLineCount} line(s)'
-                            : '$packs (${line.orderLineCount} lines)',
-                      ),
+                      _splitCell(line),
                     ],
                   );
                 }),
@@ -115,6 +110,27 @@ pw.Widget _bodyCell(String text) {
   return pw.Padding(
     padding: const pw.EdgeInsets.all(10),
     child: pw.Text(text, style: const pw.TextStyle(fontSize: 11)),
+  );
+}
+
+pw.Widget _splitCell(ProductionLineSummary line) {
+  final rows = formatPackBreakdownLines(line.packBreakdown);
+  return pw.Padding(
+    padding: const pw.EdgeInsets.all(10),
+    child: rows.isEmpty
+        ? pw.Text(
+            '—',
+            style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600),
+          )
+        : pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < rows.length; i++) ...[
+                if (i > 0) pw.SizedBox(height: 4),
+                pw.Text(rows[i], style: const pw.TextStyle(fontSize: 11)),
+              ],
+            ],
+          ),
   );
 }
 

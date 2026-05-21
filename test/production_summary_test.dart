@@ -180,8 +180,8 @@ void main() {
       final text = formatProductionSummaryText(summary);
       expect(text, contains('Production list'));
       expect(text, contains('Route: North Loop'));
-      expect(text, contains('JAPATHI — 40 units'));
-      expect(text, contains('2×20 packs'));
+      expect(text, contains('JAPATHI — 40 units total'));
+      expect(text, contains('2 × 20 units'));
     });
   });
 }
