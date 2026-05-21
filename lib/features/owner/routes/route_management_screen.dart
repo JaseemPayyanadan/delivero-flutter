@@ -51,6 +51,7 @@ class RouteManagementScreen extends ConsumerStatefulWidget {
 class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  OverlayEntry? _routeSavingOverlay;
 
   @override
   void initState() {
@@ -67,8 +68,48 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
 
   @override
   void dispose() {
+    _hideRouteSavingOverlay();
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _showRouteSavingOverlay() {
+    if (_routeSavingOverlay != null || !mounted) return;
+    _routeSavingOverlay = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          ModalBarrier(
+            dismissible: false,
+            color: Colors.black.withValues(alpha: 0.28),
+          ),
+          const Center(
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    Overlay.of(context).insert(_routeSavingOverlay!);
+  }
+
+  void _hideRouteSavingOverlay() {
+    _routeSavingOverlay?.remove();
+    _routeSavingOverlay = null;
+  }
+
+  Future<void> _runRouteMutation(Future<void> Function() action) async {
+    _showRouteSavingOverlay();
+    try {
+      await action();
+    } finally {
+      _hideRouteSavingOverlay();
+    }
   }
 
   Future<void> _refreshLists() async {
@@ -133,6 +174,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
                   routesLoaded: routesLoaded,
                   onRefresh: _refreshLists,
                   onEmptyAddRoute: () => _showRouteDialog(),
+                  runRouteMutation: _runRouteMutation,
                 ),
                 _DriverListTab(
                   drivers: drivers,
@@ -218,28 +260,38 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
           ),
           FilledButton(
             onPressed: () async {
-              final factoryId =
-                  await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
-
-              final newRoute = DeliveryRoute(
-                id: isEdit ? route.id : const Uuid().v4(),
-                factoryId: factoryId,
-                name: nameController.text.trim(),
-                area: areaController.text.trim(),
-                description: route?.description ?? '',
-                isActive: route?.isActive ?? true,
-                estimatedDeliveryTime: route?.estimatedDeliveryTime ?? 30,
-                maxOrders: route?.maxOrders ?? 10,
-                currentOrders: route?.currentOrders ?? 0,
-                assignedDriver: route?.assignedDriver,
-                createdAt: route?.createdAt ?? DateTime.now(),
-                updatedAt: DateTime.now(),
-              );
-              if (isEdit) {
-                await ref.read(routesProvider.notifier).updateRoute(newRoute);
-              } else {
-                ref.read(routesProvider.notifier).addRoute(newRoute);
+              final nextName = nameController.text.trim();
+              if (nextName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter a route name.')),
+                );
+                return;
               }
+
+              await _runRouteMutation(() async {
+                final factoryId =
+                    await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+                final newRoute = DeliveryRoute(
+                  id: isEdit ? route.id : const Uuid().v4(),
+                  factoryId: factoryId,
+                  name: nextName,
+                  area: areaController.text.trim(),
+                  description: route?.description ?? '',
+                  isActive: route?.isActive ?? true,
+                  estimatedDeliveryTime: route?.estimatedDeliveryTime ?? 30,
+                  maxOrders: route?.maxOrders ?? 10,
+                  currentOrders: route?.currentOrders ?? 0,
+                  assignedDriver: route?.assignedDriver,
+                  createdAt: route?.createdAt ?? DateTime.now(),
+                  updatedAt: DateTime.now(),
+                );
+                if (isEdit) {
+                  await ref.read(routesProvider.notifier).updateRoute(newRoute);
+                } else {
+                  await ref.read(routesProvider.notifier).addRoute(newRoute);
+                }
+              });
+
               if (context.mounted) Navigator.pop(context);
             },
             style: FilledButton.styleFrom(
@@ -265,12 +317,14 @@ class _RouteListTab extends ConsumerWidget {
   final bool routesLoaded;
   final Future<void> Function() onRefresh;
   final VoidCallback onEmptyAddRoute;
+  final Future<void> Function(Future<void> Function() action) runRouteMutation;
   const _RouteListTab({
     required this.routes,
     required this.drivers,
     required this.routesLoaded,
     required this.onRefresh,
     required this.onEmptyAddRoute,
+    required this.runRouteMutation,
   });
 
   @override
@@ -281,6 +335,7 @@ class _RouteListTab extends ConsumerWidget {
       routesLoaded: routesLoaded,
       onRefresh: onRefresh,
       onEmptyAddRoute: onEmptyAddRoute,
+      runRouteMutation: runRouteMutation,
     );
   }
 }
@@ -291,12 +346,14 @@ class _RouteListTabBody extends ConsumerStatefulWidget {
   final bool routesLoaded;
   final Future<void> Function() onRefresh;
   final VoidCallback onEmptyAddRoute;
+  final Future<void> Function(Future<void> Function() action) runRouteMutation;
   const _RouteListTabBody({
     required this.routes,
     required this.drivers,
     required this.routesLoaded,
     required this.onRefresh,
     required this.onEmptyAddRoute,
+    required this.runRouteMutation,
   });
 
   @override
@@ -604,38 +661,42 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                               borderRadius: BorderRadius.circular(16),
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
-                                onTap: () {
-                                  final updatedRoute = DeliveryRoute(
-                                    id: route.id,
-                                    factoryId: route.factoryId,
-                                    name: route.name,
-                                    description: route.description,
-                                    area: route.area,
-                                    assignedDriver: driver.id,
-                                    isActive: route.isActive,
-                                    estimatedDeliveryTime:
-                                        route.estimatedDeliveryTime,
-                                    maxOrders: route.maxOrders,
-                                    currentOrders: route.currentOrders,
-                                    createdAt: route.createdAt,
-                                    updatedAt: DateTime.now(),
-                                  );
-                                  ref
-                                      .read(routesProvider.notifier)
-                                      .updateRoute(updatedRoute);
+                                onTap: () async {
+                                  await widget.runRouteMutation(() async {
+                                    final updatedRoute = DeliveryRoute(
+                                      id: route.id,
+                                      factoryId: route.factoryId,
+                                      name: route.name,
+                                      description: route.description,
+                                      area: route.area,
+                                      assignedDriver: driver.id,
+                                      isActive: route.isActive,
+                                      estimatedDeliveryTime:
+                                          route.estimatedDeliveryTime,
+                                      maxOrders: route.maxOrders,
+                                      currentOrders: route.currentOrders,
+                                      createdAt: route.createdAt,
+                                      updatedAt: DateTime.now(),
+                                    );
+                                    await ref
+                                        .read(routesProvider.notifier)
+                                        .updateRoute(updatedRoute);
 
-                                  final updatedDriver = driver.copyWith(
-                                    currentRoute: route.id,
-                                    updatedAt: DateTime.now(),
-                                  );
-                                  ref
-                                      .read(driversProvider.notifier)
-                                      .updateDriver(updatedDriver);
+                                    final updatedDriver = driver.copyWith(
+                                      currentRoute: route.id,
+                                      updatedAt: DateTime.now(),
+                                    );
+                                    ref
+                                        .read(driversProvider.notifier)
+                                        .updateDriver(updatedDriver);
+                                  });
 
                                   try {
                                     HapticFeedback.mediumImpact();
                                   } catch (_) {}
-                                  Navigator.pop(sheetContext);
+                                  if (sheetContext.mounted) {
+                                    Navigator.pop(sheetContext);
+                                  }
                                 },
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -758,24 +819,27 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                 );
                 return;
               }
-              final factoryId =
-                  await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
-              if (!context.mounted) return;
-              final updated = DeliveryRoute(
-                id: route.id,
-                factoryId: factoryId,
-                name: nextName,
-                description: route.description,
-                area: areaController.text.trim(),
-                assignedDriver: route.assignedDriver,
-                isActive: route.isActive,
-                estimatedDeliveryTime: route.estimatedDeliveryTime,
-                maxOrders: route.maxOrders,
-                currentOrders: route.currentOrders,
-                createdAt: route.createdAt,
-                updatedAt: DateTime.now(),
-              );
-              await ref.read(routesProvider.notifier).updateRoute(updated);
+
+              await widget.runRouteMutation(() async {
+                final factoryId =
+                    await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+                final updated = DeliveryRoute(
+                  id: route.id,
+                  factoryId: factoryId,
+                  name: nextName,
+                  description: route.description,
+                  area: areaController.text.trim(),
+                  assignedDriver: route.assignedDriver,
+                  isActive: route.isActive,
+                  estimatedDeliveryTime: route.estimatedDeliveryTime,
+                  maxOrders: route.maxOrders,
+                  currentOrders: route.currentOrders,
+                  createdAt: route.createdAt,
+                  updatedAt: DateTime.now(),
+                );
+                await ref.read(routesProvider.notifier).updateRoute(updated);
+              });
+
               if (!context.mounted) return;
               Navigator.pop(context);
             },
@@ -827,24 +891,27 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
             ),
           ),
           TextButton(
-            onPressed: () {
-              final assignedDriverId = route.assignedDriver;
-              if (assignedDriverId != null && assignedDriverId.isNotEmpty) {
-                final driver = ref
-                    .read(driversProvider)
-                    .firstWhereOrNull((d) => d.id == assignedDriverId);
-                if (driver != null) {
-                  final updatedDriver = driver.copyWith(
-                    currentRoute: null,
-                    updatedAt: DateTime.now(),
-                  );
-                  ref
-                      .read(driversProvider.notifier)
-                      .updateDriver(updatedDriver);
+            onPressed: () async {
+              final dialogContext = context;
+              await widget.runRouteMutation(() async {
+                final assignedDriverId = route.assignedDriver;
+                if (assignedDriverId != null && assignedDriverId.isNotEmpty) {
+                  final driver = ref
+                      .read(driversProvider)
+                      .firstWhereOrNull((d) => d.id == assignedDriverId);
+                  if (driver != null) {
+                    final updatedDriver = driver.copyWith(
+                      currentRoute: null,
+                      updatedAt: DateTime.now(),
+                    );
+                    ref
+                        .read(driversProvider.notifier)
+                        .updateDriver(updatedDriver);
+                  }
                 }
-              }
-              ref.read(routesProvider.notifier).deleteRoute(route.id);
-              Navigator.pop(context);
+                ref.read(routesProvider.notifier).deleteRoute(route.id);
+              });
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
             },
             child: const Text(
               'Delete',

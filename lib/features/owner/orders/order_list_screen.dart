@@ -4,12 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-
-// ignore_for_file: unused_element
-
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/route_refs.dart';
@@ -18,6 +12,7 @@ import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
+import 'production_summary_sheet.dart';
 
 class OrderListScreen extends ConsumerStatefulWidget {
   const OrderListScreen({super.key});
@@ -31,6 +26,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   String _searchQuery = '';
   String? _selectedRouteId;
   PaymentStatus? _selectedPaymentStatus;
+  DateTime _productionDay = DateTime.now();
 
   String _formatRupee(double amount) {
     final whole = amount == amount.roundToDouble();
@@ -47,266 +43,57 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     super.dispose();
   }
 
-  Map<String, Map<int, int>> _getPackagingSummary(List<Order> orders) {
-    final Map<String, Map<int, int>> summary = {};
-    for (final order in orders) {
-      for (final item in order.items) {
-        if (!summary.containsKey(item.foodItemName)) {
-          summary[item.foodItemName] = {};
-        }
-        final qtyMap = summary[item.foodItemName]!;
-        qtyMap[item.quantity] = (qtyMap[item.quantity] ?? 0) + 1;
-      }
-    }
-    return summary;
+  DateTime _calendarDay(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
+
+  String? _routeLabelForId(String? routeId, List<DeliveryRoute> routes) {
+    if (routeId == null) return null;
+    return routes.firstWhereOrNull((r) => r.id == routeId)?.name;
   }
 
-  Future<void> _printPackagingSummary(List<Order> filteredOrders) async {
-    final summary = _getPackagingSummary(filteredOrders);
-    if (summary.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).removeCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'No items found for current filters.',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.warning,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      return;
-    }
-
-    final now = DateTime.now();
-    final doc = pw.Document();
-
-    final sortedEntries = summary.entries.toList()
-      ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
-
-    doc.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
-        build: (context) {
-          return [
-            pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'Pack list',
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    pw.SizedBox(height: 6),
-                    pw.Text(
-                      'Generated: ${DateFormat('MMM d, yyyy • hh:mm a').format(now)}',
-                      style: const pw.TextStyle(
-                        fontSize: 10,
-                        color: PdfColors.grey700,
-                      ),
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Text(
-                      'Orders in scope: ${filteredOrders.length}',
-                      style: const pw.TextStyle(
-                        fontSize: 10,
-                        color: PdfColors.grey700,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 18),
-            pw.Divider(color: PdfColors.grey300),
-            pw.SizedBox(height: 12),
-            pw.Table(
-              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.6),
-              columnWidths: {
-                0: const pw.FlexColumnWidth(3.2),
-                1: const pw.FlexColumnWidth(4.8),
-              },
-              children: [
-                pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: PdfColors.grey100),
-                  children: [
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(10),
-                      child: pw.Text(
-                        'Item',
-                        style: pw.TextStyle(
-                          fontSize: 10,
-                          fontWeight: pw.FontWeight.bold,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(10),
-                      child: pw.Text(
-                        'Pack sizes',
-                        style: pw.TextStyle(
-                          fontSize: 10,
-                          fontWeight: pw.FontWeight.bold,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                ...sortedEntries.map((entry) {
-                  final packSizes = entry.value.entries.toList()
-                    ..sort((a, b) => a.key.compareTo(b.key));
-
-                  final breakdown = packSizes
-                      .map((e) => '${e.value} × ${e.key} unit packs')
-                      .join('   |   ');
-
-                  return pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(10),
-                        child: pw.Text(
-                          entry.key,
-                          style: const pw.TextStyle(fontSize: 11),
-                        ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(10),
-                        child: pw.Text(
-                          breakdown,
-                          style: const pw.TextStyle(fontSize: 11),
-                        ),
-                      ),
-                    ],
-                  );
-                }),
-              ],
-            ),
-          ];
-        },
-      ),
-    );
-
-    await Printing.layoutPdf(
-      onLayout: (format) async => doc.save(),
-      name: 'packaging_manifest_${DateFormat('yyyyMMdd_HHmm').format(now)}.pdf',
-    );
-  }
-
-  void _showPackagingSummary(List<Order> filteredOrders) {
-    final summary = _getPackagingSummary(filteredOrders);
-
-    showDialog(
+  Future<void> _pickProductionDay() async {
+    final picked = await showDatePicker(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: Row(
-          children: [
-            const Icon(Icons.inventory_2_rounded, color: AppColors.primary),
-            const SizedBox(width: 12),
-            const Text(
-              'Packaging Manifest',
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: summary.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Text(
-                    'No items found for current filters.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                )
-              : ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: summary.length,
-                  separatorBuilder: (_, _) => const Divider(height: 24),
-                  itemBuilder: (context, index) {
-                    final itemName = summary.keys.elementAt(index);
-                    final packSizes = summary[itemName]!;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          itemName.toUpperCase(),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 14,
-                            color: AppColors.textPrimary,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: packSizes.entries.map((e) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryLighter,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '${e.value}x [${e.key} unit packs]',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'CLOSE',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                color: AppColors.textLight,
-              ),
+      initialDate: _productionDay,
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.primary,
             ),
           ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _printPackagingSummary(filteredOrders);
-            },
-            icon: const Icon(Icons.print_rounded, size: 18),
-            label: const Text(
-              'PRINT',
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
-          ),
-        ],
-      ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _productionDay = _calendarDay(picked));
+    }
+  }
+
+  Future<void> _openProductionSummary({
+    required List<Order> orders,
+    required List<DeliveryRoute> routes,
+  }) async {
+    final routeLabel = _selectedRouteId == null
+        ? 'All routes'
+        : _routeLabelForId(_selectedRouteId, routes);
+
+    await showProductionSummaryForOrders(
+      context,
+      allOrders: orders,
+      routes: routes,
+      day: _calendarDay(_productionDay),
+      routeId: _selectedRouteId,
+      routeLabel: routeLabel,
+      onChangeDate: () async {
+        Navigator.pop(context);
+        await _pickProductionDay();
+        if (!mounted) return;
+        await _openProductionSummary(orders: orders, routes: routes);
+      },
     );
   }
 
@@ -379,6 +166,18 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               )
             : null,
         actions: [
+          if (!noOrdersYet)
+            IconButton(
+              tooltip: 'Production list',
+              onPressed: () => _openProductionSummary(
+                orders: orders,
+                routes: routes,
+              ),
+              icon: const Icon(
+                Icons.inventory_2_rounded,
+                color: AppColors.textPrimary,
+              ),
+            ),
           IconButton(
             tooltip: 'Search',
             onPressed: () => _openSearchSheet(context),
