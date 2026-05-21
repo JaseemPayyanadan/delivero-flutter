@@ -1,11 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:printing/printing.dart';
 
 import '../../../core/production/production_summary.dart';
 import '../../../core/production/production_summary_pdf.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/pdf_download.dart';
+import '../../../core/utils/whatsapp_share.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../data/models/order.dart';
@@ -37,21 +38,64 @@ class ProductionSummarySheet extends StatelessWidget {
     );
   }
 
-  Future<void> _copyToClipboard(BuildContext context) async {
-    final text = formatProductionSummaryText(summary);
-    await Clipboard.setData(ClipboardData(text: text));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text(
-          'Production list copied for kitchen.',
-          style: TextStyle(fontWeight: FontWeight.w700),
+  Future<void> _shareToWhatsApp(BuildContext context) async {
+    if (summary.isEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Nothing to share for this scope.',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.warning,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.success,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+      );
+      return;
+    }
+
+    try {
+      await openWhatsAppShare(
+        message: formatProductionSummaryText(summary),
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            kIsWeb
+                ? 'Opening WhatsApp Web…'
+                : 'Opening WhatsApp…',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            msg,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: msg.contains('copied')
+              ? AppColors.success
+              : AppColors.warning,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _downloadPdf(BuildContext context) async {
@@ -81,17 +125,16 @@ class ProductionSummarySheet extends StatelessWidget {
       generatedAt: now,
     );
 
-    await Printing.sharePdf(
-      bytes: bytes,
-      filename: filename,
-    );
+    await downloadPdfFile(bytes, filename);
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text(
-          'Save the PDF from the share menu (e.g. Files or Downloads).',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        content: Text(
+          kIsWeb
+              ? 'PDF download started.'
+              : 'Save the PDF from the share menu.',
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.success,
@@ -230,14 +273,16 @@ class ProductionSummarySheet extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _copyToClipboard(context),
-                        icon: const Icon(Icons.copy_rounded, size: 18),
+                      child: FilledButton.icon(
+                        onPressed: () => _shareToWhatsApp(context),
+                        icon: const Icon(Icons.chat_rounded, size: 18),
                         label: const Text(
-                          'Copy',
-                          style: TextStyle(fontWeight: FontWeight.w800),
+                          'WhatsApp',
+                          style: TextStyle(fontWeight: FontWeight.w900),
                         ),
-                        style: OutlinedButton.styleFrom(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -393,8 +438,7 @@ class _ProductionLineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final packEntries = line.packBreakdown.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final splitRows = formatPackBreakdownLines(line.packBreakdown);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,58 +448,67 @@ class _ProductionLineTile extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                line.productName.toUpperCase(),
+                line.productName,
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
-                  fontSize: 15,
+                  fontSize: 16,
                   color: AppColors.textPrimary,
-                  letterSpacing: 0.4,
                 ),
               ),
             ),
             Text(
-              '${line.totalUnits} units',
+              '${line.totalUnits}',
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
-                fontSize: 14,
+                fontSize: 18,
                 color: AppColors.primary,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 2),
         Text(
-          '${line.orderLineCount} order line${line.orderLineCount == 1 ? '' : 's'}',
+          'units total',
           style: context.appTextStyles.caption.copyWith(
             color: AppColors.textSecondary,
             fontWeight: FontWeight.w600,
           ),
         ),
-        if (packEntries.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: packEntries.map((e) {
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLighter,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${e.value}×${e.key} packs',
-                  style: const TextStyle(
-                    fontSize: 12,
+        if (splitRows.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Split',
+                  style: context.appTextStyles.caption.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+                    color: AppColors.textSecondary,
+                    letterSpacing: 0.4,
                   ),
                 ),
-              );
-            }).toList(),
+                const SizedBox(height: 8),
+                for (var i = 0; i < splitRows.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 6),
+                  Text(
+                    splitRows[i],
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ],

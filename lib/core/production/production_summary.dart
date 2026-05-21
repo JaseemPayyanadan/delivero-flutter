@@ -148,23 +148,24 @@ class _LineAccumulator {
   _LineAccumulator({required this.productName, this.foodItemId});
 }
 
-String formatPackBreakdown(Map<int, int> packBreakdown) {
-  if (packBreakdown.isEmpty) return '';
+/// One row per pack size, largest quantity first (e.g. "5 × 20 units").
+List<String> formatPackBreakdownLines(Map<int, int> packBreakdown) {
+  if (packBreakdown.isEmpty) return const [];
   final entries = packBreakdown.entries.toList()
-    ..sort((a, b) => a.key.compareTo(b.key));
-  return entries.map((e) => '${e.value}×${e.key} packs').join(' · ');
+    ..sort((a, b) => b.key.compareTo(a.key));
+  return [
+    for (final e in entries) '${e.value} × ${e.key} units',
+  ];
 }
 
 String formatProductionLine(ProductionLineSummary line) {
-  final packs = formatPackBreakdown(line.packBreakdown);
   final buffer = StringBuffer(
-    '${line.productName.toUpperCase()} — ${line.totalUnits} units',
+    '${line.productName.toUpperCase()} — ${line.totalUnits} units total',
   );
-  if (packs.isNotEmpty) {
-    buffer.write('\n  · $packs');
+  for (final row in formatPackBreakdownLines(line.packBreakdown)) {
+    buffer.writeln('  $row');
   }
-  buffer.write('\n  · ${line.orderLineCount} order line(s)');
-  return buffer.toString();
+  return buffer.toString().trim();
 }
 
 String formatProductionSummaryText(ProductionSummary summary) {
