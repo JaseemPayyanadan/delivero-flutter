@@ -323,7 +323,16 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     try {
       HapticFeedback.mediumImpact();
     } catch (_) {}
-    final updatedOrder = order.copyWith(status: newStatus);
+    final now = DateTime.now();
+    final updatedOrder = order.copyWith(
+      status: newStatus,
+      deliveryTime: newStatus == OrderStatus.delivered
+          ? (order.deliveryTime ?? now)
+          : order.deliveryTime,
+      deliveryDate: newStatus == OrderStatus.delivered
+          ? (order.deliveryDate ?? now)
+          : order.deliveryDate,
+    );
     ref.read(ordersProvider.notifier).updateOrder(updatedOrder);
 
     ScaffoldMessenger.of(context).removeCurrentSnackBar();

@@ -1,5 +1,6 @@
 import '../../data/models/delivery_route.dart';
 import '../../data/models/order.dart';
+import '../orders/business_day.dart';
 import '../utils/route_refs.dart';
 
 /// One aggregated product row for kitchen / packing.
@@ -47,17 +48,15 @@ class ProductionSummaryScope {
   final String? routeId;
   final List<DeliveryRoute> routes;
   final String? routeLabel;
+  final int rolloverHour;
 
   const ProductionSummaryScope({
     required this.day,
     this.routeId,
     this.routes = const [],
     this.routeLabel,
+    this.rolloverHour = kDefaultBusinessDayRolloverHour,
   });
-}
-
-bool _isSameCalendarDay(DateTime a, DateTime b) {
-  return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 bool _orderMatchesRoute(Order order, String? routeId, List<DeliveryRoute> routes) {
@@ -71,7 +70,13 @@ List<Order> filterOrdersForProduction(
   ProductionSummaryScope scope,
 ) {
   return orders.where((order) {
-    if (!_isSameCalendarDay(order.orderDate, scope.day)) return false;
+    if (!orderMatchesBusinessScope(
+      order.orderDate,
+      scope.day,
+      rolloverHour: scope.rolloverHour,
+    )) {
+      return false;
+    }
     if (order.status == OrderStatus.cancelled) return false;
     if (!_orderMatchesRoute(order, scope.routeId, scope.routes)) return false;
     return true;

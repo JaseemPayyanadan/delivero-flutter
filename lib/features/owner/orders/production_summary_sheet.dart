@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/orders/business_day.dart';
 import '../../../core/production/production_summary.dart';
 import '../../../core/production/production_summary_pdf.dart';
 import '../../../core/theme/app_colors.dart';
@@ -524,6 +525,7 @@ Future<void> showProductionSummaryForOrders(
   required DateTime day,
   String? routeId,
   String? routeLabel,
+  int rolloverHour = kDefaultBusinessDayRolloverHour,
   VoidCallback? onChangeDate,
 }) {
   final scope = ProductionSummaryScope(
@@ -531,6 +533,7 @@ Future<void> showProductionSummaryForOrders(
     routeId: routeId,
     routes: routes,
     routeLabel: routeLabel,
+    rolloverHour: rolloverHour,
   );
   final summary = buildProductionSummary(allOrders, scope);
   return ProductionSummarySheet.show(

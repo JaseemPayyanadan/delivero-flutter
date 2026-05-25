@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../app/order_settings_provider.dart';
 import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -24,6 +25,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String? _prefsKey;
   bool _prefsLoaded = false;
   bool _availabilitySynced = false;
+  String? _orderSettingsSyncedFactory;
 
   @override
   void initState() {
@@ -56,6 +58,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
+    final rolloverHour = ref.watch(orderRolloverHourProvider);
     final drivers = ref.watch(driversProvider);
     final driversLoaded = ref.watch(driversLoadedProvider);
     final isDelivery = user?.role == UserRole.delivery;
@@ -84,6 +87,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           }
         }
       }
+    }
+
+    final factoryId = user?.factoryId;
+    if (!isDelivery &&
+        factoryId != null &&
+        factoryId.isNotEmpty &&
+        _orderSettingsSyncedFactory != factoryId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _orderSettingsSyncedFactory = factoryId);
+        ref.read(orderRolloverHourProvider.notifier).syncForFactory(factoryId);
+      });
     }
 
     if (isDelivery && !_availabilitySynced && driver != null) {
@@ -186,6 +201,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ],
                     ),
                   ),
+                  if (!isDelivery) ...[
+                    const SizedBox(height: 16),
+                    _SettingsGroupCard(
+                      title: 'Orders',
+                      child: Column(
+                        children: [
+                          _ProfileTimeRow(
+                            title: 'New order day starts at',
+                            description:
+                                'Before this time, orders count as the previous day. After this time, new orders start fresh and old ones cannot be changed.',
+                            timeLabel: formatOrderRolloverLabel(rolloverHour),
+                            icon: Icons.schedule_rounded,
+                            iconColor: AppColors.secondary,
+                            onTap: () => _pickOrderResetTime(rolloverHour),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _SettingsGroupCard(
                     title: 'Support',
@@ -246,6 +280,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _pickOrderResetTime(int currentHour) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: currentHour, minute: 0),
+      helpText: 'When does the new order day start?',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked == null || !mounted) return;
+    await ref.read(orderRolloverHourProvider.notifier).setRolloverHour(picked.hour);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Order day now resets at ${formatOrderRolloverLabel(picked.hour)}',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.success,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -963,6 +1029,104 @@ class _ProfileNavRow extends StatelessWidget {
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                         height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textLight,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileTimeRow extends StatelessWidget {
+  final String title;
+  final String description;
+  final String timeLabel;
+  final IconData icon;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  const _ProfileTimeRow({
+    required this.title,
+    required this.description,
+    required this.timeLabel,
+    required this.icon,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: context.appTextStyles.sectionHeader.copyWith(
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: context.appTextStyles.caption.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLighter,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Text(
+                        timeLabel,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],

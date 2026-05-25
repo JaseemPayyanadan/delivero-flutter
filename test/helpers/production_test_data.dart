@@ -27,6 +27,7 @@ Order productionTestOrder({
   String? assignedRoute = 'route-1',
   OrderStatus status = OrderStatus.pending,
   OrderType orderType = OrderType.daily,
+  DeliveryRun deliveryRun = DeliveryRun.morning,
   DateTime? orderDate,
   List<OrderItem>? items,
 }) {
@@ -35,6 +36,7 @@ Order productionTestOrder({
     id: id,
     factoryId: 'FAC_001',
     orderType: orderType,
+    deliveryRun: deliveryRun,
     customerId: 'cust-1',
     customerName: 'Test Cafe',
     customerEmail: '',

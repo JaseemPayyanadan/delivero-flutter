@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 
 import '../../../app/reports_provider.dart';
 import '../../../app/providers.dart';
+import '../../../app/order_settings_provider.dart';
+import '../../../core/orders/business_day.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
@@ -86,17 +88,25 @@ class OwnerDashboardScreen extends ConsumerWidget {
     final fulfillmentRate = reports.totalOrders == 0
         ? 0.0
         : reports.completedOrders / reports.totalOrders;
-    final todayOrdersCount = orders.where((o) {
-      return o.orderDate.year == now.year &&
-          o.orderDate.month == now.month &&
-          o.orderDate.day == now.day;
-    }).length;
+    final rolloverHour = ref.watch(orderRolloverHourProvider);
+    final todayKey = currentBusinessDayKey(now, rolloverHour: rolloverHour);
+    final todayOrdersCount = orders
+        .where(
+          (o) => orderMatchesBusinessScope(
+            o.orderDate,
+            todayKey,
+            rolloverHour: rolloverHour,
+          ),
+        )
+        .length;
     final todayRevenue = orders
-        .where((o) {
-          return o.orderDate.year == now.year &&
-              o.orderDate.month == now.month &&
-              o.orderDate.day == now.day;
-        })
+        .where(
+          (o) => orderMatchesBusinessScope(
+            o.orderDate,
+            todayKey,
+            rolloverHour: rolloverHour,
+          ),
+        )
         .fold<double>(0, (sum, order) => sum + order.totalAmount);
 
     final bool isEmpty =

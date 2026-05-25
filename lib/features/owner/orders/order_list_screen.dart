@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import '../../../app/providers.dart';
+import '../../../app/order_settings_provider.dart';
+import '../../../core/orders/business_day.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/route_refs.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
@@ -26,7 +28,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   String _searchQuery = '';
   String? _selectedRouteId;
   PaymentStatus? _selectedPaymentStatus;
-  DateTime _productionDay = DateTime.now();
+  DateTime? _productionDay;
 
   String _formatRupee(double amount) {
     final whole = amount == amount.roundToDouble();
@@ -51,10 +53,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     return routes.firstWhereOrNull((r) => r.id == routeId)?.name;
   }
 
-  Future<void> _pickProductionDay() async {
+  Future<void> _pickProductionDay(DateTime currentDay) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _productionDay,
+      initialDate: currentDay,
       firstDate: DateTime(2023),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
@@ -76,6 +78,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   Future<void> _openProductionSummary({
     required List<Order> orders,
     required List<DeliveryRoute> routes,
+    required DateTime productionDay,
+    required int rolloverHour,
   }) async {
     final routeLabel = _selectedRouteId == null
         ? 'All routes'
@@ -85,20 +89,36 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       context,
       allOrders: orders,
       routes: routes,
-      day: _calendarDay(_productionDay),
+      day: _calendarDay(productionDay),
       routeId: _selectedRouteId,
       routeLabel: routeLabel,
+      rolloverHour: rolloverHour,
       onChangeDate: () async {
         Navigator.pop(context);
-        await _pickProductionDay();
+        await _pickProductionDay(productionDay);
         if (!mounted) return;
-        await _openProductionSummary(orders: orders, routes: routes);
+        await _openProductionSummary(
+          orders: orders,
+          routes: routes,
+          productionDay: _productionDay ?? productionDay,
+          rolloverHour: rolloverHour,
+        );
       },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final rolloverHour = ref.watch(orderRolloverHourProvider);
+    final productionDay =
+        _productionDay ?? currentBusinessDayKey(rolloverHour: rolloverHour);
+    if (_productionDay == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _productionDay != null) return;
+        setState(() => _productionDay = productionDay);
+      });
+    }
+
     final orders = ref.watch(ordersProvider);
     final ordersLoaded = ref.watch(ordersLoadedProvider);
     final routes = ref.watch(routesProvider);
@@ -172,6 +192,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               onPressed: () => _openProductionSummary(
                 orders: orders,
                 routes: routes,
+                productionDay: productionDay,
+                rolloverHour: rolloverHour,
               ),
               icon: const Icon(
                 Icons.inventory_2_rounded,
@@ -609,11 +631,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     final displayId = _displayOrderId(order.id);
 
-    final typeLabel = switch (order.orderType) {
+    final typeKind = switch (order.orderType) {
       OrderType.daily => 'Daily',
       OrderType.oneTime => 'One-time',
       OrderType.special => 'Special',
     };
+    final typeLabel = '${order.deliveryRun.label} · $typeKind';
 
     final statusChipBg = switch (order.status) {
       OrderStatus.pending => AppColors.warning,
