@@ -2,6 +2,18 @@ import '../../core/utils/date_utils.dart' as app_utils;
 
 enum OrderType { daily, oneTime, special }
 
+/// When during the day this order is fulfilled (morning vs evening, etc.).
+enum DeliveryRun { morning, afternoon, evening, night }
+
+extension DeliveryRunLabels on DeliveryRun {
+  String get label => switch (this) {
+    DeliveryRun.morning => 'Morning',
+    DeliveryRun.afternoon => 'Afternoon',
+    DeliveryRun.evening => 'Evening',
+    DeliveryRun.night => 'Night',
+  };
+}
+
 enum PaymentStatus { paid, unpaid, partial }
 
 enum PaymentMethod { cash, upi, card, online }
@@ -83,6 +95,7 @@ class Order {
   final String id;
   final String factoryId;
   final OrderType orderType;
+  final DeliveryRun deliveryRun;
   final String customerId;
   final String customerName;
   final String customerEmail;
@@ -111,6 +124,7 @@ class Order {
     required this.id,
     required this.factoryId,
     required this.orderType,
+    this.deliveryRun = DeliveryRun.morning,
     required this.customerId,
     required this.customerName,
     required this.customerEmail,
@@ -144,6 +158,7 @@ class Order {
         OrderType.oneTime => 'one-time',
         OrderType.special => 'special',
       },
+      'deliveryRun': deliveryRun.name,
       'customerId': customerId,
       'customerName': customerName,
       'customerEmail': customerEmail,
@@ -201,6 +216,7 @@ class Order {
       id: readString(json['id']),
       factoryId: readString(json['factoryId'] ?? json['factory_id']),
       orderType: _parseOrderType(json['orderType']),
+      deliveryRun: _parseDeliveryRun(json['deliveryRun'] ?? json['delivery_run']),
       customerId: readString(
         json['customerId'] ?? json['customer_id'] ?? customerMap?['id'],
       ),
@@ -285,6 +301,15 @@ class Order {
     );
   }
 
+  static DeliveryRun _parseDeliveryRun(dynamic value) {
+    if (value == null) return DeliveryRun.morning;
+    final stringValue = value.toString().toLowerCase();
+    return DeliveryRun.values.firstWhere(
+      (v) => v.name.toLowerCase() == stringValue,
+      orElse: () => DeliveryRun.morning,
+    );
+  }
+
   static PaymentStatus? _parsePaymentStatus(dynamic value) {
     if (value == null) return null;
     final stringValue = value.toString().toLowerCase();
@@ -316,6 +341,7 @@ class Order {
     String? id,
     String? factoryId,
     OrderType? orderType,
+    DeliveryRun? deliveryRun,
     String? customerId,
     String? customerName,
     String? customerEmail,
@@ -343,6 +369,7 @@ class Order {
       id: id ?? this.id,
       factoryId: factoryId ?? this.factoryId,
       orderType: orderType ?? this.orderType,
+      deliveryRun: deliveryRun ?? this.deliveryRun,
       customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
       customerEmail: customerEmail ?? this.customerEmail,

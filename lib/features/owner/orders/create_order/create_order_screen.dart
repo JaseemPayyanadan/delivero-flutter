@@ -7,6 +7,9 @@ import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/providers.dart';
+import '../../../../app/order_settings_provider.dart';
+import '../../../../core/orders/business_day.dart';
+import '../../../../core/orders/order_merge.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/delivero_sliver_header.dart';
@@ -41,12 +44,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   static const int _stepCount = 4;
   static const List<String> _stepTitles = [
     'Customer',
-    'Order type',
+    'Schedule',
     'Menu items',
     'Order details',
   ];
 
   Customer? _selectedCustomer;
+  DeliveryRun _deliveryRun = DeliveryRun.morning;
   OrderType? _orderType;
   Map<String, int> _selectedItems = {}; // foodItemId -> quantity
   Map<String, double> _customUnitPrices = {}; // foodItemId -> unit price
@@ -133,6 +137,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             _editingOrder = existing;
             _selectedCustomer = customer;
             _orderType = existing.orderType;
+            _deliveryRun = existing.deliveryRun;
             _selectedItems = {
               for (final i in existing.items) i.foodItemId: i.quantity,
             };
@@ -150,7 +155,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         widget.orderId == null
             ? 'Step 1 of 4 — Search and choose who this order is for.'
             : 'Step 1 of 4 — Customer for this order.',
-      1 => 'Step 2 of 4 — Daily, one-time, or special order.',
+      1 => 'Step 2 of 4 — Delivery run and order type.',
       2 => 'Step 3 of 4 — Add products and set quantities.',
       _ => 'Step 4 of 4 — Check everything before you save.',
     };
@@ -221,7 +226,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           driverRouteId: driverRouteId,
                         ),
                         1 => _FormSectionCard(
-                          title: 'Order type',
+                          title: 'Schedule',
                           child: _buildSchedulePicker(),
                         ),
                         2 => _FormSectionCard(
@@ -460,11 +465,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         if (c == null) return 'Choose a customer to enable Continue.';
         return '${c.name} · ${c.phone}';
       case 1:
+        final run = _deliveryRun.label;
         return switch (_orderType) {
-          OrderType.daily => 'Daily order is selected.',
-          OrderType.oneTime => 'One-time order is selected.',
-          OrderType.special => 'Special order is selected.',
-          null => 'Choose an order type to continue.',
+          OrderType.daily => '$run · Daily order.',
+          OrderType.oneTime => '$run · One-time order.',
+          OrderType.special => '$run · Special order.',
+          null => '$run run — choose an order type.',
         };
       case 2:
         if (!hasSelectedUnits) {
@@ -563,10 +569,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         const SizedBox(height: 4),
                         Text(
                           mergeTarget == null
-                              ? 'Creates a new order for this customer.'
+                              ? 'Creates a new ${_deliveryRun.label.toLowerCase()} order for this customer (today\'s kitchen day, after ${formatOrderRolloverLabel(ref.watch(orderRolloverHourProvider))}).'
                               : (_createSeparateOrder
-                                    ? 'Creates a new order. Turn off to add items to the existing order instead.'
-                                    : 'Items will be added to the existing order. Turn on to create a separate order.'),
+                                    ? 'Creates a new order. Turn off to add items to today\'s ${_deliveryRun.label.toLowerCase()} order instead.'
+                                    : 'Items will be added to today\'s ${_deliveryRun.label.toLowerCase()} order (same run, after reset time). Turn on for a separate order.'),
                           style: context.appTextStyles.caption.copyWith(
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w600,
@@ -596,28 +602,20 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return _customUnitPrices[item.id] ?? item.price;
   }
 
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
   Order? _findMergeTarget() {
-    if (widget.forDriver) return null;
     final customer = _selectedCustomer;
     if (customer == null) return null;
     final orderType = _orderType;
     if (orderType == null) return null;
-    if (orderType == OrderType.special) return null;
-    final today = DateTime.now();
-    final orders = ref.read(ordersProvider);
-    final candidates = orders.where((o) {
-      if (o.customerId != customer.id) return false;
-      if (o.orderType != orderType) return false;
-      if (!_isSameDay(o.orderDate, today)) return false;
-      if (o.status == OrderStatus.cancelled) return false;
-      if (o.status == OrderStatus.delivered) return false;
-      return true;
-    }).toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    return candidates.firstOrNull;
+    return findMergeTargetOrder(
+      orders: ref.read(ordersProvider),
+      customerId: customer.id,
+      orderType: orderType,
+      deliveryRun: _deliveryRun,
+      referenceTime: DateTime.now(),
+      rolloverHour: ref.read(orderRolloverHourProvider),
+      forDriver: widget.forDriver,
+    );
   }
 
   void _showCustomPriceDialog(FoodItem item, {VoidCallback? onApplied}) {
@@ -1313,58 +1311,96 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }
 
   Widget _buildSchedulePicker() {
-    Widget pill(String label, bool selected, VoidCallback onTap) {
-      return Expanded(
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: selected
-                  ? AppColors.primary
-                  : AppColors.backgroundSecondary,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: selected ? Colors.transparent : AppColors.border,
-              ),
+    Widget pill(
+      String label,
+      bool selected,
+      VoidCallback onTap, {
+      bool expanded = false,
+      EdgeInsetsGeometry? padding,
+    }) {
+      final chip = InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding:
+              padding ?? const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.primary
+                : AppColors.backgroundSecondary,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? Colors.transparent : AppColors.border,
             ),
-            child: Center(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selected
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : AppColors.textPrimary,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 13,
-                  letterSpacing: -0.1,
-                ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: selected
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : AppColors.textPrimary,
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                letterSpacing: -0.1,
               ),
             ),
           ),
         ),
       );
+      return expanded ? Expanded(child: chip) : chip;
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text(
+          'Delivery run',
+          style: context.appTextStyles.caption.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: DeliveryRun.values.map((run) {
+            return pill(
+              run.label,
+              _deliveryRun == run,
+              () => setState(() => _deliveryRun = run),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Order type',
+          style: context.appTextStyles.caption.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 8),
         Row(
           children: [
             pill(
               'Daily order',
               _orderType == OrderType.daily,
               () => setState(() => _orderType = OrderType.daily),
+              expanded: true,
             ),
             const SizedBox(width: 10),
             pill(
               'One-time',
               _orderType == OrderType.oneTime,
               () => setState(() => _orderType = OrderType.oneTime),
+              expanded: true,
             ),
             const SizedBox(width: 10),
             pill(
@@ -1374,6 +1410,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 _orderType = OrderType.special;
                 _createSeparateOrder = true;
               }),
+              expanded: true,
             ),
           ],
         ),
@@ -1381,13 +1418,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         Text(
           switch (_orderType) {
             OrderType.daily =>
-              'Shows as a recurring daily order on your lists and dashboards.',
+              'Recurring daily order. Same customer can have another run today (e.g. evening) as a separate order.',
             OrderType.oneTime =>
               'A single delivery — labeled as a one-time order everywhere.',
             OrderType.special =>
               'A separate order labeled as special. Special orders won’t merge with existing orders.',
             null =>
-              'Pick how this order should be treated before moving to menu items.',
+              'Pick when and how this order should be treated before moving to menu items.',
           },
           style: context.appTextStyles.caption.copyWith(
             color: AppColors.textSecondary,
@@ -1515,6 +1552,30 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     final now = DateTime.now();
     final existing = _editingOrder;
+    final rolloverHour = ref.read(orderRolloverHourProvider);
+    final rolloverLabel = formatOrderRolloverLabel(rolloverHour);
+    if (existing != null &&
+        !canModifyOrderItems(
+          existing,
+          referenceTime: now,
+          rolloverHour: rolloverHour,
+        )) {
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'This order is from before today\'s $rolloverLabel reset. Create a new order instead.',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.warning,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
     final mergeTarget =
         existing == null &&
             !_createSeparateOrder &&
@@ -1530,6 +1591,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           id: const Uuid().v4(),
           factoryId: _selectedCustomer!.factoryId,
           orderType: orderType,
+          deliveryRun: _deliveryRun,
           customerId: _selectedCustomer!.id,
           customerName: _selectedCustomer!.name,
           customerEmail: _selectedCustomer!.email,
@@ -1552,6 +1614,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         existing.copyWith(
           factoryId: _selectedCustomer!.factoryId,
           orderType: orderType,
+          deliveryRun: _deliveryRun,
           customerId: _selectedCustomer!.id,
           customerName: _selectedCustomer!.name,
           customerEmail: _selectedCustomer!.email,

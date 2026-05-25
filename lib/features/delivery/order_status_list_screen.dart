@@ -292,11 +292,12 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     final displayId = _displayOrderId(order.id);
     final dateLabel = DateFormat('EEE, d MMM').format(order.orderDate);
     final metaLine = '$displayId · $dateLabel';
-    final typeLabel = switch (order.orderType) {
+    final typeKind = switch (order.orderType) {
       OrderType.daily => 'Daily',
       OrderType.oneTime => 'One-time',
       OrderType.special => 'Special',
     };
+    final typeLabel = '${order.deliveryRun.label} · $typeKind';
 
     final statusText = _humanStatus(order.status);
     final statusColor = _getStatusColor(order.status);

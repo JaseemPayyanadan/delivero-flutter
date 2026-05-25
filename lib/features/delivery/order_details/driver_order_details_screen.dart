@@ -339,7 +339,12 @@ class _DriverOrderDetailsScreenState
               try {
                 HapticFeedback.mediumImpact();
               } catch (_) {}
-              final updated = order.copyWith(status: OrderStatus.delivered);
+              final now = DateTime.now();
+              final updated = order.copyWith(
+                status: OrderStatus.delivered,
+                deliveryTime: order.deliveryTime ?? now,
+                deliveryDate: order.deliveryDate ?? now,
+              );
               ref.read(ordersProvider.notifier).updateOrder(updated);
               ScaffoldMessenger.of(context).removeCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(

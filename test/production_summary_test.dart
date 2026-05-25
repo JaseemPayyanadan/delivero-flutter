@@ -9,6 +9,28 @@ void main() {
   final routes = [productionTestRoute()];
 
   group('filterOrdersForProduction', () {
+    test('excludes pre-7 AM orders from same calendar production day', () {
+      final orders = [
+        productionTestOrder(
+          id: 'early',
+          orderDate: DateTime(2025, 6, 20, 6),
+        ),
+        productionTestOrder(
+          id: 'after-seven',
+          orderDate: DateTime(2025, 6, 20, 8),
+        ),
+      ];
+      final filtered = filterOrdersForProduction(
+        orders,
+        ProductionSummaryScope(
+          day: scopeDay,
+          routes: routes,
+          rolloverHour: 7,
+        ),
+      );
+      expect(filtered.map((o) => o.id).toList(), ['after-seven']);
+    });
+
     test('keeps same-day non-cancelled orders', () {
       final orders = [
         productionTestOrder(id: 'o1'),
