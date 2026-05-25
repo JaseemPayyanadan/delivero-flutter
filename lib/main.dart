@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 
+import 'app/order_settings_provider.dart';
 import 'app/providers.dart';
 import 'app/router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/firebase_service.dart';
 import 'core/services/local_notifications_service.dart';
+import 'core/services/order_day_reset_notification_service.dart';
 import 'core/services/push_notification_service.dart';
+import 'data/models/user.dart';
 
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -34,6 +37,22 @@ class DeliveroApp extends ConsumerStatefulWidget {
   ConsumerState<DeliveroApp> createState() => _DeliveroAppState();
 }
 
+Future<void> _syncOrderDayResetNotification(
+  WidgetRef ref,
+  User? user,
+) async {
+  if (user?.role != UserRole.owner || user?.factoryId == null) {
+    await OrderDayResetNotificationService.instance.syncForOwner(
+      user: user,
+      rolloverHour: ref.read(orderRolloverHourProvider),
+    );
+    return;
+  }
+  await ref
+      .read(orderRolloverHourProvider.notifier)
+      .syncForFactory(user!.factoryId);
+}
+
 class _DeliveroAppState extends ConsumerState<DeliveroApp> {
   @override
   void initState() {
@@ -46,6 +65,7 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
       await PushNotificationService.instance.setUser(
         ref.read(authProvider).user,
       );
+      await _syncOrderDayResetNotification(ref, ref.read(authProvider).user);
     });
   }
 
@@ -55,6 +75,7 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
 
     ref.listen(authProvider, (previous, next) {
       PushNotificationService.instance.setUser(next.user);
+      _syncOrderDayResetNotification(ref, next.user);
     });
 
     return MaterialApp.router(

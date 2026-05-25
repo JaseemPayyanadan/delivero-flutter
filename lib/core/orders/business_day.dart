@@ -1,7 +1,14 @@
+import 'package:intl/intl.dart';
+
 import '../../data/models/order.dart';
 
 /// Default kitchen-day rollover when no profile setting is stored.
 const int kDefaultBusinessDayRolloverHour = 7;
+
+String formatOrderRolloverLabel(int hour) {
+  final sample = DateTime(2000, 1, 1, hour.clamp(0, 23));
+  return DateFormat.jm().format(sample);
+}
 
 /// Date-only key for the business day that contains [instant].
 DateTime businessDayKey(
@@ -16,8 +23,8 @@ DateTime businessDayKey(
 }
 
 /// Today's business day key (respects the configured rollover).
-DateTime currentBusinessDayKey(
-  DateTime? reference, {
+DateTime currentBusinessDayKey({
+  DateTime? reference,
   int rolloverHour = kDefaultBusinessDayRolloverHour,
 }) {
   return businessDayKey(

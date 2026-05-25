@@ -53,6 +53,8 @@ dependencies:
   flutter_local_notifications: ^21.0.0
   intl_phone_field: ^3.2.0
   pin_code_fields: ^8.0.1
+  timezone: ^0.11.0
+  flutter_timezone: ^5.0.2
 
 dev_dependencies:
   flutter_test:

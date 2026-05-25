@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/orders/business_day.dart';
+import '../core/services/order_day_reset_notification_service.dart';
 import 'providers.dart';
 
 /// Kitchen-day rollover hour (0–23) for the active factory.
@@ -30,6 +30,7 @@ class OrderRolloverHourNotifier extends Notifier<int> {
     } else {
       state = kDefaultBusinessDayRolloverHour;
     }
+    await _syncResetNotification();
   }
 
   Future<void> setRolloverHour(int hour) async {
@@ -40,10 +41,13 @@ class OrderRolloverHourNotifier extends Notifier<int> {
     _factoryId = factoryId;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(prefsKey(factoryId), clamped);
+    await _syncResetNotification();
   }
-}
 
-String formatOrderRolloverLabel(int hour) {
-  final sample = DateTime(2000, 1, 1, hour);
-  return DateFormat.jm().format(sample);
+  Future<void> _syncResetNotification() async {
+    await OrderDayResetNotificationService.instance.syncForOwner(
+      user: ref.read(authProvider).user,
+      rolloverHour: state,
+    );
+  }
 }

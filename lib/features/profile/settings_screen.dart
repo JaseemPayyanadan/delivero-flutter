@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../app/order_settings_provider.dart';
 import '../../app/providers.dart';
+import '../../core/orders/business_day.dart';
+import '../../core/services/order_day_reset_notification_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/delivero_sliver_header.dart';
@@ -179,9 +181,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ? 'Alert me when I get a new route'
                               : 'Alert me when orders change',
                           value: _notifyOnAssignment,
-                          onChanged: (val) {
+                          onChanged: (val) async {
                             setState(() => _notifyOnAssignment = val);
-                            _savePref('notify', val);
+                            await _savePref('notify', val);
+                            if (!isDelivery && user != null) {
+                              await OrderDayResetNotificationService.instance
+                                  .syncForOwner(
+                                    user: user,
+                                    rolloverHour: rolloverHour,
+                                  );
+                            }
                           },
                           icon: Icons.notifications_active_rounded,
                           iconColor: AppColors.primary,
@@ -210,7 +219,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           _ProfileTimeRow(
                             title: 'New order day starts at',
                             description:
-                                'Before this time, orders count as the previous day. After this time, new orders start fresh and old ones cannot be changed.',
+                                'Before this time, orders count as the previous day. After this time, new orders start fresh. You get a daily reminder at this time (when notifications are on).',
                             timeLabel: formatOrderRolloverLabel(rolloverHour),
                             icon: Icons.schedule_rounded,
                             iconColor: AppColors.secondary,
@@ -306,7 +315,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Order day now resets at ${formatOrderRolloverLabel(picked.hour)}',
+          'Order day resets at ${formatOrderRolloverLabel(picked.hour)}. You\'ll get a daily reminder at that time.',
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         behavior: SnackBarBehavior.floating,
