@@ -28,7 +28,18 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   String _searchQuery = '';
   String? _selectedRouteId;
   PaymentStatus? _selectedPaymentStatus;
+  OrderStatus? _selectedOrderStatus;
   DateTime? _productionDay;
+
+  int _compareOrdersForList(Order a, Order b) {
+    final aDelivered = a.status == OrderStatus.delivered;
+    final bDelivered = b.status == OrderStatus.delivered;
+    if (aDelivered != bDelivered) return aDelivered ? 1 : -1;
+
+    final c = a.createdAt.compareTo(b.createdAt);
+    if (c != 0) return c;
+    return a.orderDate.compareTo(b.orderDate);
+  }
 
   String _formatRupee(double amount) {
     final whole = amount == amount.roundToDouble();
@@ -166,14 +177,14 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           ? true
           : paymentStatus == _selectedPaymentStatus;
 
-      return matchesSearch && matchesRoute && matchesPayment;
+      final matchesOrderStatus = _selectedOrderStatus == null
+          ? true
+          : order.status == _selectedOrderStatus;
+
+      return matchesSearch && matchesRoute && matchesPayment && matchesOrderStatus;
     }).toList();
 
-    filteredOrders.sort((a, b) {
-      final c = a.createdAt.compareTo(b.createdAt);
-      if (c != 0) return c;
-      return a.orderDate.compareTo(b.orderDate);
-    });
+    filteredOrders.sort(_compareOrdersForList);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -318,12 +329,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     final widgets = <Widget>[];
     for (final key in sortedKeys) {
-      final orders = groups[key]!
-        ..sort((a, b) {
-          final c = a.createdAt.compareTo(b.createdAt);
-          if (c != 0) return c;
-          return a.orderDate.compareTo(b.orderDate);
-        });
+      final orders = groups[key]!..sort(_compareOrdersForList);
       final count = orders.length;
 
       if (key.trim().isNotEmpty) {
@@ -431,7 +437,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
   Future<void> _showFiltersSheet(BuildContext context) async {
     final res =
-        await showModalBottomSheet<({bool clearAll, PaymentStatus? payment})?>(
+        await showModalBottomSheet<
+          ({bool clearAll, PaymentStatus? payment, OrderStatus? status})?
+        >(
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
@@ -439,9 +447,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             return StatefulBuilder(
               builder: (context, setModalState) {
                 PaymentStatus? payment = _selectedPaymentStatus;
+                OrderStatus? status = _selectedOrderStatus;
 
-                Widget chip(PaymentStatus? value, String label) {
-                  final isSelected = value == payment;
+                Widget chip<T>({
+                  required T? value,
+                  required T? selected,
+                  required String label,
+                  required void Function(T? next) onPick,
+                }) {
+                  final isSelected = value == selected;
                   return ChoiceChip(
                     selected: isSelected,
                     label: Text(
@@ -456,7 +470,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                     selectedColor: AppColors.primary,
                     backgroundColor: AppColors.backgroundSecondary,
                     onSelected: (_) => setModalState(() {
-                      payment = isSelected ? null : value;
+                      onPick(isSelected ? null : value);
                     }),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -515,9 +529,46 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                           spacing: 10,
                           runSpacing: 10,
                           children: [
-                            chip(PaymentStatus.paid, 'Paid'),
-                            chip(PaymentStatus.partial, 'Partial'),
-                            chip(PaymentStatus.unpaid, 'Unpaid'),
+                            chip(
+                              value: PaymentStatus.paid,
+                              selected: payment,
+                              label: 'Paid',
+                              onPick: (v) => payment = v,
+                            ),
+                            chip(
+                              value: PaymentStatus.partial,
+                              selected: payment,
+                              label: 'Partial',
+                              onPick: (v) => payment = v,
+                            ),
+                            chip(
+                              value: PaymentStatus.unpaid,
+                              selected: payment,
+                              label: 'Unpaid',
+                              onPick: (v) => payment = v,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Order status',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            for (final s in OrderStatus.values)
+                              chip(
+                                value: s,
+                                selected: status,
+                                label: _humanStatus(s),
+                                onPick: (v) => status = v,
+                              ),
                           ],
                         ),
                         const SizedBox(height: 18),
@@ -532,6 +583,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                   Navigator.pop(context, (
                                     clearAll: true,
                                     payment: null,
+                                    status: null,
                                   ));
                                 },
                                 style: OutlinedButton.styleFrom(
@@ -561,6 +613,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                   Navigator.pop(context, (
                                     clearAll: false,
                                     payment: payment,
+                                    status: status,
                                   ));
                                 },
                                 style: FilledButton.styleFrom(
@@ -592,6 +645,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     if (!mounted || res == null) return;
     setState(() {
       _selectedPaymentStatus = res.clearAll ? null : res.payment;
+      _selectedOrderStatus = res.clearAll ? null : res.status;
     });
   }
 
