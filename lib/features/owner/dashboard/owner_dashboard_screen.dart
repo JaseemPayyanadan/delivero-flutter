@@ -89,7 +89,10 @@ class OwnerDashboardScreen extends ConsumerWidget {
         ? 0.0
         : reports.completedOrders / reports.totalOrders;
     final rolloverHour = ref.watch(orderRolloverHourProvider);
-    final todayKey = currentBusinessDayKey(now, rolloverHour: rolloverHour);
+    final todayKey = currentBusinessDayKey(
+      reference: now,
+      rolloverHour: rolloverHour,
+    );
     final todayOrdersCount = orders
         .where(
           (o) => orderMatchesBusinessScope(

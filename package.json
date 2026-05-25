@@ -1,5 +1,5 @@
 {
-  "name": "delivero-flutter-web",
+  "name": "delivro",
   "private": true,
   "scripts": {
     "build": "set -e; if [ ! -d flutter ]; then git clone https://github.com/flutter/flutter.git --depth 1 -b stable flutter; fi; ./flutter/bin/flutter config --enable-web; ./flutter/bin/flutter pub get; ./flutter/bin/flutter build web --release --no-web-resources-cdn",
