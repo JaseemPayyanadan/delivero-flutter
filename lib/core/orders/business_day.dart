@@ -2,8 +2,8 @@ import 'package:intl/intl.dart';
 
 import '../../data/models/order.dart';
 
-/// Default kitchen-day rollover when no profile setting is stored.
-const int kDefaultBusinessDayRolloverHour = 7;
+/// Default kitchen-day rollover when no profile setting is stored (7 PM).
+const int kDefaultBusinessDayRolloverHour = 19;
 
 String formatOrderRolloverLabel(int hour) {
   final sample = DateTime(2000, 1, 1, hour.clamp(0, 23));
@@ -31,6 +31,46 @@ DateTime currentBusinessDayKey({
     reference ?? DateTime.now(),
     rolloverHour: rolloverHour,
   );
+}
+
+/// Previous business day key relative to [reference]'s business day.
+DateTime previousBusinessDayKey(
+  DateTime reference, {
+  int rolloverHour = kDefaultBusinessDayRolloverHour,
+}) {
+  final key = businessDayKey(reference, rolloverHour: rolloverHour);
+  return DateTime(key.year, key.month, key.day).subtract(const Duration(days: 1));
+}
+
+/// Next business day key relative to [reference]'s business day.
+DateTime nextBusinessDayKey(
+  DateTime reference, {
+  int rolloverHour = kDefaultBusinessDayRolloverHour,
+}) {
+  final key = businessDayKey(reference, rolloverHour: rolloverHour);
+  return DateTime(key.year, key.month, key.day).add(const Duration(days: 1));
+}
+
+/// Rollover instant for a calendar [businessDayKey] (date-only).
+DateTime orderDateForBusinessDay(
+  DateTime businessDayKey, {
+  int rolloverHour = kDefaultBusinessDayRolloverHour,
+}) {
+  return DateTime(
+    businessDayKey.year,
+    businessDayKey.month,
+    businessDayKey.day,
+    rolloverHour.clamp(0, 23),
+  );
+}
+
+/// True when [now] is at or after today's kitchen-day rollover.
+bool hasPassedBusinessDayRollover(
+  DateTime now, {
+  int rolloverHour = kDefaultBusinessDayRolloverHour,
+}) {
+  final rollover = businessDayRolloverAt(now, rolloverHour: rolloverHour);
+  return !now.isBefore(rollover);
 }
 
 bool isSameBusinessDay(

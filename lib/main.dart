@@ -57,6 +57,10 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
   @override
   void initState() {
     super.initState();
+    LocalNotificationsService.instance.setNotificationTapHandler((payload) {
+      if (payload != 'order_day_reset') return;
+      _runDailyRecreationCatchUp(showFeedback: true);
+    });
     // Start initialization early but let the splash screen control the transition
     Future.microtask(() async {
       await ref.read(appStartupProvider.notifier).init();
@@ -66,7 +70,35 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
         ref.read(authProvider).user,
       );
       await _syncOrderDayResetNotification(ref, ref.read(authProvider).user);
+      _runDailyRecreationCatchUp(showFeedback: false);
     });
+  }
+
+  Future<void> _runDailyRecreationCatchUp({required bool showFeedback}) async {
+    final user = ref.read(authProvider).user;
+    final factoryId = user?.factoryId;
+    if (factoryId == null || factoryId.isEmpty) return;
+    if (!ref.read(ordersLoadedProvider)) return;
+
+    final result = await ref
+        .read(ordersProvider.notifier)
+        .runDailyRecreationCatchUp(factoryId);
+
+    if (!showFeedback || !result.hasChanges || !mounted) return;
+    final messenger = rootScaffoldMessengerKey.currentState;
+    if (messenger == null) return;
+
+    final message = switch (result.createdCount) {
+      0 => 'Daily orders synced for today',
+      1 => '1 daily order auto-created for today',
+      _ => '${result.createdCount} daily orders auto-created for today',
+    };
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -76,6 +108,13 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
     ref.listen(authProvider, (previous, next) {
       PushNotificationService.instance.setUser(next.user);
       _syncOrderDayResetNotification(ref, next.user);
+      _runDailyRecreationCatchUp(showFeedback: false);
+    });
+
+    ref.listen(ordersLoadedProvider, (previous, loaded) {
+      if (loaded) {
+        _runDailyRecreationCatchUp(showFeedback: false);
+      }
     });
 
     return MaterialApp.router(

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 // ignore_for_file: unused_element, unused_element_parameter
 
 import '../../../app/providers.dart';
+import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/utils/route_refs.dart';
@@ -174,7 +175,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
     final customerOrders = orders
         .where((o) => o.customerId == customer.id)
         .toList();
-    customerOrders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
+    sortOrdersByDate(customerOrders);
     final pendingRevenue = customerOrders
         .where((o) => o.paymentStatus != PaymentStatus.paid)
         .fold(0.0, (sum, o) => sum + (o.totalAmount - (o.amountPaid ?? 0)));

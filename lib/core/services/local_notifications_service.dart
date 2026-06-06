@@ -27,6 +27,11 @@ class LocalNotificationsService {
   bool _initialized = false;
   bool _timeZonesReady = false;
   int _notificationCounter = 1;
+  void Function(String? payload)? _onNotificationTap;
+
+  void setNotificationTapHandler(void Function(String? payload)? handler) {
+    _onNotificationTap = handler;
+  }
 
   Future<void> init() async {
     if (_initialized || kIsWeb) return;
@@ -44,6 +49,9 @@ class LocalNotificationsService {
         iOS: darwinInit,
         macOS: darwinInit,
       ),
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        _onNotificationTap?.call(response.payload);
+      },
     );
 
     final androidImpl = _plugin
@@ -115,7 +123,7 @@ class LocalNotificationsService {
       id: orderDayResetNotificationId,
       title: 'New order day started',
       body:
-          'Kitchen day reset at $timeLabel. Create fresh orders — earlier orders are locked.',
+          'Kitchen day reset at $timeLabel. Daily orders are recreated automatically.',
       scheduledDate: scheduled,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
