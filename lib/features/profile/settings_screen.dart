@@ -28,6 +28,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _prefsLoaded = false;
   bool _availabilitySynced = false;
   String? _orderSettingsSyncedFactory;
+  bool _isGeneratingDailyOrders = false;
 
   @override
   void initState() {
@@ -61,6 +62,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final rolloverHour = ref.watch(orderRolloverHourProvider);
+    final autoRecreateDaily = ref.watch(autoRecreateDailyOrdersProvider);
     final drivers = ref.watch(driversProvider);
     final driversLoaded = ref.watch(driversLoadedProvider);
     final isDelivery = user?.role == UserRole.delivery;
@@ -100,6 +102,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         if (!mounted) return;
         setState(() => _orderSettingsSyncedFactory = factoryId);
         ref.read(orderRolloverHourProvider.notifier).syncForFactory(factoryId);
+        ref
+            .read(autoRecreateDailyOrdersProvider.notifier)
+            .syncForFactory(factoryId);
       });
     }
 
@@ -216,14 +221,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       title: 'Orders',
                       child: Column(
                         children: [
+                          _ProfileSwitchRow(
+                            title: 'Auto-recreate daily orders',
+                            description:
+                                'When on, daily orders (even if not delivered) are recreated automatically at the time below. Edits sync into the next day\'s pending order.',
+                            value: autoRecreateDaily,
+                            onChanged: (val) async {
+                              await ref
+                                  .read(
+                                    autoRecreateDailyOrdersProvider.notifier,
+                                  )
+                                  .setEnabled(val);
+                            },
+                            icon: Icons.autorenew_rounded,
+                            iconColor: AppColors.success,
+                          ),
+                          const Divider(height: 1, color: AppColors.divider),
                           _ProfileTimeRow(
                             title: 'New order day starts at',
                             description:
-                                'Before this time, orders count as the previous day. After this time, new orders start fresh. You get a daily reminder at this time (when notifications are on).',
+                                'Before this time, orders count as the previous day. After this time, daily orders are recreated and earlier orders are locked.',
                             timeLabel: formatOrderRolloverLabel(rolloverHour),
                             icon: Icons.schedule_rounded,
                             iconColor: AppColors.secondary,
                             onTap: () => _pickOrderResetTime(rolloverHour),
+                          ),
+                          const Divider(height: 1, color: AppColors.divider),
+                          _ProfileGenerateOrdersRow(
+                            isLoading: _isGeneratingDailyOrders,
+                            onPressed: _isGeneratingDailyOrders
+                                ? null
+                                : () => _generateDailyOrdersNow(),
                           ),
                         ],
                       ),
@@ -293,6 +321,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Future<void> _generateDailyOrdersNow() async {
+    final factoryId = ref.read(authProvider).user?.factoryId;
+    if (factoryId == null || factoryId.isEmpty) return;
+
+    setState(() => _isGeneratingDailyOrders = true);
+    try {
+      final result = await ref
+          .read(ordersProvider.notifier)
+          .runManualDailyOrderGeneration(factoryId);
+      if (!mounted) return;
+
+      final message = switch (result.createdCount) {
+        0 => 'No new daily orders needed — today\'s orders are already in place',
+        1 => '1 daily order generated for today',
+        _ => '${result.createdCount} daily orders generated for today',
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: result.createdCount > 0
+              ? AppColors.success
+              : AppColors.textSecondary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isGeneratingDailyOrders = false);
+    }
+  }
+
   Future<void> _pickOrderResetTime(int currentHour) async {
     final picked = await showTimePicker(
       context: context,
@@ -315,7 +379,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Order day resets at ${formatOrderRolloverLabel(picked.hour)}. You\'ll get a daily reminder at that time.',
+          'Order day resets at ${formatOrderRolloverLabel(picked.hour)}. Delivered daily orders will be recreated at that time.',
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         behavior: SnackBarBehavior.floating,
@@ -1051,6 +1115,97 @@ class _ProfileNavRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileGenerateOrdersRow extends StatelessWidget {
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  const _ProfileGenerateOrdersRow({
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.playlist_add_check_rounded,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Generate daily orders',
+                      style: context.appTextStyles.sectionHeader.copyWith(
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Create today\'s missing daily orders now from yesterday\'s orders — without waiting for the scheduled time.',
+                      style: context.appTextStyles.caption.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: onPressed,
+            icon: isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.auto_fix_high_rounded, size: 18),
+            label: Text(
+              isLoading ? 'Generating…' : 'Generate now',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

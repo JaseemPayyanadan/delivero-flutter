@@ -11,11 +11,14 @@ import '../data/models/customer.dart';
 import '../data/models/food_item.dart';
 import '../data/models/delivery_route.dart';
 import '../data/models/driver.dart';
+import '../core/orders/business_day.dart';
+import '../core/orders/daily_order_recreation_service.dart';
 import '../core/services/firebase_service.dart';
 import '../core/services/factory_service.dart';
 import '../core/services/local_notifications_service.dart';
 import '../core/services/route_ref_migration.dart';
 import '../core/utils/route_refs.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void _scheduleRouteRefMigration(Ref ref, String factoryId) {
   Future.microtask(() async {
@@ -180,6 +183,9 @@ class OrdersNotifier extends Notifier<List<Order>> {
   final Map<String, DateTime> _selfMutationsAt = {};
   static const Duration _selfMutationTtl = Duration(seconds: 4);
 
+  bool _recreationCatchUpScheduled = false;
+  bool _recreationCatchUpRunning = false;
+
   void _markSelfMutation(String orderId) {
     _selfMutationsAt[orderId] = DateTime.now();
   }
@@ -330,6 +336,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
 
           state = nextOrders;
           _scheduleRouteRefMigration(ref, factoryId);
+          _scheduleDailyRecreationCatchUp(factoryId);
           Future.microtask(() {
             ref.read(ordersLoadedProvider.notifier).state = true;
           });
@@ -358,11 +365,146 @@ class OrdersNotifier extends Notifier<List<Order>> {
   }
 
   void updateOrder(Order order) {
+    final previous = state.firstWhereOrNull((o) => o.id == order.id);
     _markSelfMutation(order.id);
     FirebaseService.firestore
         .collection('orders')
         .doc(order.id)
         .set(order.toJson());
+    _handleDailyRecreationAfterUpdate(previous, order);
+  }
+
+  Future<int> _readRolloverHour(String factoryId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getInt('factory_${factoryId}_orderRolloverHour');
+    if (stored != null && stored >= 0 && stored <= 23) return stored;
+    return kDefaultBusinessDayRolloverHour;
+  }
+
+  void _handleDailyRecreationAfterUpdate(Order? previous, Order updated) {
+    final factoryId = _activeFactoryId;
+    if (factoryId == null) return;
+
+    Future.microtask(() async {
+      final enabled = await DailyOrderRecreationPrefs.isAutoRecreateEnabled(
+        factoryId,
+      );
+      if (!enabled) return;
+
+      final rolloverHour = await _readRolloverHour(factoryId);
+      final customers = ref.read(customersProvider);
+      final orders = ref.read(ordersProvider);
+
+      Order? syncedTarget;
+      final result = syncNextDayFromSource(
+        source: updated,
+        orders: orders,
+        customers: customers,
+        rolloverHour: rolloverHour,
+        updateOrder: (synced) {
+          syncedTarget = synced;
+          _markSelfMutation(synced.id);
+          FirebaseService.firestore
+              .collection('orders')
+              .doc(synced.id)
+              .set(synced.toJson());
+        },
+      );
+
+      if (result != null && result.syncedCount > 0 && syncedTarget != null) {
+        ref.read(lastTouchedOrderProvider.notifier).set(
+          id: syncedTarget!.id,
+          wasCreated: false,
+        );
+      }
+
+      if (updated.orderType == OrderType.daily &&
+          isActiveDailyOrderStatus(updated.status)) {
+        _scheduleDailyRecreationCatchUp(factoryId);
+      }
+    });
+  }
+
+  void _scheduleDailyRecreationCatchUp(String factoryId) {
+    if (_recreationCatchUpScheduled || _recreationCatchUpRunning) return;
+    _recreationCatchUpScheduled = true;
+    Future.microtask(() async {
+      _recreationCatchUpScheduled = false;
+      await runDailyRecreationCatchUp(factoryId);
+    });
+  }
+
+  Future<DailyOrderRecreationResult> runDailyRecreationCatchUp(
+    String factoryId,
+  ) async {
+    if (_recreationCatchUpRunning) {
+      return const DailyOrderRecreationResult();
+    }
+    _recreationCatchUpRunning = true;
+    try {
+      final enabled = await DailyOrderRecreationPrefs.isAutoRecreateEnabled(
+        factoryId,
+      );
+      if (!enabled) return const DailyOrderRecreationResult();
+
+      final rolloverHour = await _readRolloverHour(factoryId);
+      final customers = ref.read(customersProvider);
+      final orders = ref.read(ordersProvider);
+
+      final result = await runRolloverBatch(
+        factoryId: factoryId,
+        orders: orders,
+        customers: customers,
+        rolloverHour: rolloverHour,
+        now: DateTime.now(),
+        addOrder: addOrder,
+        autoRecreationEnabled: enabled,
+      );
+
+      for (final id in result.createdOrderIds) {
+        ref
+            .read(lastTouchedOrderProvider.notifier)
+            .set(id: id, wasCreated: true);
+      }
+
+      return result;
+    } finally {
+      _recreationCatchUpRunning = false;
+    }
+  }
+
+  /// Manual trigger from Settings — creates missing daily orders for today
+  /// without waiting for rollover time.
+  Future<DailyOrderRecreationResult> runManualDailyOrderGeneration(
+    String factoryId,
+  ) async {
+    final rolloverHour = await _readRolloverHour(factoryId);
+    final customers = ref.read(customersProvider);
+    final orders = ref.read(ordersProvider);
+    final currentKey = currentBusinessDayKey(
+      rolloverHour: rolloverHour,
+    );
+    final targetDay = DateTime(
+      currentKey.year,
+      currentKey.month,
+      currentKey.day,
+    );
+
+    final result = runBatchForTargetDay(
+      targetBusinessDay: targetDay,
+      orders: orders,
+      customers: customers,
+      rolloverHour: rolloverHour,
+      addOrder: addOrder,
+    );
+
+    for (final id in result.createdOrderIds) {
+      ref
+          .read(lastTouchedOrderProvider.notifier)
+          .set(id: id, wasCreated: true);
+    }
+
+    return result;
   }
 
   void deleteOrder(String id) {

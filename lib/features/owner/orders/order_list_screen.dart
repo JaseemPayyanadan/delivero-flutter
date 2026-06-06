@@ -7,11 +7,11 @@ import 'package:collection/collection.dart';
 import '../../../app/providers.dart';
 import '../../../app/order_settings_provider.dart';
 import '../../../core/orders/business_day.dart';
+import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/route_refs.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
-import '../../../data/models/customer.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 import 'production_summary_sheet.dart';
@@ -31,14 +31,20 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   OrderStatus? _selectedOrderStatus;
   DateTime? _productionDay;
 
-  int _compareOrdersForList(Order a, Order b) {
-    final aDelivered = a.status == OrderStatus.delivered;
-    final bDelivered = b.status == OrderStatus.delivered;
-    if (aDelivered != bDelivered) return aDelivered ? 1 : -1;
-
-    final c = a.createdAt.compareTo(b.createdAt);
-    if (c != 0) return c;
-    return a.orderDate.compareTo(b.orderDate);
+  String _formatBusinessDaySection(
+    DateTime dayKey,
+    DateTime todayKey,
+  ) {
+    final normalizedDay = DateTime(dayKey.year, dayKey.month, dayKey.day);
+    final normalizedToday = DateTime(
+      todayKey.year,
+      todayKey.month,
+      todayKey.day,
+    );
+    if (normalizedDay == normalizedToday) return 'Today';
+    final yesterday = normalizedToday.subtract(const Duration(days: 1));
+    if (normalizedDay == yesterday) return 'Yesterday';
+    return DateFormat('EEE, d MMM').format(normalizedDay);
   }
 
   String _formatRupee(double amount) {
@@ -134,7 +140,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final ordersLoaded = ref.watch(ordersLoadedProvider);
     final routes = ref.watch(routesProvider);
     final routesLoaded = ref.watch(routesLoadedProvider);
-    final customers = ref.watch(customersProvider);
     final bool noOrdersYet = orders.isEmpty;
 
     String? routeIdForOrder(Order o) =>
@@ -184,7 +189,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       return matchesSearch && matchesRoute && matchesPayment && matchesOrderStatus;
     }).toList();
 
-    filteredOrders.sort(_compareOrdersForList);
+    sortOrdersByDate(filteredOrders);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -258,8 +263,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   delegate: SliverChildListDelegate(
                     _buildGroupedOrderWidgets(
                       filteredOrders,
-                      routes,
-                      customers,
+                      rolloverHour: rolloverHour,
                     ),
                   ),
                 ),
@@ -271,70 +275,32 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   List<Widget> _buildGroupedOrderWidgets(
-    List<Order> filteredOrders,
-    List<DeliveryRoute> routes,
-    List<Customer> customers,
-  ) {
-    String routeLabelFor(Order order) {
-      String? customerRoute() {
-        final byId = customers.firstWhereOrNull(
-          (c) => c.id == order.customerId,
-        );
-        final fromId = RouteRefs.routeIdForRef(byId?.assignedRoute, routes);
-        if (fromId != null) return fromId;
+    List<Order> filteredOrders, {
+    required int rolloverHour,
+  }) {
+    final todayKey = currentBusinessDayKey(rolloverHour: rolloverHour);
+    final groups = <DateTime, List<Order>>{};
 
-        final phone = order.customerPhone.trim();
-        if (phone.isNotEmpty) {
-          final byPhone = customers.firstWhereOrNull(
-            (c) => c.phone.trim() == phone,
-          );
-          final fromPhone = RouteRefs.routeIdForRef(
-            byPhone?.assignedRoute,
-            routes,
-          );
-          if (fromPhone != null) return fromPhone;
-        }
-
-        final name = order.customerName.trim().toLowerCase();
-        if (name.isNotEmpty) {
-          final byName = customers.firstWhereOrNull(
-            (c) => c.name.trim().toLowerCase() == name,
-          );
-          final fromName = RouteRefs.routeIdForRef(
-            byName?.assignedRoute,
-            routes,
-          );
-          if (fromName != null) return fromName;
-        }
-        return null;
-      }
-
-      final orderRouteId = RouteRefs.routeIdForRef(order.assignedRoute, routes);
-      final effective = orderRouteId ?? customerRoute();
-      return RouteRefs.routeLabelForRef(effective, routes);
+    for (final order in filteredOrders) {
+      final dayKey = businessDayKey(order.orderDate, rolloverHour: rolloverHour);
+      final normalized = DateTime(dayKey.year, dayKey.month, dayKey.day);
+      (groups[normalized] ??= []).add(order);
     }
 
-    final groups = <String, List<Order>>{};
-    for (final o in filteredOrders) {
-      final key = routeLabelFor(o);
-      (groups[key] ??= []).add(o);
-    }
-
-    final sortedKeys = groups.keys.toList()
-      ..sort((a, b) {
-        if (a.isEmpty) return 1;
-        if (b.isEmpty) return -1;
-        return a.toLowerCase().compareTo(b.toLowerCase());
-      });
+    final sortedDays = groups.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
 
     final widgets = <Widget>[];
-    for (final key in sortedKeys) {
-      final orders = groups[key]!..sort(_compareOrdersForList);
-      final count = orders.length;
-
-      if (key.trim().isNotEmpty) {
-        widgets.add(_RouteSectionHeader(title: key, count: count));
-      }
+    for (final day in sortedDays) {
+      final orders = groups[day]!..sort(
+        (a, b) => compareOrdersByDate(a, b),
+      );
+      widgets.add(
+        _DateSectionHeader(
+          title: _formatBusinessDaySection(day, todayKey),
+          count: orders.length,
+        ),
+      );
       for (final o in orders) {
         widgets.add(_buildOrderCard(o));
       }
@@ -848,6 +814,31 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             ),
                           ),
                         ),
+                        if (order.recreatedFromOrderId != null) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppColors.success.withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: const Text(
+                              'Auto',
+                              style: TextStyle(
+                                color: AppColors.success,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 10,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -1292,10 +1283,10 @@ class _MetaDivider extends StatelessWidget {
   }
 }
 
-class _RouteSectionHeader extends StatelessWidget {
+class _DateSectionHeader extends StatelessWidget {
   final String title;
   final int count;
-  const _RouteSectionHeader({required this.title, required this.count});
+  const _DateSectionHeader({required this.title, required this.count});
 
   @override
   Widget build(BuildContext context) {

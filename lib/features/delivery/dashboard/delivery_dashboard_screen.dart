@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/order.dart';
 import '../driver_order_scope.dart';
@@ -83,6 +84,8 @@ class DeliveryDashboardScreen extends ConsumerWidget {
           a.status,
         ).compareTo(_statusPriority(b.status));
         if (p != 0) return p;
+        final byDate = compareOrdersByDate(a, b);
+        if (byDate != 0) return byDate;
         return b.totalAmount.compareTo(a.totalAmount);
       });
 

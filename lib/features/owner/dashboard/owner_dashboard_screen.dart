@@ -9,6 +9,7 @@ import '../../../app/reports_provider.dart';
 import '../../../app/providers.dart';
 import '../../../app/order_settings_provider.dart';
 import '../../../core/orders/business_day.dart';
+import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
@@ -1718,8 +1719,7 @@ class _RecentOrdersList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final recentOrders = orders.toList()
-      ..sort((a, b) => b.orderDate.compareTo(a.orderDate));
+    final recentOrders = orders.toList()..sort(compareOrdersByDate);
     final displayOrders = recentOrders.take(5).toList();
 
     if (displayOrders.isEmpty) {

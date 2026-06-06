@@ -117,6 +117,8 @@ class Order {
   final DateTime? paymentTime;
   final DateTime? deliveryTime;
   final String? notes;
+  /// When set, this order was auto-created from the referenced delivered daily order.
+  final String? recreatedFromOrderId;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -145,6 +147,7 @@ class Order {
     this.paymentTime,
     this.deliveryTime,
     this.notes,
+    this.recreatedFromOrderId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -179,6 +182,8 @@ class Order {
       'paymentTime': paymentTime,
       'deliveryTime': deliveryTime,
       'notes': notes,
+      if (recreatedFromOrderId != null)
+        'recreatedFromOrderId': recreatedFromOrderId,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };
@@ -285,6 +290,9 @@ class Order {
           ? app_utils.DateUtils.parse(json['deliveryTime'])
           : null,
       notes: json['notes'] as String?,
+      recreatedFromOrderId: readString(json['recreatedFromOrderId']).isEmpty
+          ? null
+          : readString(json['recreatedFromOrderId']),
       createdAt: app_utils.DateUtils.parse(json['createdAt']),
       updatedAt: app_utils.DateUtils.parse(json['updatedAt']),
     );
@@ -362,6 +370,7 @@ class Order {
     DateTime? paymentTime,
     DateTime? deliveryTime,
     String? notes,
+    String? recreatedFromOrderId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -390,6 +399,8 @@ class Order {
       paymentTime: paymentTime ?? this.paymentTime,
       deliveryTime: deliveryTime ?? this.deliveryTime,
       notes: notes ?? this.notes,
+      recreatedFromOrderId:
+          recreatedFromOrderId ?? this.recreatedFromOrderId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

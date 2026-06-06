@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
@@ -98,11 +99,7 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
           .toList();
     }
 
-    myOrders.sort((a, b) {
-      final c = a.createdAt.compareTo(b.createdAt);
-      if (c != 0) return c;
-      return a.orderDate.compareTo(b.orderDate);
-    });
+    sortOrdersByDate(myOrders);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
