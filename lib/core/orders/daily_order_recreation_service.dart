@@ -239,6 +239,8 @@ Order buildSyncedNextDayOrder(Order existing, Order source) {
     assignedRoute: source.assignedRoute,
     assignedDriver: source.assignedDriver,
     notes: source.notes,
+    status: OrderStatus.pending,
+    paymentStatus: PaymentStatus.unpaid,
     updatedAt: now,
   );
 }

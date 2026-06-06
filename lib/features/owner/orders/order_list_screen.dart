@@ -814,31 +814,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             ),
                           ),
                         ),
-                        if (order.recreatedFromOrderId != null) ...[
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: AppColors.success.withValues(alpha: 0.35),
-                              ),
-                            ),
-                            child: const Text(
-                              'Auto',
-                              style: TextStyle(
-                                color: AppColors.success,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 10,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ],
