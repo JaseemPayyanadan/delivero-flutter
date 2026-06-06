@@ -151,7 +151,7 @@ Order? findNextDayPendingOrder({
   });
 }
 
-bool hasOpenOrderForTargetDay({
+bool hasPendingOrderForTargetDay({
   required Order source,
   required List<Order> orders,
   required DateTime targetBusinessDay,
@@ -163,24 +163,40 @@ bool hasOpenOrderForTargetDay({
         targetBusinessDay: targetBusinessDay,
         rolloverHour: rolloverHour,
       ) !=
-      null ||
-      orders.any((o) {
-        if (o.customerId != source.customerId) return false;
-        if (o.orderType != OrderType.daily) return false;
-        if (o.deliveryRun != source.deliveryRun) return false;
-        if (o.status == OrderStatus.cancelled ||
-            o.status == OrderStatus.delivered) {
-          return false;
-        }
-        final key = businessDayKey(o.orderDate, rolloverHour: rolloverHour);
-        final normalized = DateTime(key.year, key.month, key.day);
-        final target = DateTime(
-          targetBusinessDay.year,
-          targetBusinessDay.month,
-          targetBusinessDay.day,
-        );
-        return normalized == target;
-      });
+      null;
+}
+
+/// Every auto-recreated order must start as pending with a clean payment state.
+Order ensureRecreatedOrderIsPending(Order order) {
+  return Order(
+    id: order.id,
+    factoryId: order.factoryId,
+    orderType: order.orderType,
+    deliveryRun: order.deliveryRun,
+    customerId: order.customerId,
+    customerName: order.customerName,
+    customerEmail: order.customerEmail,
+    customerPhone: order.customerPhone,
+    customerAddress: order.customerAddress,
+    items: order.items,
+    subtotal: order.subtotal,
+    discountAmount: order.discountAmount,
+    totalAmount: order.totalAmount,
+    paymentStatus: PaymentStatus.unpaid,
+    paymentMethod: null,
+    amountPaid: null,
+    status: OrderStatus.pending,
+    assignedRoute: order.assignedRoute,
+    assignedDriver: order.assignedDriver,
+    orderDate: order.orderDate,
+    deliveryDate: null,
+    paymentTime: null,
+    deliveryTime: null,
+    notes: order.notes,
+    recreatedFromOrderId: order.recreatedFromOrderId,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+  );
 }
 
 Order buildRecreatedOrder({
@@ -300,7 +316,9 @@ DailyOrderRecreationResult? syncNextDayFromSource({
   );
   if (existing == null || existing.status != OrderStatus.pending) return null;
 
-  final synced = buildSyncedNextDayOrder(existing, source);
+  final synced = ensureRecreatedOrderIsPending(
+    buildSyncedNextDayOrder(existing, source),
+  );
   if (const DeepCollectionEquality().equals(
     _orderContentSnapshot(existing),
     _orderContentSnapshot(synced),
@@ -360,7 +378,7 @@ DailyOrderRecreationResult runBatchForTargetDay({
     if (seenCustomerRun.contains(dedupeKey)) continue;
     seenCustomerRun.add(dedupeKey);
     if (!isCustomerActiveForRecreation(source, customers)) continue;
-    if (hasOpenOrderForTargetDay(
+    if (hasPendingOrderForTargetDay(
       source: source,
       orders: orders,
       targetBusinessDay: targetBusinessDay,
@@ -370,11 +388,13 @@ DailyOrderRecreationResult runBatchForTargetDay({
     }
 
     const uuid = Uuid();
-    final created = buildRecreatedOrder(
-      source: source,
-      targetBusinessDay: targetBusinessDay,
-      newId: uuid.v4(),
-      rolloverHour: rolloverHour,
+    final created = ensureRecreatedOrderIsPending(
+      buildRecreatedOrder(
+        source: source,
+        targetBusinessDay: targetBusinessDay,
+        newId: uuid.v4(),
+        rolloverHour: rolloverHour,
+      ),
     );
     addOrder(created);
     createdIds.add(created.id);

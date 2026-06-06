@@ -297,6 +297,28 @@ void main() {
     });
   });
 
+  group('ensureRecreatedOrderIsPending', () {
+    test('forces pending and clears delivery/payment fields', () {
+      final delivered = productionTestOrder(
+        id: 'src-1',
+        orderDate: day1Morning,
+        status: OrderStatus.delivered,
+      ).copyWith(
+        recreatedFromOrderId: 'parent',
+        paymentStatus: PaymentStatus.paid,
+        deliveryDate: day1Morning,
+        deliveryTime: day1Morning,
+      );
+
+      final normalized = ensureRecreatedOrderIsPending(delivered);
+
+      expect(normalized.status, OrderStatus.pending);
+      expect(normalized.paymentStatus, PaymentStatus.unpaid);
+      expect(normalized.deliveryDate, isNull);
+      expect(normalized.deliveryTime, isNull);
+    });
+  });
+
   group('business day helpers', () {
     test('previousBusinessDayKey subtracts one calendar day', () {
       final key = previousBusinessDayKey(

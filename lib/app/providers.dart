@@ -357,11 +357,14 @@ class OrdersNotifier extends Notifier<List<Order>> {
   }
 
   void addOrder(Order order) {
-    _markSelfMutation(order.id);
+    final toSave = order.recreatedFromOrderId != null
+        ? ensureRecreatedOrderIsPending(order)
+        : order;
+    _markSelfMutation(toSave.id);
     FirebaseService.firestore
         .collection('orders')
-        .doc(order.id)
-        .set(order.toJson());
+        .doc(toSave.id)
+        .set(toSave.toJson());
   }
 
   void updateOrder(Order order) {
