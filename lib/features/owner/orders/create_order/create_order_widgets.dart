@@ -81,6 +81,10 @@ class _OrderReviewReport extends StatelessWidget {
   final double orderTotal;
   final int lineCount;
   final int unitCount;
+  final String customerName;
+  final String orderTypeLabel;
+  final String runLabel;
+  final bool isMerge;
 
   const _OrderReviewReport({
     required this.generatedAt,
@@ -88,6 +92,10 @@ class _OrderReviewReport extends StatelessWidget {
     required this.orderTotal,
     required this.lineCount,
     required this.unitCount,
+    required this.customerName,
+    required this.orderTypeLabel,
+    required this.runLabel,
+    required this.isMerge,
   });
 
   static TextStyle _label(BuildContext context) => const TextStyle(
@@ -141,6 +149,47 @@ class _OrderReviewReport extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (customerName.isNotEmpty || orderTypeLabel.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    [
+                      if (customerName.isNotEmpty) customerName,
+                      if (runLabel.isNotEmpty) runLabel,
+                      if (orderTypeLabel.isNotEmpty) orderTypeLabel,
+                    ].join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.appTextStyles.caption.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+                if (isMerge) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: AppColors.warning.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Text(
+                      'Merging into existing order',
+                      style: context.appTextStyles.caption.copyWith(
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 6),
                 Text(
                   'Prepared $prepared · $lineCount line${lineCount == 1 ? '' : 's'} · $unitCount units',
@@ -152,7 +201,7 @@ class _OrderReviewReport extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'All amounts in INR',
+                  isMerge ? 'Final order · All amounts in INR' : 'All amounts in INR',
                   style: context.appTextStyles.caption.copyWith(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.w600,
@@ -666,6 +715,7 @@ class _SelectedMenuItemCard extends StatelessWidget {
   final VoidCallback onCustomPrice;
   final VoidCallback onDec;
   final VoidCallback onInc;
+  final VoidCallback? onDuplicate;
 
   const _SelectedMenuItemCard({
     required this.name,
@@ -677,6 +727,7 @@ class _SelectedMenuItemCard extends StatelessWidget {
     required this.onCustomPrice,
     required this.onDec,
     required this.onInc,
+    this.onDuplicate,
   });
 
   @override
@@ -766,6 +817,20 @@ class _SelectedMenuItemCard extends StatelessWidget {
                     ],
                   ],
                 ),
+                if (onDuplicate != null) ...[
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: onDuplicate,
+                    child: const Text(
+                      '+ Add line',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

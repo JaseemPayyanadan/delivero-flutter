@@ -86,9 +86,6 @@ class OwnerDashboardScreen extends ConsumerWidget {
     final collectedRevenue = reports.totalRevenue;
     final pendingRevenue = reports.totalPendingRevenue;
     final totalRevenue = collectedRevenue + pendingRevenue;
-    final fulfillmentRate = reports.totalOrders == 0
-        ? 0.0
-        : reports.completedOrders / reports.totalOrders;
     final rolloverHour = ref.watch(orderRolloverHourProvider);
     final todayKey = currentBusinessDayKey(
       reference: now,
@@ -103,15 +100,37 @@ class OwnerDashboardScreen extends ConsumerWidget {
           ),
         )
         .length;
-    final todayRevenue = orders
+    final todayDeliveredCount = orders
         .where(
-          (o) => orderMatchesBusinessScope(
-            o.orderDate,
-            todayKey,
-            rolloverHour: rolloverHour,
-          ),
+          (o) =>
+              orderMatchesBusinessScope(
+                o.orderDate,
+                todayKey,
+                rolloverHour: rolloverHour,
+              ) &&
+              o.status == OrderStatus.delivered,
         )
-        .fold<double>(0, (sum, order) => sum + order.totalAmount);
+        .length;
+    final todayCancelledCount = orders
+        .where(
+          (o) =>
+              orderMatchesBusinessScope(
+                o.orderDate,
+                todayKey,
+                rolloverHour: rolloverHour,
+              ) &&
+              o.status == OrderStatus.cancelled,
+        )
+        .length;
+    final activeDriversCount = drivers
+        .where(
+          (d) => d.isActive && (d.currentRoute?.trim().isNotEmpty ?? false),
+        )
+        .length;
+    final todayPendingOrderCount = (todayOrdersCount -
+            todayDeliveredCount -
+            todayCancelledCount)
+        .clamp(0, todayOrdersCount);
 
     final bool isEmpty =
         customers.isEmpty &&
@@ -162,7 +181,8 @@ class OwnerDashboardScreen extends ConsumerWidget {
                 collectedRevenue: collectedRevenue,
                 pendingRevenue: pendingRevenue,
                 todayOrdersCount: todayOrdersCount,
-                todayRevenue: todayRevenue,
+                todayDeliveredCount: todayDeliveredCount,
+                todayPendingOrderCount: todayPendingOrderCount,
               ),
             ),
             if (isEmpty && isLoading)
@@ -199,10 +219,26 @@ class OwnerDashboardScreen extends ConsumerWidget {
                       actions: _ownerQuickActions,
                     ),
                     const SizedBox(height: 32),
+                    _SectionHeader(
+                      eyebrow: 'Today',
+                      title: 'Delivery status',
+                      subtitle: 'Orders and drivers for today\'s runs',
+                      trailingLabel: 'Routes',
+                      onTrailingTap: () => context.push('/owner/routes'),
+                    ),
+                    const SizedBox(height: 16),
+                    _DeliveryStatusCard(
+                      isLoading: isLoading,
+                      totalOrders: todayOrdersCount,
+                      deliveredCount: todayDeliveredCount,
+                      cancelledCount: todayCancelledCount,
+                      activeDrivers: activeDriversCount,
+                    ),
+                    const SizedBox(height: 32),
                     const _SectionHeader(
-                      eyebrow: 'This week',
+                      eyebrow: 'Trends',
                       title: 'Sales revenue',
-                      subtitle: 'Daily revenue across the last 7 days',
+                      subtitle: 'Daily billings over time',
                     ),
                     const SizedBox(height: 16),
                     _SalesTrendCard(dailySales: reports.dailySales),
@@ -297,7 +333,8 @@ class _DashboardHero extends StatelessWidget {
   final double collectedRevenue;
   final double pendingRevenue;
   final int todayOrdersCount;
-  final double todayRevenue;
+  final int todayDeliveredCount;
+  final int todayPendingOrderCount;
 
   const _DashboardHero({
     required this.displayName,
@@ -307,7 +344,8 @@ class _DashboardHero extends StatelessWidget {
     required this.collectedRevenue,
     required this.pendingRevenue,
     required this.todayOrdersCount,
-    required this.todayRevenue,
+    required this.todayDeliveredCount,
+    required this.todayPendingOrderCount,
   });
 
   String _greeting() {
@@ -378,9 +416,10 @@ class _DashboardHero extends StatelessWidget {
               const SizedBox(height: 22),
               _KpiStrip(
                 isLoading: isLoading,
-                todayOrdersCount: todayOrdersCount,
-                todayRevenue: todayRevenue,
+                deliveredToday: todayDeliveredCount,
+                pendingToday: todayPendingOrderCount,
                 pendingRevenue: pendingRevenue,
+                dateStr: dateStr,
               ),
             ],
           ),
@@ -398,120 +437,61 @@ class _HeroTopRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                greeting,
-                style: context.appTextStyles.caption.copyWith(
-                  color: Colors.white.withValues(alpha: 0.72),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.4,
-                  height: 1.2,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.appTextStyles.sectionHeader.copyWith(
-                        color: Colors.white,
-                        fontSize: 17,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25),
-                      ),
-                    ),
-                    child: Text(
-                      'OWNER',
-                      style: context.appTextStyles.caption.copyWith(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.0,
-                        height: 1.0,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        Text(
+          greeting,
+          style: context.appTextStyles.caption.copyWith(
+            color: Colors.white.withValues(alpha: 0.72),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.4,
+            height: 1.2,
           ),
         ),
-        const SizedBox(width: 12),
-        _HeroIconButton(
-          icon: Icons.notifications_none_rounded,
-          onTap: () {
-            try {
-              HapticFeedback.lightImpact();
-            } catch (_) {}
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Notifications coming soon',
-                  style: context.appTextStyles.body.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                behavior: SnackBarBehavior.floating,
-                backgroundColor: AppColors.secondary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.appTextStyles.sectionHeader.copyWith(
+                  color: Colors.white,
+                  fontSize: 17,
+                  letterSpacing: -0.3,
                 ),
               ),
-            );
-          },
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 3,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Text(
+                'OWNER',
+                style: context.appTextStyles.caption.copyWith(
+                  color: Colors.white,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.0,
+                  height: 1.0,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
-    );
-  }
-}
-
-class _HeroIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _HeroIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Ink(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.14),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-          ),
-          child: Icon(icon, color: Colors.white, size: 21),
-        ),
-      ),
     );
   }
 }
@@ -539,7 +519,7 @@ class _HeroRevenue extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'GROSS REVENUE',
+          'COLLECTED',
           style: context.appTextStyles.caption.copyWith(
             color: Colors.white.withValues(alpha: 0.7),
             fontSize: 10,
@@ -563,7 +543,7 @@ class _HeroRevenue extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      '₹${money0.format(totalRevenue.round())}',
+                      '₹${money0.format(collectedRevenue.round())}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.appTextStyles.sliverTitle.copyWith(
@@ -631,15 +611,16 @@ class _HeroRevenue extends StatelessWidget {
             runSpacing: 8,
             children: [
               _HeroRevenueSplitPill(
-                label: 'Collected',
-                value: '₹${money0.format(collectedRevenue.round())}',
-                color: AppColors.success,
+                label: 'Total billed',
+                value: '₹${money0.format(totalRevenue.round())}',
+                color: Colors.white.withValues(alpha: 0.8),
               ),
-              _HeroRevenueSplitPill(
-                label: 'Pending',
-                value: '₹${money0.format(pendingRevenue.round())}',
-                color: AppColors.warning,
-              ),
+              if (pendingRevenue > 0)
+                _HeroRevenueSplitPill(
+                  label: 'Pending',
+                  value: '₹${money0.format(pendingRevenue.round())}',
+                  color: AppColors.warning,
+                ),
             ],
           ),
       ],
@@ -727,15 +708,17 @@ class _GlowBlob extends StatelessWidget {
 
 class _KpiStrip extends StatelessWidget {
   final bool isLoading;
-  final int todayOrdersCount;
-  final double todayRevenue;
+  final int deliveredToday;
+  final int pendingToday;
   final double pendingRevenue;
+  final String dateStr;
 
   const _KpiStrip({
     required this.isLoading,
-    required this.todayOrdersCount,
-    required this.todayRevenue,
+    required this.deliveredToday,
+    required this.pendingToday,
     required this.pendingRevenue,
+    required this.dateStr,
   });
 
   @override
@@ -745,11 +728,11 @@ class _KpiStrip extends StatelessWidget {
       symbol: 'Rs ',
       decimalDigits: 0,
     );
+    final t = context.appTextStyles;
 
     return Transform.translate(
       offset: const Offset(0, 36),
       child: Container(
-        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(22),
@@ -761,53 +744,86 @@ class _KpiStrip extends StatelessWidget {
             ),
           ],
         ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _KpiPill(
-                  icon: Icons.today_rounded,
-                  iconTone: AppColors.info,
-                  title: 'Orders Today',
-                  isLoading: isLoading,
-                  value: isLoading ? '—' : todayOrdersCount.toString(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 11,
+                    color: AppColors.textLight,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    DateFormat('EEE, d MMM').format(DateTime.now()).toUpperCase(),
+                    style: t.caption.copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textLight,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Divider(height: 1, thickness: 1, color: AppColors.divider),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _KpiPill(
+                        icon: Icons.check_circle_outline_rounded,
+                        iconTone: AppColors.success,
+                        title: 'Delivered',
+                        isLoading: isLoading,
+                        value: isLoading ? '—' : deliveredToday.toString(),
+                      ),
+                    ),
+                    const VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: AppColors.divider,
+                      indent: 6,
+                      endIndent: 6,
+                    ),
+                    Expanded(
+                      child: _KpiPill(
+                        icon: Icons.hourglass_top_rounded,
+                        iconTone: AppColors.warning,
+                        title: 'Pending',
+                        isLoading: isLoading,
+                        value: isLoading ? '—' : pendingToday.toString(),
+                      ),
+                    ),
+                    const VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: AppColors.divider,
+                      indent: 6,
+                      endIndent: 6,
+                    ),
+                    Expanded(
+                      child: _KpiPill(
+                        icon: Icons.pending_actions_rounded,
+                        iconTone: AppColors.error,
+                        title: 'Dues',
+                        isLoading: isLoading,
+                        value:
+                            isLoading ? '—' : moneyCompact.format(pendingRevenue),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: AppColors.divider,
-                indent: 6,
-                endIndent: 6,
-              ),
-              Expanded(
-                child: _KpiPill(
-                  icon: Icons.currency_rupee_rounded,
-                  iconTone: AppColors.success,
-                  title: 'Today Revenue',
-                  isLoading: isLoading,
-                  value: isLoading ? '—' : moneyCompact.format(todayRevenue),
-                ),
-              ),
-              const VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: AppColors.divider,
-                indent: 6,
-                endIndent: 6,
-              ),
-              Expanded(
-                child: _KpiPill(
-                  icon: Icons.pending_actions_rounded,
-                  iconTone: AppColors.warning,
-                  title: 'Pending Dues',
-                  isLoading: isLoading,
-                  value: isLoading ? '—' : moneyCompact.format(pendingRevenue),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -881,6 +897,186 @@ class _KpiPill extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Delivery status card — today's order progress + active drivers
+// ---------------------------------------------------------------------------
+
+class _DeliveryStatusCard extends StatelessWidget {
+  final bool isLoading;
+  final int totalOrders;
+  final int deliveredCount;
+  final int cancelledCount;
+  final int activeDrivers;
+
+  const _DeliveryStatusCard({
+    required this.isLoading,
+    required this.totalOrders,
+    required this.deliveredCount,
+    required this.cancelledCount,
+    required this.activeDrivers,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pendingCount = (totalOrders - deliveredCount - cancelledCount)
+        .clamp(0, totalOrders);
+    final progress =
+        totalOrders == 0 ? 0.0 : deliveredCount / totalOrders;
+
+    return _SurfaceCard(
+      padding: const EdgeInsets.all(18),
+      child: isLoading
+          ? const DeliveroSkeleton(height: 72, borderRadius: 12)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            totalOrders == 0
+                                ? 'No orders yet today'
+                                : '$deliveredCount of $totalOrders delivered',
+                            style: context.appTextStyles.sliverTitle.copyWith(
+                              fontSize: 16,
+                              letterSpacing: -0.3,
+                              height: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 7,
+                              backgroundColor:
+                                  AppColors.border.withValues(alpha: 0.6),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppColors.success,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: activeDrivers > 0
+                                ? AppColors.primaryLighter.withValues(alpha: 0.5)
+                                : AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: activeDrivers > 0
+                                  ? AppColors.primary.withValues(alpha: 0.22)
+                                  : AppColors.border,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.directions_bike_rounded,
+                                size: 14,
+                                color: activeDrivers > 0
+                                    ? AppColors.primary
+                                    : AppColors.textLight,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                '$activeDrivers ${activeDrivers == 1 ? 'driver' : 'drivers'}',
+                                style: context.appTextStyles.caption.copyWith(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: activeDrivers > 0
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'on duty',
+                          style: context.appTextStyles.caption.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                if (totalOrders > 0) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _StatusChip(
+                        label: '$pendingCount pending',
+                        color: AppColors.warning,
+                      ),
+                      if (cancelledCount > 0) ...[
+                        const SizedBox(width: 8),
+                        _StatusChip(
+                          label: '$cancelledCount cancelled',
+                          color: AppColors.error,
+                        ),
+                      ],
+                      const SizedBox(width: 8),
+                      _StatusChip(
+                        label:
+                            '${(progress * 100).round()}% done',
+                        color: AppColors.success,
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _StatusChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        label,
+        style: context.appTextStyles.caption.copyWith(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
       ),
     );
   }
@@ -1281,15 +1477,23 @@ class _QuickActionTile extends StatelessWidget {
 // Sales trend
 // ---------------------------------------------------------------------------
 
-class _SalesTrendCard extends StatelessWidget {
+class _SalesTrendCard extends StatefulWidget {
   final List<DailySalesData> dailySales;
   const _SalesTrendCard({required this.dailySales});
 
   @override
+  State<_SalesTrendCard> createState() => _SalesTrendCardState();
+}
+
+class _SalesTrendCardState extends State<_SalesTrendCard> {
+  int _rangeDays = 7;
+
+  @override
   Widget build(BuildContext context) {
+    final dailySales = widget.dailySales;
     final t = context.appTextStyles;
-    final last = dailySales.length > 7
-        ? dailySales.sublist(dailySales.length - 7)
+    final last = dailySales.length > _rangeDays
+        ? dailySales.sublist(dailySales.length - _rangeDays)
         : dailySales;
 
     if (last.isEmpty) {
@@ -1299,7 +1503,7 @@ class _SalesTrendCard extends StatelessWidget {
           icon: Icons.show_chart_rounded,
           tone: AppColors.primary,
           title: 'No revenue trend yet',
-          subtitle: 'Paid and recorded orders will build this 7-day chart.',
+          subtitle: 'Paid and recorded orders will build this chart.',
         ),
       );
     }
@@ -1377,17 +1581,20 @@ class _SalesTrendCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Flexible(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: _BestDayChip(best: best),
-                  ),
-                ),
+              const SizedBox(width: 12),
+              _RangeToggle(
+                selected: _rangeDays,
+                options: const [7, 30],
+                labels: const ['7D', '30D'],
+                onChanged: (v) => setState(() => _rangeDays = v),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: _BestDayChip(best: best),
           ),
           const SizedBox(height: 10),
           Semantics(
@@ -1525,12 +1732,18 @@ class _SalesTrendCard extends StatelessWidget {
                             return const SizedBox.shrink();
                           }
                           final isHighlight = i == highlightIndex;
+                          // For 30D, only show every 7th label to avoid crowding
+                          final skip30 = _rangeDays > 7 &&
+                              i % 7 != 0 &&
+                              i != last.length - 1;
+                          if (skip30) return const SizedBox.shrink();
+                          final fmt = _rangeDays > 7
+                              ? DateFormat('d MMM').format(last[i].date)
+                              : DateFormat('EEE').format(last[i].date).toUpperCase();
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
-                              DateFormat(
-                                'EEE',
-                              ).format(last[i].date).toUpperCase(),
+                              fmt,
                               style: t.caption.copyWith(
                                 color: isHighlight
                                     ? AppColors.primary
@@ -1613,6 +1826,62 @@ class _SalesTrendCard extends StatelessWidget {
       }
     }
     return maxIdx;
+  }
+}
+
+class _RangeToggle extends StatelessWidget {
+  final int selected;
+  final List<int> options;
+  final List<String> labels;
+  final ValueChanged<int> onChanged;
+
+  const _RangeToggle({
+    required this.selected,
+    required this.options,
+    required this.labels,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < options.length; i++)
+            GestureDetector(
+              onTap: () => onChanged(options[i]),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: selected == options[i]
+                      ? AppColors.primary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Text(
+                  labels[i],
+                  style: context.appTextStyles.caption.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: selected == options[i]
+                        ? Colors.white
+                        : AppColors.textSecondary,
+                    height: 1.0,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 

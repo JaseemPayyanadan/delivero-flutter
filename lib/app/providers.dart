@@ -515,7 +515,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
       currentKey.day,
     );
 
-    final result = runBatchForTargetDay(
+    final result = await runBatchForTargetDay(
       targetBusinessDay: targetDay,
       orders: orders,
       customers: customers,

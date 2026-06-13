@@ -346,13 +346,13 @@ Map<String, dynamic> _orderContentSnapshot(Order order) {
 }
 
 /// Layer B — create missing orders for one target business day.
-DailyOrderRecreationResult runBatchForTargetDay({
+Future<DailyOrderRecreationResult> runBatchForTargetDay({
   required DateTime targetBusinessDay,
   required List<Order> orders,
   required List<Customer> customers,
   required int rolloverHour,
   required FutureOr<void> Function(Order order) addOrder,
-}) {
+}) async {
   final sourceDay = DateTime(
     targetBusinessDay.year,
     targetBusinessDay.month,
@@ -388,7 +388,7 @@ DailyOrderRecreationResult runBatchForTargetDay({
         rolloverHour: rolloverHour,
       ),
     );
-    addOrder(created);
+    await addOrder(created);
     createdIds.add(created.id);
     orders = [...orders, created];
   }
@@ -441,13 +441,13 @@ Future<DailyOrderRecreationResult> runRolloverBatch({
   final mutableOrders = [...orders];
 
   while (!day.isAfter(normalizedCurrent) && daysProcessed < kMaxBackfillBusinessDays) {
-    final dayResult = runBatchForTargetDay(
+    final dayResult = await runBatchForTargetDay(
       targetBusinessDay: day,
       orders: mutableOrders,
       customers: customers,
       rolloverHour: rolloverHour,
-      addOrder: (order) {
-        addOrder(order);
+      addOrder: (order) async {
+        await addOrder(order);
         mutableOrders.add(order);
       },
     );

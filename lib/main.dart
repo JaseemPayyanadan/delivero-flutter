@@ -119,7 +119,7 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
     });
 
     return MaterialApp.router(
-      title: 'Delivero',
+      title: 'Delivro',
       theme: AppTheme.light(),
       routerConfig: router,
       scaffoldMessengerKey: rootScaffoldMessengerKey,

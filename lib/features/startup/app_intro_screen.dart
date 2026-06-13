@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
@@ -174,8 +175,8 @@ class _IntroTopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 14, 12, 0),
       child: Row(
         children: [
-          Image.asset(
-            'assets/images/logo.png',
+          SvgPicture.asset(
+            'assets/images/delivro-logo.svg',
             width: 140,
             height: 40,
             fit: BoxFit.contain,

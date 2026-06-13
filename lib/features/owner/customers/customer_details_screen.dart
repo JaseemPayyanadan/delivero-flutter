@@ -1,19 +1,22 @@
+// ignore_for_file: unused_element, unused_element_parameter
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
-
-// ignore_for_file: unused_element, unused_element_parameter
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/maps_launch.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/utils/route_refs.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/food_item.dart';
 import '../../../data/models/order.dart';
+import '../orders/order_details/order_detail_formatting.dart';
 
 double? _estimatePerDelivery(
   List<CustomerProduct> items,
@@ -132,6 +135,35 @@ Future<void> _confirmAndDeleteCustomer(
   }
 }
 
+String _initials(String name) {
+  final words = name.trim().split(RegExp(r'\s+'));
+  if (words.length >= 2) return '${words[0][0]}${words[1][0]}'.toUpperCase();
+  final w = words[0];
+  return (w.length >= 2 ? w.substring(0, 2) : w).toUpperCase();
+}
+
+Future<void> _launchPhone(BuildContext context, String phone) async {
+  final digits = phone.trim().replaceAll(RegExp(r'[^0-9+]'), '');
+  if (digits.isEmpty) return;
+  await launchUrl(
+    Uri(scheme: 'tel', path: digits),
+    mode: LaunchMode.externalApplication,
+  );
+}
+
+Future<void> _launchEmail(BuildContext context, String email) async {
+  final trimmed = email.trim();
+  if (trimmed.isEmpty) return;
+  await launchUrl(
+    Uri(scheme: 'mailto', path: trimmed),
+    mode: LaunchMode.externalApplication,
+  );
+}
+
+Future<void> _launchMaps(BuildContext context, String address) async {
+  await openMapsForAddress(address);
+}
+
 class CustomerDetailsScreen extends ConsumerWidget {
   final String customerId;
   const CustomerDetailsScreen({super.key, required this.customerId});
@@ -189,12 +221,6 @@ class CustomerDetailsScreen extends ConsumerWidget {
       routes,
     );
     final rawAddress = customer.address.trim();
-    final displayAddress = rawAddress.isEmpty
-        ? 'Address not available'
-        : rawAddress;
-    final ownerDisplay = customer.ownerName?.trim().isNotEmpty == true
-        ? customer.ownerName!.trim()
-        : 'Not added';
 
     final recurringItems = (customer.products ?? const <CustomerProduct>[])
         .where((p) => p.quantity > 0)
@@ -205,8 +231,35 @@ class CustomerDetailsScreen extends ConsumerWidget {
     );
     final scheduleLabel = _inferScheduleLabel(customerOrders);
 
+    final money = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 0,
+    );
+    final ltv = customerOrders.fold(0.0, (sum, o) => sum + o.totalAmount);
+    final lastOrderDate =
+        customerOrders.isNotEmpty ? customerOrders.first.orderDate : null;
+    final phone = customer.phone.trim();
+    final email = customer.email.trim();
+    final ownerName = customer.ownerName?.trim() ?? '';
+    final resolvedRoute = routesLoaded ? displayRoute : '';
+    final heroSubtext = resolvedRoute.isNotEmpty ? resolvedRoute : '';
+    final hasContactActions =
+        phone.isNotEmpty || email.isNotEmpty || rawAddress.isNotEmpty;
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () =>
+            context.push('/owner/orders/create', extra: customerId),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        icon: const Icon(Icons.add_shopping_cart_rounded),
+        label: const Text(
+          'New order',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+      ),
       appBar: DeliveroAppBar(
         title: 'Customer Profile',
         centerTitle: true,
@@ -219,7 +272,8 @@ class CustomerDetailsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Edit customer',
-            onPressed: () => context.push('/owner/customers/edit/$customerId'),
+            onPressed: () =>
+                context.push('/owner/customers/edit/$customerId'),
             icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
           ),
           PopupMenuButton<String>(
@@ -244,68 +298,257 @@ class CustomerDetailsScreen extends ConsumerWidget {
       body: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.only(bottom: 100),
+          padding: const EdgeInsets.only(bottom: 120),
           children: [
+            // ── Hero ─────────────────────────────────────────────────────
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
               color: AppColors.backgroundSecondary,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               child: Column(
                 children: [
-                  const SizedBox(height: 6),
-                  Center(
-                    child: Container(
-                      width: 74,
-                      height: 74,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: const [
-                          BoxShadow(
-                            color: AppColors.shadow,
-                            blurRadius: 18,
-                            offset: Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.storefront_rounded,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        size: 34,
+                  Container(
+                    width: 74,
+                    height: 74,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AppColors.shadow,
+                          blurRadius: 18,
+                          offset: Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        _initials(customer.name),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 26,
+                          letterSpacing: 1,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Center(
-                    child: Text(
-                      customer.name,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 24,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.4,
-                      ),
+                  Text(
+                    customer.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 24,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.4,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Center(
-                    child: Text(
-                      customer.phone.trim().isEmpty ? '—' : customer.phone.trim(),
+                  if (heroSubtext.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      heroSubtext,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
+                        fontSize: 13,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Center(child: _StatusPill(active: customer.isActive)),
+                  ],
+                  const SizedBox(height: 12),
+                  _StatusPill(active: customer.isActive),
+                  if (hasContactActions) ...[
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (phone.isNotEmpty) ...[
+                          _QuickActionButton(
+                            icon: Icons.call_rounded,
+                            label: 'Call',
+                            color: AppColors.success,
+                            onTap: () => _launchPhone(context, phone),
+                          ),
+                        ],
+                        if (email.isNotEmpty) ...[
+                          if (phone.isNotEmpty) const SizedBox(width: 24),
+                          _QuickActionButton(
+                            icon: Icons.email_rounded,
+                            label: 'Email',
+                            color: AppColors.info,
+                            onTap: () => _launchEmail(context, email),
+                          ),
+                        ],
+                        if (rawAddress.isNotEmpty) ...[
+                          if (phone.isNotEmpty || email.isNotEmpty)
+                            const SizedBox(width: 24),
+                          _QuickActionButton(
+                            icon: Icons.near_me_rounded,
+                            label: 'Navigate',
+                            color: AppColors.primary,
+                            onTap: () => _launchMaps(context, rawAddress),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(height: 18),
+
+            // ── Contact & Info ────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _ProfileCard(
+                icon: Icons.contact_page_rounded,
+                iconBg: AppColors.primaryLighter.withValues(alpha: 0.75),
+                title: 'Contact & Info',
+                child: Column(
+                  children: [
+                    if (phone.isNotEmpty)
+                      _InfoRow(
+                        icon: Icons.phone_rounded,
+                        label: 'Phone',
+                        value: phone,
+                        onTap: () => _launchPhone(context, phone),
+                      ),
+                    if (email.isNotEmpty)
+                      _InfoRow(
+                        icon: Icons.email_outlined,
+                        label: 'Email',
+                        value: email,
+                        onTap: () => _launchEmail(context, email),
+                      ),
+                    if (rawAddress.isNotEmpty)
+                      _InfoRow(
+                        icon: Icons.location_on_rounded,
+                        label: 'Address',
+                        value: rawAddress,
+                        onTap: () => _launchMaps(context, rawAddress),
+                      ),
+                    if (ownerName.isNotEmpty)
+                      _InfoRow(
+                        icon: Icons.person_rounded,
+                        label: 'Owner / Manager',
+                        value: ownerName,
+                      ),
+                    if (resolvedRoute.isNotEmpty)
+                      _InfoRow(
+                        icon: Icons.alt_route_rounded,
+                        label: 'Route',
+                        value: resolvedRoute,
+                      ),
+                    if ((customer.discountPercentage ?? 0) > 0)
+                      _InfoRow(
+                        icon: Icons.discount_rounded,
+                        label: 'Discount',
+                        value:
+                            '${(customer.discountPercentage ?? 0).toStringAsFixed(0)}% off all orders',
+                      ),
+                    _InfoRow(
+                      icon: Icons.calendar_today_rounded,
+                      label: 'Customer since',
+                      value: DateFormat('d MMM yyyy').format(customer.createdAt),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Financial Overview ────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _ProfileCard(
+                icon: Icons.account_balance_wallet_rounded,
+                iconBg: AppColors.successLighter.withValues(alpha: 0.75),
+                title: 'Financial Overview',
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _FinancialTile(
+                            label: 'Total Orders',
+                            child: Text(
+                              '${customerOrders.length}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 22,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _FinancialTile(
+                            label: 'Lifetime Value',
+                            child: Text(
+                              money.format(ltv),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 18,
+                                color: AppColors.primary,
+                                letterSpacing: -0.4,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _FinancialTile(
+                            label: 'Outstanding',
+                            child: Text(
+                              money.format(pendingRevenue),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 18,
+                                color: pendingRevenue > 0.004
+                                    ? AppColors.error
+                                    : AppColors.success,
+                                letterSpacing: -0.4,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _FinancialTile(
+                            label: 'Last Order',
+                            child: Text(
+                              lastOrderDate == null
+                                  ? '—'
+                                  : DateFormat('d MMM yy').format(lastOrderDate),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Recurring Order ───────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _ProfileCard(
@@ -332,7 +575,20 @@ class CustomerDetailsScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 10),
                           ],
-                          const SizedBox(height: 8),
+                          if (recurringItems.length > 3) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Text(
+                                '+${recurringItems.length - 3} more items',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textLight,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 4),
                           Row(
                             children: [
                               Expanded(
@@ -359,40 +615,8 @@ class CustomerDetailsScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _ProfileCard(
-                icon: Icons.account_balance_wallet_rounded,
-                iconBg: AppColors.successLighter.withValues(alpha: 0.75),
-                title: 'Financial Overview',
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _FinancialTile(
-                        label: 'Payment status',
-                        child: _PaymentPill(paid: pendingRevenue <= 0),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _FinancialTile(
-                        label: 'Outstanding',
-                        child: Text(
-                          '₹${NumberFormat.decimalPattern().format(pendingRevenue)}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.4,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+
+            // ── Order History ─────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _ProfileCard(
@@ -1066,6 +1290,124 @@ class _MetaPair extends StatelessWidget {
   }
 }
 
+class _QuickActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: onTap != null ? AppColors.primary : AppColors.textLight,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    value,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: onTap != null
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onTap != null)
+              const Padding(
+                padding: EdgeInsets.only(left: 8, top: 4),
+                child: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 12,
+                  color: AppColors.textLight,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _FinancialTile extends StatelessWidget {
   final String label;
   final Widget child;
@@ -1123,6 +1465,49 @@ class _PaymentPill extends StatelessWidget {
           fontWeight: FontWeight.w900,
           fontSize: 11,
           letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentMiniPill extends StatelessWidget {
+  final PaymentStatus? status;
+  const _PaymentMiniPill({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = status ?? PaymentStatus.unpaid;
+    final (bg, fg, label) = switch (s) {
+      PaymentStatus.paid => (
+        AppColors.successLighter.withValues(alpha: 0.85),
+        AppColors.success,
+        'PAID',
+      ),
+      PaymentStatus.partial => (
+        AppColors.warningLighter.withValues(alpha: 0.85),
+        AppColors.warning,
+        'PART',
+      ),
+      PaymentStatus.unpaid => (
+        AppColors.errorLighter.withValues(alpha: 0.85),
+        AppColors.error,
+        'DUE',
+      ),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontWeight: FontWeight.w900,
+          fontSize: 9,
+          letterSpacing: 0.5,
         ),
       ),
     );
@@ -1330,7 +1715,7 @@ class _RecentOrdersList extends StatelessWidget {
             ),
           ),
           title: Text(
-            '#${o.id.substring(0, 8).toUpperCase()} • $dateLabel',
+            '${orderDetailDisplayId(o.id)} · $dateLabel',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -1348,13 +1733,21 @@ class _RecentOrdersList extends StatelessWidget {
               letterSpacing: 0.4,
             ),
           ),
-          trailing: Text(
-            '₹${NumberFormat.decimalPattern().format(o.totalAmount)}',
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w900,
-              fontSize: 14,
-            ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '₹${NumberFormat.decimalPattern().format(o.totalAmount)}',
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _PaymentMiniPill(status: o.paymentStatus),
+            ],
           ),
         );
       },

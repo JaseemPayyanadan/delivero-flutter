@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../app/router.dart';
 import '../../core/theme/app_colors.dart';
@@ -119,22 +120,11 @@ class _LauncherContent extends StatelessWidget {
       children: [
         Hero(
           tag: 'app_logo',
-          child: Image.asset(
-            'assets/images/logo.png',
+          child: SvgPicture.asset(
+            'assets/images/delivro-logo.svg',
             width: 220,
             height: 64,
             fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return const Text(
-                'DELIVERO',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 3,
-                ),
-              );
-            },
           ),
         ),
         const SizedBox(height: 14),
@@ -181,7 +171,7 @@ class _LauncherFooter extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Powered by Delivero',
+            'Powered by Delivro',
             style: TextStyle(
               color: AppColors.textLight,
               fontSize: 11,

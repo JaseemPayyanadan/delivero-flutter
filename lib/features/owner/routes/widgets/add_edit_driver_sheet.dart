@@ -148,8 +148,8 @@ Future<void> showReshareDriverLoginDialog(
   required Driver driver,
 }) async {
   final message =
-      'Hi ${driver.name},\n\nYour Delivero driver login is your phone number:\n\n${driver.phone}\n\n'
-      'Open the Delivero app, tap "Sign in", enter this number and the OTP we send to confirm.';
+      'Hi ${driver.name},\n\nYour Delivro driver login is your phone number:\n\n${driver.phone}\n\n'
+      'Open the Delivro app, tap "Sign in", enter this number and the OTP we send to confirm.';
   await showDriverLoginShareDialog(
     context: context,
     title: 'Share sign-in details',
@@ -409,8 +409,8 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
 
   Future<void> _showCreateShareDialog({required Driver driver}) async {
     final message =
-        'Hi ${driver.name},\n\nYour Delivero driver profile is ready.\n\n'
-        'Open the Delivero app, tap "Sign in", enter this number:\n${driver.phone}\n'
+        'Hi ${driver.name},\n\nYour Delivro driver profile is ready.\n\n'
+        'Open the Delivro app, tap "Sign in", enter this number:\n${driver.phone}\n'
         'and verify the OTP to start delivering.';
     await showDriverLoginShareDialog(
       context: context,
@@ -484,7 +484,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'Drivers sign in to Delivero with their phone number and OTP. '
+                      'Drivers sign in to Delivro with their phone number and OTP. '
                       'Use a phone they have access to.',
                       style: context.appTextStyles.caption.copyWith(
                         color: AppColors.textSecondary,

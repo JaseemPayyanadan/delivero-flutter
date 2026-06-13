@@ -25,9 +25,15 @@ part 'create_order_widgets.dart';
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   final String? orderId;
+  final String? preselectedCustomerId;
   final bool forDriver;
 
-  const CreateOrderScreen({super.key, this.orderId, this.forDriver = false});
+  const CreateOrderScreen({
+    super.key,
+    this.orderId,
+    this.preselectedCustomerId,
+    this.forDriver = false,
+  });
 
   @override
   ConsumerState<CreateOrderScreen> createState() => _CreateOrderScreenState();
@@ -50,7 +56,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   bool _isSubmitting = false;
   bool _createSeparateOrder = false;
   bool _initializedFromOrder = false;
+  bool _initializedFromPreselect = false;
   Order? _editingOrder;
+  DateTime? _reviewEnteredAt;
   final Map<String, TextEditingController> _qtyControllers = {};
   final Map<String, TextEditingController> _catalogQtyControllers = {};
 
@@ -140,6 +148,32 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 orderLineKey(i.foodItemId, i.packLabel): i.unitPrice,
             };
             _initializedFromOrder = true;
+          });
+        });
+      }
+    }
+
+    if (widget.preselectedCustomerId != null &&
+        !_initializedFromPreselect &&
+        !_initializedFromOrder &&
+        _selectedCustomer == null) {
+      final customer = customers.firstWhereOrNull(
+        (c) => c.id == widget.preselectedCustomerId,
+      );
+      if (customer != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _initializedFromPreselect) return;
+          setState(() {
+            _selectedCustomer = customer;
+            if (customer.products != null) {
+              for (final p in customer.products!) {
+                _selectedItems[p.id] = p.quantity;
+                if (p.customPrice != null) {
+                  _customUnitPrices[p.id] = p.customPrice!;
+                }
+              }
+            }
+            _initializedFromPreselect = true;
           });
         });
       }
@@ -488,6 +522,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       try {
         HapticFeedback.lightImpact();
       } catch (_) {}
+      if (_step == 2) _reviewEnteredAt = DateTime.now();
       setState(() => _step += 1);
       return;
     }
@@ -523,16 +558,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               String? packLabel,
             })>()
             .toList()
-          ..sort((a, b) {
-            final byName = a.item.name.compareTo(b.item.name);
-            if (byName != 0) return byName;
-            return (a.packLabel ?? '').compareTo(b.packLabel ?? '');
-          });
+          ..sort((a, b) => a.item.name.compareTo(b.item.name));
 
-    final reportLines = <_ReportLineItem>[
+    final newLines = <_ReportLineItem>[
       for (final line in selectedLines)
         _ReportLineItem(
-          name: displayNameWithPackLabel(line.item.name, line.packLabel),
+          name: line.item.name,
           quantity: line.qty,
           unitPrice: _effectiveUnitPriceForLine(line.lineKey, line.item),
           lineTotal: _effectiveUnitPriceForLine(line.lineKey, line.item) *
@@ -545,20 +576,37 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final mergeTarget = existing == null && _orderType != OrderType.special
         ? _findMergeTarget()
         : null;
+    final willMerge = mergeTarget != null && !_createSeparateOrder;
+
+    final reportLines = willMerge
+        ? _buildMergedPreviewLines(mergeTarget, foodItems)
+        : newLines;
+    final reportTotal = reportLines.fold(0.0, (s, l) => s + l.lineTotal);
+    final reportLineCount = reportLines.length;
+    final reportUnitCount =
+        reportLines.fold(0, (s, l) => s + l.quantity);
+
+    final orderTypeLabel = switch (_orderType) {
+      OrderType.daily => 'Daily order',
+      OrderType.oneTime => 'One-time order',
+      OrderType.special => 'Special order',
+      null => '',
+    };
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _OrderReviewReport(
-          generatedAt: DateTime.now(),
+          generatedAt: _reviewEnteredAt ?? DateTime.now(),
           lines: reportLines,
-          orderTotal: orderTotal,
-          lineCount: selection.distinctItems,
-          unitCount: selection.totalUnits,
+          orderTotal: reportTotal,
+          lineCount: reportLineCount,
+          unitCount: reportUnitCount,
+          customerName: _selectedCustomer?.name ?? '',
+          orderTypeLabel: orderTypeLabel,
+          runLabel: _deliveryRun.label,
+          isMerge: willMerge,
         ),
-        if (selectedLines.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _buildPackLabelSection(selectedLines),
-        ],
         if (existing == null && !widget.forDriver) ...[
           const SizedBox(height: 12),
           DecoratedBox(
@@ -585,10 +633,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         const SizedBox(height: 4),
                         Text(
                           mergeTarget == null
-                              ? 'Use for split packing — e.g. 50 in Box 1 and 50 in Box 2 as two separate orders.'
+                              ? 'Use this to create a standalone order for the same customer instead of merging into an existing one.'
                               : (_createSeparateOrder
-                                    ? 'Creates a new order for split packing. Turn off to add items to today\'s ${_deliveryRun.label.toLowerCase()} order instead.'
-                                    : 'Items will merge into today\'s ${_deliveryRun.label.toLowerCase()} order. Turn on for split packing (separate box/order).'),
+                                    ? 'Creates a new standalone order. Turn off to add items to today\'s ${_deliveryRun.label.toLowerCase()} order instead.'
+                                    : 'Items will merge into today\'s ${_deliveryRun.label.toLowerCase()} order. Turn on to create a separate order instead.'),
                           style: context.appTextStyles.caption.copyWith(
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w600,
@@ -617,7 +665,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   : () => _submitOrder(popOnSuccess: false, splitAfterSave: true),
               icon: const Icon(Icons.call_split_rounded, size: 18),
               label: const Text(
-                'Save this box & add another order',
+                'Save & add another order',
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
               style: OutlinedButton.styleFrom(
@@ -658,255 +706,61 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return _customUnitPrices[lineKey] ?? item.price;
   }
 
-  Widget _buildPackLabelSection(
-    List<({
-      String lineKey,
-      FoodItem item,
-      int qty,
-      String? packLabel,
-    })> lines,
+  void _addDuplicateLine(FoodItem item) {
+    const uuid = Uuid();
+    final newKey = '${item.id}|${uuid.v4()}';
+    setState(() => _selectedItems[newKey] = 1);
+  }
+
+  List<_ReportLineItem> _buildMergedPreviewLines(
+    Order mergeTarget,
+    List<FoodItem> foodItems,
   ) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Pack labels (optional)',
-              style: context.appTextStyles.sectionHeader.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Label each box when splitting the same product — e.g. Box 1 and Box 2.',
-              style: context.appTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 10),
-            for (final line in lines) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${line.item.name} × ${line.qty}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          line.packLabel == null || line.packLabel!.isEmpty
-                              ? 'No box label'
-                              : line.packLabel!,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                            color: line.packLabel == null ||
-                                    line.packLabel!.isEmpty
-                                ? AppColors.textLight
-                                : AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => _editPackLabel(line.lineKey, line.item),
-                    child: const Text('Set label'),
-                  ),
-                  IconButton(
-                    tooltip: 'Add another box for this product',
-                    onPressed: () => _addAnotherPackLine(line.item),
-                    icon: const Icon(Icons.add_box_outlined),
-                    color: AppColors.primary,
-                  ),
-                ],
-              ),
-              if (line != lines.last) const SizedBox(height: 10),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _editPackLabel(String lineKey, FoodItem item) async {
-    final current = packLabelFromLineKey(lineKey) ?? '';
-    final controller = TextEditingController(text: current);
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Box label'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              labelText: 'Label',
-              hintText: 'e.g. Box 1',
-            ),
-            textCapitalization: TextCapitalization.words,
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            if (current.isNotEmpty)
-              TextButton(
-                onPressed: () {
-                  controller.clear();
-                  Navigator.pop(dialogContext, true);
-                },
-                child: const Text('Clear'),
-              ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Save'),
-            ),
-          ],
+    final byId = {for (final f in foodItems) f.id: f};
+    final merged = List<OrderItem>.from(mergeTarget.items);
+    _selectedItems.forEach((lineKey, qty) {
+      if (qty <= 0) return;
+      final foodItemId = foodItemIdFromLineKey(lineKey);
+      final foodItem = byId[foodItemId];
+      if (foodItem == null) return;
+      final unitPrice = _customUnitPrices[lineKey] ?? foodItem.price;
+      final addItem = OrderItem(
+        id: '',
+        foodItemId: foodItemId,
+        foodItemName: foodItem.name,
+        quantity: qty,
+        unitPrice: unitPrice,
+        totalPrice: unitPrice * qty,
+        packLabel: null,
+      );
+      final i = merged.indexWhere((m) => orderItemsMatchForMerge(m, addItem));
+      if (i < 0) {
+        merged.add(addItem);
+      } else {
+        final old = merged[i];
+        final nextQty = old.quantity + qty;
+        merged[i] = OrderItem(
+          id: old.id,
+          foodItemId: old.foodItemId,
+          foodItemName: old.foodItemName,
+          quantity: nextQty,
+          unitPrice: unitPrice,
+          totalPrice: unitPrice * nextQty,
+          packLabel: old.packLabel,
         );
-      },
-    );
-    if (result != true || !mounted) {
-      controller.dispose();
-      return;
-    }
-    _updatePackLabel(lineKey, controller.text);
-    controller.dispose();
-  }
-
-  void _updatePackLabel(String oldLineKey, String rawLabel) {
-    final foodItemId = foodItemIdFromLineKey(oldLineKey);
-    final qty = _selectedItems[oldLineKey] ?? 0;
-    if (qty <= 0) return;
-    final newLineKey = orderLineKey(foodItemId, rawLabel);
-    if (newLineKey == oldLineKey) return;
-    if (_selectedItems.containsKey(newLineKey)) return;
-
-    final customPrice = _customUnitPrices.remove(oldLineKey);
-    final qtyController = _qtyControllers.remove(oldLineKey);
-    setState(() {
-      _selectedItems.remove(oldLineKey);
-      _selectedItems[newLineKey] = qty;
-      if (customPrice != null) {
-        _customUnitPrices[newLineKey] = customPrice;
-      }
-      if (qtyController != null) {
-        _qtyControllers[newLineKey] = qtyController;
       }
     });
-  }
-
-  Future<void> _addAnotherPackLine(FoodItem item) async {
-    final labelController = TextEditingController();
-    final qtyController = TextEditingController(text: '1');
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Add another box'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                item.name,
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: labelController,
-                decoration: const InputDecoration(
-                  labelText: 'Box label',
-                  hintText: 'e.g. Box 2',
-                ),
-                textCapitalization: TextCapitalization.words,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: qtyController,
-                decoration: const InputDecoration(labelText: 'Quantity'),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-    if (result != true || !mounted) {
-      labelController.dispose();
-      qtyController.dispose();
-      return;
-    }
-
-    final label = labelController.text.trim();
-    labelController.dispose();
-    final qty = int.tryParse(qtyController.text.trim()) ?? 0;
-    qtyController.dispose();
-    if (label.isEmpty || qty <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Enter a box label and quantity',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.warning,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+    merged.sort((a, b) => a.foodItemName.compareTo(b.foodItemName));
+    return [
+      for (final m in merged)
+        _ReportLineItem(
+          name: m.foodItemName,
+          quantity: m.quantity,
+          unitPrice: m.unitPrice,
+          lineTotal: m.totalPrice,
+          isCustomRate: _customUnitPrices.containsKey(m.foodItemId),
         ),
-      );
-      return;
-    }
-
-    final lineKey = orderLineKey(item.id, label);
-    if (_selectedItems.containsKey(lineKey)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'That box label already exists for this product',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.warning,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _selectedItems[lineKey] = qty);
+    ];
   }
 
   Order? _findMergeTarget() {
@@ -1511,11 +1365,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               String? packLabel,
             })>()
             .toList()
-          ..sort((a, b) {
-            final byName = a.item.name.compareTo(b.item.name);
-            if (byName != 0) return byName;
-            return (a.packLabel ?? '').compareTo(b.packLabel ?? '');
-          });
+          ..sort((a, b) => a.item.name.compareTo(b.item.name));
 
     if (selected.isEmpty) {
       return Container(
@@ -1603,12 +1453,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 TextPosition(offset: controller.text.length),
               );
             }
-            final displayName = displayNameWithPackLabel(
-              line.item.name,
-              line.packLabel,
-            );
             return _SelectedMenuItemCard(
-              name: displayName,
+              name: line.item.name,
               unitPrice: _effectiveUnitPriceForLine(line.lineKey, line.item),
               isCustom: _customUnitPrices.containsKey(line.lineKey),
               qty: line.qty,
@@ -1642,6 +1488,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               },
               onInc: () =>
                   setState(() => _selectedItems[line.lineKey] = line.qty + 1),
+              onDuplicate: () => _addDuplicateLine(line.item),
             );
           }(),
           const SizedBox(height: 12),
@@ -1820,7 +1667,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             quantity: qty,
             unitPrice: unitPrice,
             totalPrice: total,
-            packLabel: packLabelFromLineKey(lineKey),
+            packLabel: null,
           ),
         );
       }

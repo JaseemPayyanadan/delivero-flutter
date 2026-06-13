@@ -34,6 +34,9 @@ class _DriverOrderDetailsScreenState
   PaymentStatus? _draftPaymentStatus;
   PaymentMethod? _draftPaymentMethod;
   double? _draftAmountPaid;
+  PaymentStatus? _lastServerPaymentStatus;
+  PaymentMethod? _lastServerPaymentMethod;
+  double? _lastServerAmountPaid;
   final TextEditingController _partialAmountController =
       TextEditingController();
 
@@ -41,6 +44,9 @@ class _DriverOrderDetailsScreenState
     _draftPaymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     _draftPaymentMethod = order.paymentMethod ?? PaymentMethod.cash;
     _draftAmountPaid = order.amountPaid;
+    _lastServerPaymentStatus = _draftPaymentStatus;
+    _lastServerPaymentMethod = _draftPaymentMethod;
+    _lastServerAmountPaid = _draftAmountPaid;
 
     if (_draftPaymentStatus == PaymentStatus.partial) {
       final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
@@ -92,9 +98,30 @@ class _DriverOrderDetailsScreenState
     final statusFg = orderDetailStatusFg(order.status);
     final hasAddress = order.customerAddress.trim().isNotEmpty;
 
-    _draftPaymentStatus ??= order.paymentStatus ?? PaymentStatus.unpaid;
-    _draftPaymentMethod ??= order.paymentMethod ?? PaymentMethod.cash;
-    _draftAmountPaid ??= order.amountPaid;
+    final serverStatus = order.paymentStatus ?? PaymentStatus.unpaid;
+    final serverMethod = order.paymentMethod ?? PaymentMethod.cash;
+    final serverAmount = order.amountPaid;
+    if (_draftPaymentStatus == null) {
+      _draftPaymentStatus = serverStatus;
+      _draftPaymentMethod = serverMethod;
+      _draftAmountPaid = serverAmount;
+      _lastServerPaymentStatus = serverStatus;
+      _lastServerPaymentMethod = serverMethod;
+      _lastServerAmountPaid = serverAmount;
+    } else if (serverStatus != _lastServerPaymentStatus ||
+        serverMethod != _lastServerPaymentMethod ||
+        serverAmount != _lastServerAmountPaid) {
+      _draftPaymentStatus = serverStatus;
+      _draftPaymentMethod = serverMethod;
+      _draftAmountPaid = serverAmount;
+      _lastServerPaymentStatus = serverStatus;
+      _lastServerPaymentMethod = serverMethod;
+      _lastServerAmountPaid = serverAmount;
+      _partialAmountController.text = serverStatus == PaymentStatus.partial &&
+              (serverAmount ?? 0) > 0
+          ? serverAmount!.toStringAsFixed(0)
+          : '';
+    }
     if ((_draftPaymentStatus ?? PaymentStatus.unpaid) ==
             PaymentStatus.partial &&
         _partialAmountController.text.trim().isEmpty) {
@@ -179,7 +206,7 @@ class _DriverOrderDetailsScreenState
                         const Divider(
                           height: 1,
                           thickness: 1,
-                          color: Colors.blue,
+                          color: AppColors.border,
                         ),
                     ],
                   ],

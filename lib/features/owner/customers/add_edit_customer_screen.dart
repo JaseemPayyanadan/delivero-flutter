@@ -35,6 +35,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   final Map<String, TextEditingController> _quantityControllers = {};
   final Map<String, TextEditingController> _priceControllers = {};
 
+  bool _isActive = true;
   bool _hydratedFromProvider = false;
   bool _hydratePostFrameScheduled = false;
   String? _savedFormSignature;
@@ -76,6 +77,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     _quantityControllers.clear();
     _priceControllers.clear();
 
+    _isActive = customer.isActive;
     _selectedProducts = List.from(customer.products ?? []);
     for (final p in _selectedProducts) {
       _quantityControllers[p.id] = TextEditingController(
@@ -106,6 +108,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       _discountController.text.trim(),
       _selectedRouteId ?? '',
       productSig,
+      _isActive.toString(),
     ].join('::');
   }
 
@@ -191,7 +194,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       phone: _phoneController.text.trim(),
       address: _addressController.text.trim(),
       area: selectedRoute?.area ?? 'Central',
-      isActive: existingCustomer?.isActive ?? true,
+      isActive: _isActive,
       discountPercentage: double.tryParse(_discountController.text.trim()),
       assignedRoute: assignedRouteId,
       products: products,
@@ -400,6 +403,60 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                     ),
                     const SizedBox(height: 16),
                     _buildProductList(foodItems),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader('Status'),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Active customer',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  _isActive
+                                      ? 'Daily orders will be recreated for this customer.'
+                                      : 'Inactive — daily orders will not be recreated.',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textSecondary,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Switch.adaptive(
+                            value: _isActive,
+                            onChanged: (v) => setState(() => _isActive = v),
+                            activeThumbColor: AppColors.primary,
+                            activeTrackColor: AppColors.primary.withValues(
+                              alpha: 0.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),

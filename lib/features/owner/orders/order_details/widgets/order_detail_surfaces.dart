@@ -39,18 +39,24 @@ class OrderDetailSectionHeader extends StatelessWidget {
   final String title;
   final String? trailing;
   final Widget? trailingWidget;
+  final IconData? icon;
 
   const OrderDetailSectionHeader({
     super.key,
     required this.title,
     this.trailing,
     this.trailingWidget,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
+        if (icon != null) ...[
+          Icon(icon, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 6),
+        ],
         Expanded(
           child: Text(
             title,

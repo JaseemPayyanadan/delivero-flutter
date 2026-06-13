@@ -53,6 +53,19 @@ class OrderDetailItemRow extends StatelessWidget {
                     letterSpacing: -0.2,
                   ),
                 ),
+                if ((item.packLabel ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    item.packLabel!.trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textLight,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 3),
                 Text(
                   '${money0.format(item.unitPrice)} × ${item.quantity}',

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,6 +36,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   OrderStatus? _selectedOrderStatus;
   DateTime? _productionDay;
   DateTime? _selectedDate;
+  Timer? _highlightClearTimer;
 
   String _formatBusinessDaySection(
     DateTime dayKey,
@@ -51,8 +54,16 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     return DateFormat('EEE, d MMM').format(normalizedDay);
   }
 
+  void _scheduleHighlightClear() {
+    _highlightClearTimer?.cancel();
+    _highlightClearTimer = Timer(const Duration(seconds: 9), () {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   void dispose() {
+    _highlightClearTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -85,43 +96,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     if (picked != null && mounted) {
       setState(() => _productionDay = _calendarDay(picked));
     }
-  }
-
-  Future<void> _pickOrderDay() async {
-    final initial = _selectedDate ?? _calendarDay(DateTime.now());
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime(2023),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: AppColors.primary,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && mounted) {
-      setState(() => _selectedDate = _calendarDay(picked));
-    }
-  }
-
-  String _dateChipLabel(DateTime date, int rolloverHour) {
-    final todayKey = currentBusinessDayKey(rolloverHour: rolloverHour);
-    final normalizedDate = DateTime(date.year, date.month, date.day);
-    final normalizedToday = DateTime(
-      todayKey.year,
-      todayKey.month,
-      todayKey.day,
-    );
-    if (normalizedDate == normalizedToday) return 'Today';
-    final yesterday = normalizedToday.subtract(const Duration(days: 1));
-    if (normalizedDate == yesterday) return 'Yesterday';
-    return DateFormat('d MMM').format(normalizedDate);
   }
 
   Future<void> _openProductionSummary({
@@ -158,6 +132,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(lastTouchedOrderProvider, (prev, next) {
+      if (next != null) _scheduleHighlightClear();
+    });
+
     final rolloverHour = ref.watch(orderRolloverHourProvider);
     final productionDay =
         _productionDay ?? currentBusinessDayKey(rolloverHour: rolloverHour);
@@ -284,7 +262,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 child: _buildFilters(
                   routes,
                   availableRouteIds,
-                  rolloverHour: rolloverHour,
                   routesLoaded: routesLoaded,
                 ),
               ),
@@ -354,28 +331,20 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   Widget _buildFilters(
     List<DeliveryRoute> routes,
     List<String> availableRouteIds, {
-    required int rolloverHour,
     required bool routesLoaded,
   }) {
     final hasRouteFilter = availableRouteIds.length > 1;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Date filter row
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                _buildDateChip(rolloverHour),
-              ],
-            ),
-          ),
-          if (hasRouteFilter) ...[
-            const SizedBox(height: 6),
-            SingleChildScrollView(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _WeekStrip(
+          selectedDate: _selectedDate,
+          onDayTap: (date) => setState(() => _selectedDate = date),
+        ),
+        if (hasRouteFilter) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               child: Row(
@@ -411,66 +380,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 ],
               ),
             ),
-          ],
+          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDateChip(int rolloverHour) {
-    final isActive = _selectedDate != null;
-    final label = isActive
-        ? _dateChipLabel(_selectedDate!, rolloverHour)
-        : 'All days';
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: InkWell(
-        onTap: _pickOrderDay,
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.primary : AppColors.backgroundSecondary,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.calendar_month_rounded,
-                size: 15,
-                color: isActive
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : AppColors.textSecondary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isActive
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : AppColors.textPrimary,
-                  fontSize: 13,
-                  fontWeight: isActive ? FontWeight.w900 : FontWeight.w800,
-                  letterSpacing: -0.1,
-                ),
-              ),
-              if (isActive) ...[
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: () => setState(() => _selectedDate = null),
-                  child: Icon(
-                    Icons.close_rounded,
-                    size: 14,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+      ],
     );
   }
 
@@ -1258,6 +1170,130 @@ class _OrdersSearchSheet extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _WeekStrip extends StatelessWidget {
+  final DateTime? selectedDate;
+  final void Function(DateTime?) onDayTap;
+
+  const _WeekStrip({required this.selectedDate, required this.onDayTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final todayKey = DateTime(now.year, now.month, now.day);
+    final daysFromSunday = now.weekday == 7 ? 0 : now.weekday;
+    final sunday = todayKey.subtract(Duration(days: daysFromSunday));
+    final days = List.generate(7, (i) => sunday.add(Duration(days: i)));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: days.map((day) {
+          final isToday = day == todayKey;
+          final isSelected = selectedDate == day;
+          final isPast = day.isBefore(todayKey);
+          return _DayCell(
+            day: day,
+            isToday: isToday,
+            isSelected: isSelected,
+            isPast: isPast,
+            onTap: () => onDayTap(isSelected ? null : day),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _DayCell extends StatelessWidget {
+  final DateTime day;
+  final bool isToday;
+  final bool isSelected;
+  final bool isPast;
+  final VoidCallback onTap;
+
+  const _DayCell({
+    required this.day,
+    required this.isToday,
+    required this.isSelected,
+    required this.isPast,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color nameColor;
+    final Color numColor;
+    if (isSelected) {
+      nameColor = AppColors.primary;
+      numColor = Colors.white;
+    } else if (isToday) {
+      nameColor = AppColors.primary;
+      numColor = AppColors.primary;
+    } else if (isPast) {
+      nameColor = AppColors.textLight;
+      numColor = AppColors.textLight;
+    } else {
+      nameColor = AppColors.textSecondary;
+      numColor = AppColors.textPrimary;
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            DateFormat('EEE').format(day),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: nameColor,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 7),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary
+                  : isToday
+                      ? AppColors.primaryLighter
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                day.day.toString().padLeft(2, '0'),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  color: numColor,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(
+              color: isToday ? AppColors.primary : Colors.transparent,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
       ),
     );
   }

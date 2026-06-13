@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 
@@ -124,21 +125,10 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
             tag: 'app_logo',
             child: Padding(
               padding: const EdgeInsets.all(6),
-              child: Image.asset(
-                'assets/images/logo.png',
+              child: SvgPicture.asset(
+                'assets/images/delivro-logo.svg',
                 height: 52,
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Text(
-                    'DELIVERO',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
-                    ),
-                  );
-                },
               ),
             ),
           ),
