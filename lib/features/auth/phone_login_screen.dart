@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:intl_phone_field/phone_number.dart';
@@ -80,21 +81,10 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
             tag: 'app_logo',
             child: Padding(
               padding: const EdgeInsets.all(6),
-              child: Image.asset(
-                'assets/images/logo.png',
+              child: SvgPicture.asset(
+                'assets/images/delivro-logo.svg',
                 height: 56,
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Text(
-                    'DELIVERO',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
-                    ),
-                  );
-                },
               ),
             ),
           ),

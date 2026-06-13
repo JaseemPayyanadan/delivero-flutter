@@ -156,7 +156,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'create',
-                builder: (context, state) => const CreateOrderScreen(),
+                builder: (context, state) => CreateOrderScreen(
+                  preselectedCustomerId: state.extra as String?,
+                ),
               ),
               GoRoute(
                 path: 'edit/:id',

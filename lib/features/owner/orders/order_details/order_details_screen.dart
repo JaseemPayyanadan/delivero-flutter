@@ -33,6 +33,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   PaymentStatus? _draftPaymentStatus;
   PaymentMethod? _draftPaymentMethod;
   double? _draftAmountPaid;
+  PaymentStatus? _lastServerPaymentStatus;
+  PaymentMethod? _lastServerPaymentMethod;
+  double? _lastServerAmountPaid;
   final TextEditingController _partialAmountController =
       TextEditingController();
 
@@ -40,6 +43,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     _draftPaymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     _draftPaymentMethod = order.paymentMethod ?? PaymentMethod.cash;
     _draftAmountPaid = order.amountPaid;
+    _lastServerPaymentStatus = _draftPaymentStatus;
+    _lastServerPaymentMethod = _draftPaymentMethod;
+    _lastServerAmountPaid = _draftAmountPaid;
 
     if (_draftPaymentStatus == PaymentStatus.partial) {
       final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
@@ -81,9 +87,30 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     final statusBg = orderDetailStatusBg(order.status);
     final statusFg = orderDetailStatusFg(order.status);
 
-    _draftPaymentStatus ??= order.paymentStatus ?? PaymentStatus.unpaid;
-    _draftPaymentMethod ??= order.paymentMethod ?? PaymentMethod.cash;
-    _draftAmountPaid ??= order.amountPaid;
+    final serverStatus = order.paymentStatus ?? PaymentStatus.unpaid;
+    final serverMethod = order.paymentMethod ?? PaymentMethod.cash;
+    final serverAmount = order.amountPaid;
+    if (_draftPaymentStatus == null) {
+      _draftPaymentStatus = serverStatus;
+      _draftPaymentMethod = serverMethod;
+      _draftAmountPaid = serverAmount;
+      _lastServerPaymentStatus = serverStatus;
+      _lastServerPaymentMethod = serverMethod;
+      _lastServerAmountPaid = serverAmount;
+    } else if (serverStatus != _lastServerPaymentStatus ||
+        serverMethod != _lastServerPaymentMethod ||
+        serverAmount != _lastServerAmountPaid) {
+      _draftPaymentStatus = serverStatus;
+      _draftPaymentMethod = serverMethod;
+      _draftAmountPaid = serverAmount;
+      _lastServerPaymentStatus = serverStatus;
+      _lastServerPaymentMethod = serverMethod;
+      _lastServerAmountPaid = serverAmount;
+      _partialAmountController.text = serverStatus == PaymentStatus.partial &&
+              (serverAmount ?? 0) > 0
+          ? serverAmount!.toStringAsFixed(0)
+          : '';
+    }
     if ((_draftPaymentStatus ?? PaymentStatus.unpaid) ==
             PaymentStatus.partial &&
         _partialAmountController.text.trim().isEmpty) {
@@ -95,7 +122,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: DeliveroAppBar(
-        title: 'Order Details',
+        title: orderDetailDisplayId(order.id),
         actions: [
           Center(
             child: Padding(
@@ -174,6 +201,10 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                         } catch (_) {}
                         _handleCallCustomer(context, order.customerPhone);
                       },
+                onViewCustomer: order.customerId.trim().isEmpty
+                    ? null
+                    : () => context.push(
+                        '/owner/customers/${order.customerId}'),
               ),
               const SizedBox(height: 24),
               OrderDetailSectionHeader(
@@ -190,7 +221,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                         const Divider(
                           height: 1,
                           thickness: 1,
-                          color: Colors.blue,
+                          color: AppColors.border,
                         ),
                     ],
                   ],
@@ -232,6 +263,26 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                 }),
                 ref: ref,
               ),
+              if ((order.notes ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 24),
+                const OrderDetailSectionHeader(
+                  title: 'Notes',
+                  icon: Icons.sticky_note_2_rounded,
+                ),
+                const SizedBox(height: 10),
+                OrderDetailCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    order.notes!.trim(),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               OrderDetailBottomActions(
                 isDelivered: order.status == OrderStatus.delivered,
@@ -244,7 +295,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                 onOpenMaps: order.customerAddress.trim().isEmpty
                     ? null
                     : () => _openMaps(context, order.customerAddress),
-                onCancelOrder: order.status == OrderStatus.cancelled
+                onCancelOrder: (order.status == OrderStatus.cancelled ||
+                        order.status == OrderStatus.delivered)
                     ? null
                     : () => _confirmCancelOrder(context, ref, order),
               ),
@@ -408,9 +460,10 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   }
 
   void _handleDelete(BuildContext context, WidgetRef ref, Order order) {
+    final screenContext = context;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text(
           'Delete this order?',
@@ -421,7 +474,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text(
               'Keep it',
               style: TextStyle(
@@ -431,10 +484,29 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
-              ref.read(ordersProvider.notifier).deleteOrder(order.id);
-              context.pop();
-              context.pop();
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                await ref.read(ordersProvider.notifier).deleteOrder(order.id);
+              } catch (_) {
+                if (screenContext.mounted) {
+                  ScaffoldMessenger.of(screenContext).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        'Failed to delete order. Check your connection.',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: AppColors.error,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                  return;
+                }
+              }
+              if (screenContext.mounted) screenContext.pop();
             },
             child: const Text(
               'Delete',

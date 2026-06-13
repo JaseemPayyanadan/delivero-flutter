@@ -499,6 +499,15 @@ class _GroupHeader extends StatelessWidget {
   }
 }
 
+String _customerInitials(String name) {
+  final words = name.trim().split(RegExp(r'\s+'));
+  if (words.length >= 2) {
+    return '${words[0][0]}${words[1][0]}'.toUpperCase();
+  }
+  final w = words[0];
+  return (w.length >= 2 ? w.substring(0, 2) : w).toUpperCase();
+}
+
 class _CustomerListCard extends StatelessWidget {
   final Customer customer;
   final String phone;
@@ -538,13 +547,19 @@ class _CustomerListCard extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
+                  color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.storefront_rounded,
-                  color: AppColors.primary,
-                  size: 18,
+                child: Center(
+                  child: Text(
+                    _customerInitials(customer.name),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),

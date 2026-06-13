@@ -107,7 +107,7 @@ class PushNotificationService {
       body ??= _bodyForDataPayload(message.data);
     }
 
-    title ??= 'Delivero';
+    title ??= 'Delivro';
     body ??= '';
 
     final messenger = _messengerKey?.currentState;
@@ -136,7 +136,7 @@ class PushNotificationService {
       case 'payment_pending':
         return 'Payment pending';
       default:
-        return 'Delivero';
+        return 'Delivro';
     }
   }
 

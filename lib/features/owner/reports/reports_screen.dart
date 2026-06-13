@@ -143,7 +143,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             mimeType: 'text/csv',
           ),
         ],
-        subject: 'Delivero insights export',
+        subject: 'Delivro insights export',
       );
     } catch (e) {
       if (mounted) _toast('Could not export CSV. Try again.');

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/app_colors.dart';
@@ -26,6 +27,7 @@ class OrderDetailSummaryCard extends StatelessWidget {
   final String statusLabel;
   final double balanceDue;
   final VoidCallback? onPhoneTap;
+  final VoidCallback? onViewCustomer;
 
   const OrderDetailSummaryCard({
     super.key,
@@ -40,6 +42,7 @@ class OrderDetailSummaryCard extends StatelessWidget {
     required this.statusLabel,
     required this.balanceDue,
     this.onPhoneTap,
+    this.onViewCustomer,
   });
 
   @override
@@ -47,6 +50,7 @@ class OrderDetailSummaryCard extends StatelessWidget {
     final name = order.customerName.trim();
     final route = routeLabel.trim();
     final phone = order.customerPhone.trim();
+    final address = order.customerAddress.trim();
     final dateLine = DateFormat('EEEE, d MMM yyyy').format(order.orderDate);
     final orderTypeLabel = switch (order.orderType) {
       OrderType.daily => 'Daily',
@@ -60,31 +64,60 @@ class OrderDetailSummaryCard extends StatelessWidget {
       color: AppColors.textSecondary,
       fontWeight: FontWeight.w800,
     );
-    final showDue =
-        paymentStatus != PaymentStatus.paid && balanceDue > 0.004;
-    final hasCustomerInfo =
-        name.isNotEmpty || route.isNotEmpty || phone.isNotEmpty;
+    final showDue = paymentStatus != PaymentStatus.paid && balanceDue > 0.004;
+    final hasCustomerInfo = name.isNotEmpty ||
+        route.isNotEmpty ||
+        phone.isNotEmpty ||
+        address.isNotEmpty;
+    final isDelivered = order.status == OrderStatus.delivered;
 
     return OrderDetailCard(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          OrderDetailStatusPill(
-            label: statusLabel,
-            bg: statusBg,
-            fg: statusFg,
-          ),
+          OrderDetailStatusPill(label: statusLabel, bg: statusBg, fg: statusFg),
           const SizedBox(height: 18),
-          Text(
-            orderIdDisplay,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textPrimary,
-              letterSpacing: -1.0,
-              height: 1.05,
-            ),
+          // Order ID + copy button
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  orderIdDisplay,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -1.0,
+                    height: 1.05,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: orderIdDisplay));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('$orderIdDisplay copied'),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                },
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.copy_rounded,
+                    size: 16,
+                    color: AppColors.textLight,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
@@ -97,10 +130,7 @@ class OrderDetailSummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
-          Text(
-            'Order total',
-            style: captionMuted.copyWith(letterSpacing: 0.35),
-          ),
+          Text('Order total', style: captionMuted.copyWith(letterSpacing: 0.35)),
           const SizedBox(height: 6),
           Text(
             money0.format(order.totalAmount),
@@ -130,10 +160,7 @@ class OrderDetailSummaryCard extends StatelessWidget {
             const SizedBox(height: 20),
             const Divider(height: 1, color: AppColors.divider),
             const SizedBox(height: 16),
-            Text(
-              'Customer',
-              style: captionMuted.copyWith(letterSpacing: 0.4),
-            ),
+            Text('Customer', style: captionMuted.copyWith(letterSpacing: 0.4)),
             const SizedBox(height: 10),
             if (name.isNotEmpty)
               Text(
@@ -142,19 +169,118 @@ class OrderDetailSummaryCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: _primaryDetailStyle,
               ),
+            // Route — distinct style from name
             if (route.isNotEmpty) ...[
-              if (name.isNotEmpty) const SizedBox(height: 8),
-              Text(
-                route,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: _primaryDetailStyle,
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.alt_route_rounded,
+                    size: 14,
+                    color: AppColors.textLight,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      route,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
             if (phone.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _SummaryPhoneRow(phone: phone, onTap: onPhoneTap),
             ],
+            // Delivery address
+            if (address.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 1),
+                    child: Icon(
+                      Icons.location_on_rounded,
+                      size: 15,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      address,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            // View customer link
+            if (onViewCustomer != null) ...[
+              const SizedBox(height: 14),
+              GestureDetector(
+                onTap: onViewCustomer,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'View customer',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+          // Delivered timestamp
+          if (isDelivered && order.deliveryTime != null) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppColors.divider),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  size: 15,
+                  color: AppColors.success,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Delivered · ${DateFormat('d MMM yyyy · HH:mm').format(order.deliveryTime!)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.success,
+                  ),
+                ),
+              ],
+            ),
           ],
         ],
       ),

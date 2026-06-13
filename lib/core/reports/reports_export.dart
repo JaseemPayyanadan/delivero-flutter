@@ -20,7 +20,7 @@ String buildReportsCsv({
     buffer.writeln(cells.map(_csvEscape).join(','));
   }
 
-  row(['Delivero insights export']);
+  row(['Delivro insights export']);
   row([
     'Period start',
     df.format(dateRange.start),

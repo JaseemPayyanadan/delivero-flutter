@@ -26,84 +26,58 @@ class OrderDetailBottomActions extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 16),
-            if (onCancelOrder != null)
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: onCancelOrder,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: const BorderSide(color: AppColors.error),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        textStyle: const TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                      icon: const Icon(Icons.close_rounded, size: 18),
-                      label: const Text('Cancel'),
-                    ),
+            // Primary action — Deliver (always full width)
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: isDelivered ? null : onMarkDelivered,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  disabledBackgroundColor: AppColors.successLighter,
+                  disabledForegroundColor: AppColors.success,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: isDelivered ? null : onMarkDelivered,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        disabledBackgroundColor: AppColors.border,
-                        disabledForegroundColor: AppColors.textLight,
-                      ),
-                      icon: Icon(
-                        isDelivered
-                            ? Icons.check_circle_rounded
-                            : Icons.check_circle_outline_rounded,
-                        size: 18,
-                      ),
-                      label: Text(
-                        isDelivered ? 'Delivered' : 'Deliver',
-                        style: const TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            else
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: isDelivered ? null : onMarkDelivered,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    disabledBackgroundColor: AppColors.border,
-                    disabledForegroundColor: AppColors.textLight,
-                  ),
-                  icon: Icon(
-                    isDelivered
-                        ? Icons.check_circle_rounded
-                        : Icons.check_circle_outline_rounded,
-                    size: 18,
-                  ),
-                  label: Text(
-                    isDelivered ? 'Delivered' : 'Deliver',
-                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
                   ),
                 ),
+                icon: Icon(
+                  isDelivered
+                      ? Icons.check_circle_rounded
+                      : Icons.check_circle_outline_rounded,
+                  size: 20,
+                ),
+                label: Text(isDelivered ? 'Delivered' : 'Mark as delivered'),
               ),
+            ),
+            // Secondary action — Cancel (compact text button)
+            if (onCancelOrder != null) ...[
+              const SizedBox(height: 4),
+              TextButton.icon(
+                onPressed: onCancelOrder,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                icon: const Icon(Icons.close_rounded, size: 15),
+                label: const Text('Cancel order'),
+              ),
+            ],
+            // Navigate — full width, secondary
             if (onOpenMaps != null) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -112,16 +86,17 @@ class OrderDetailBottomActions extends StatelessWidget {
                     backgroundColor: AppColors.primaryLighter,
                     foregroundColor: AppColors.primary,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
                     ),
                   ),
                   icon: const Icon(Icons.navigation_rounded, size: 18),
-                  label: const Text(
-                    'Navigate',
-                    style: TextStyle(fontWeight: FontWeight.w900),
-                  ),
+                  label: const Text('Navigate'),
                 ),
               ),
             ],

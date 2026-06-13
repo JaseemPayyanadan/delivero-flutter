@@ -174,6 +174,31 @@ class OrderDetailPaymentSection extends StatelessWidget {
           child: Column(
             children: [
               OrderDetailSummaryRow(label: 'Subtotal', value: order.subtotal),
+              if (order.discountAmount > 0.004) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Discount',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '−${money0.format(order.discountAmount)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                        color: AppColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 10),
               OrderDetailSummaryRow(label: 'Delivery Fee', value: deliveryFee),
               if (paymentStatus == PaymentStatus.partial) ...[
@@ -188,6 +213,70 @@ class OrderDetailPaymentSection extends StatelessWidget {
                   value: balanceDue,
                 ),
               ],
+              if (order.paymentTime != null &&
+                  order.paymentStatus != PaymentStatus.unpaid) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Collected at',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      DateFormat('d MMM yyyy · HH:mm').format(
+                        order.paymentTime!,
+                      ),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Payment via',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _methodIcon(order.paymentMethod),
+                        size: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        orderDetailHumanize(
+                          (order.paymentMethod ?? PaymentMethod.cash).name,
+                        ),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
               const SizedBox(height: 14),
               const Divider(height: 1, color: AppColors.divider),
               const SizedBox(height: 14),
@@ -359,3 +448,11 @@ class OrderDetailPaymentSection extends StatelessWidget {
     );
   }
 }
+
+IconData _methodIcon(PaymentMethod? method) => switch (method) {
+      PaymentMethod.cash => Icons.payments_rounded,
+      PaymentMethod.upi => Icons.qr_code_rounded,
+      PaymentMethod.card => Icons.credit_card_rounded,
+      PaymentMethod.online => Icons.language_rounded,
+      null => Icons.payments_rounded,
+    };
