@@ -62,7 +62,7 @@ final factoryIdProvider = FutureProvider<String?>((ref) async {
     );
   } catch (e) {
     debugPrint('[FactoryIdProvider] Error: $e');
-    return authState.user?.factoryId ?? 'FAC_00001'; // Fallback
+    return authState.user?.factoryId;
   }
 });
 
@@ -181,7 +181,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
   /// notifications for these so users don't get pinged for their own taps.
   /// Each entry expires after [_selfMutationTtl].
   final Map<String, DateTime> _selfMutationsAt = {};
-  static const Duration _selfMutationTtl = Duration(seconds: 4);
+  static const Duration _selfMutationTtl = Duration(seconds: 12);
 
   bool _recreationCatchUpScheduled = false;
   bool _recreationCatchUpRunning = false;
@@ -249,7 +249,10 @@ class OrdersNotifier extends Notifier<List<Order>> {
     });
 
     try {
-      _subscription = _mapCollection('orders').snapshots().listen(
+      _subscription = _mapCollection('orders')
+          .where('factoryId', isEqualTo: factoryId)
+          .snapshots()
+          .listen(
         (snapshot) {
           final customers = ref.read(customersProvider);
           final routes = ref.read(routesProvider);
@@ -300,37 +303,41 @@ class OrdersNotifier extends Notifier<List<Order>> {
             return d;
           }
 
-          final nextOrders = snapshot.docs
-              .where((doc) {
-                final data = doc.data();
-                final fid = (data['factoryId'] ?? data['factory_id'])
-                    ?.toString();
-                return fid == factoryId;
-              })
-              .map((doc) {
-                final o = Order.fromJson({...doc.data(), 'id': doc.id});
-                final derivedKey = deriveRouteKey(o);
-                final normalizedId = normalizeRouteId(derivedKey);
-                final normalizedDriver = normalizeDriverId(normalizedId);
+          final nextOrders = <Order>[];
+          for (final doc in snapshot.docs) {
+            try {
+              final data = doc.data();
+              final fid =
+                  (data['factoryId'] ?? data['factory_id'])?.toString();
+              if (fid != factoryId) continue;
+              final o = Order.fromJson({...data, 'id': doc.id});
+              final derivedKey = deriveRouteKey(o);
+              final normalizedId = normalizeRouteId(derivedKey);
+              final normalizedDriver = normalizeDriverId(normalizedId);
 
-                final routeSame =
-                    (o.assignedRoute?.trim().isNotEmpty == true
-                        ? o.assignedRoute!.trim()
-                        : null) ==
-                    normalizedId;
-                final driverSame =
-                    (o.assignedDriver?.trim().isNotEmpty == true
-                        ? o.assignedDriver!.trim()
-                        : null) ==
-                    normalizedDriver;
+              final routeSame =
+                  (o.assignedRoute?.trim().isNotEmpty == true
+                      ? o.assignedRoute!.trim()
+                      : null) ==
+                  normalizedId;
+              final driverSame =
+                  (o.assignedDriver?.trim().isNotEmpty == true
+                      ? o.assignedDriver!.trim()
+                      : null) ==
+                  normalizedDriver;
 
-                if (routeSame && driverSame) return o;
-                return o.copyWith(
-                  assignedRoute: normalizedId,
-                  assignedDriver: normalizedDriver,
-                );
-              })
-              .toList();
+              nextOrders.add(
+                routeSame && driverSame
+                    ? o
+                    : o.copyWith(
+                        assignedRoute: normalizedId,
+                        assignedDriver: normalizedDriver,
+                      ),
+              );
+            } catch (e) {
+              debugPrint('[Firestore] Skipping bad order doc ${doc.id}: $e');
+            }
+          }
 
           _emitOrderNotifications(nextOrders);
 
@@ -356,24 +363,34 @@ class OrdersNotifier extends Notifier<List<Order>> {
     }
   }
 
-  void addOrder(Order order) {
+  Future<void> addOrder(Order order) async {
     final toSave = order.recreatedFromOrderId != null
         ? ensureRecreatedOrderIsPending(order)
         : order;
     _markSelfMutation(toSave.id);
-    FirebaseService.firestore
-        .collection('orders')
-        .doc(toSave.id)
-        .set(toSave.toJson());
+    try {
+      await FirebaseService.firestore
+          .collection('orders')
+          .doc(toSave.id)
+          .set(toSave.toJson());
+    } catch (e, st) {
+      debugPrint('[Firestore] addOrder error: $e\n$st');
+      rethrow;
+    }
   }
 
-  void updateOrder(Order order) {
+  Future<void> updateOrder(Order order) async {
     final previous = state.firstWhereOrNull((o) => o.id == order.id);
     _markSelfMutation(order.id);
-    FirebaseService.firestore
-        .collection('orders')
-        .doc(order.id)
-        .set(order.toJson());
+    try {
+      await FirebaseService.firestore
+          .collection('orders')
+          .doc(order.id)
+          .set(order.toJson());
+    } catch (e, st) {
+      debugPrint('[Firestore] updateOrder error: $e\n$st');
+      rethrow;
+    }
     _handleDailyRecreationAfterUpdate(previous, order);
   }
 
@@ -404,13 +421,17 @@ class OrdersNotifier extends Notifier<List<Order>> {
         orders: orders,
         customers: customers,
         rolloverHour: rolloverHour,
-        updateOrder: (synced) {
+        updateOrder: (synced) async {
           syncedTarget = synced;
           _markSelfMutation(synced.id);
-          FirebaseService.firestore
-              .collection('orders')
-              .doc(synced.id)
-              .set(synced.toJson());
+          try {
+            await FirebaseService.firestore
+                .collection('orders')
+                .doc(synced.id)
+                .set(synced.toJson());
+          } catch (e, st) {
+            debugPrint('[Firestore] sync next-day order error: $e\n$st');
+          }
         },
       );
 
@@ -449,6 +470,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
         factoryId,
       );
       if (!enabled) return const DailyOrderRecreationResult();
+      if (!ref.read(customersLoadedProvider)) return const DailyOrderRecreationResult();
 
       final rolloverHour = await _readRolloverHour(factoryId);
       final customers = ref.read(customersProvider);
@@ -510,9 +532,14 @@ class OrdersNotifier extends Notifier<List<Order>> {
     return result;
   }
 
-  void deleteOrder(String id) {
+  Future<void> deleteOrder(String id) async {
     _markSelfMutation(id);
-    FirebaseService.firestore.collection('orders').doc(id).delete();
+    try {
+      await FirebaseService.firestore.collection('orders').doc(id).delete();
+    } catch (e, st) {
+      debugPrint('[Firestore] deleteOrder error: $e\n$st');
+      rethrow;
+    }
   }
 
   void _emitOrderNotifications(List<Order> nextOrders) {
@@ -616,11 +643,19 @@ class CustomersNotifier extends Notifier<List<Customer>> {
           .snapshots()
           .listen(
             (snapshot) {
-              state = snapshot.docs
-                  .map(
-                    (doc) => Customer.fromJson({...doc.data(), 'id': doc.id}),
-                  )
-                  .toList();
+              final parsed = <Customer>[];
+              for (final doc in snapshot.docs) {
+                try {
+                  parsed.add(
+                    Customer.fromJson({...doc.data(), 'id': doc.id}),
+                  );
+                } catch (e) {
+                  debugPrint(
+                    '[Firestore] Skipping bad customer doc ${doc.id}: $e',
+                  );
+                }
+              }
+              state = parsed;
               _scheduleRouteRefMigration(ref, factoryId);
               Future.microtask(() {
                 ref.read(customersLoadedProvider.notifier).state = true;
@@ -641,16 +676,38 @@ class CustomersNotifier extends Notifier<List<Customer>> {
     }
   }
 
-  void addCustomer(Customer customer) => FirebaseService.firestore
-      .collection('customers')
-      .doc(customer.id)
-      .set(customer.toJson());
-  void updateCustomer(Customer customer) => FirebaseService.firestore
-      .collection('customers')
-      .doc(customer.id)
-      .set(customer.toJson());
-  Future<void> deleteCustomer(String id) =>
-      FirebaseService.firestore.collection('customers').doc(id).delete();
+  Future<void> addCustomer(Customer customer) async {
+    try {
+      await FirebaseService.firestore
+          .collection('customers')
+          .doc(customer.id)
+          .set(customer.toJson());
+    } catch (e, st) {
+      debugPrint('[Firestore] addCustomer error: $e\n$st');
+      rethrow;
+    }
+  }
+
+  Future<void> updateCustomer(Customer customer) async {
+    try {
+      await FirebaseService.firestore
+          .collection('customers')
+          .doc(customer.id)
+          .set(customer.toJson());
+    } catch (e, st) {
+      debugPrint('[Firestore] updateCustomer error: $e\n$st');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteCustomer(String id) async {
+    try {
+      await FirebaseService.firestore.collection('customers').doc(id).delete();
+    } catch (e, st) {
+      debugPrint('[Firestore] deleteCustomer error: $e\n$st');
+      rethrow;
+    }
+  }
 
   Future<void> refresh() async {
     final id = _activeFactoryId;
@@ -714,11 +771,19 @@ class FoodItemsNotifier extends Notifier<List<FoodItem>> {
           .snapshots()
           .listen(
             (snapshot) {
-              state = snapshot.docs
-                  .map(
-                    (doc) => FoodItem.fromJson({...doc.data(), 'id': doc.id}),
-                  )
-                  .toList();
+              final parsed = <FoodItem>[];
+              for (final doc in snapshot.docs) {
+                try {
+                  parsed.add(
+                    FoodItem.fromJson({...doc.data(), 'id': doc.id}),
+                  );
+                } catch (e) {
+                  debugPrint(
+                    '[Firestore] Skipping bad foodItem doc ${doc.id}: $e',
+                  );
+                }
+              }
+              state = parsed;
               Future.microtask(() {
                 ref.read(foodItemsLoadedProvider.notifier).state = true;
               });
@@ -738,16 +803,38 @@ class FoodItemsNotifier extends Notifier<List<FoodItem>> {
     }
   }
 
-  void addFoodItem(FoodItem item) => FirebaseService.firestore
-      .collection('foodItems')
-      .doc(item.id)
-      .set(item.toJson());
-  void updateFoodItem(FoodItem item) => FirebaseService.firestore
-      .collection('foodItems')
-      .doc(item.id)
-      .set(item.toJson());
-  void deleteFoodItem(String id) =>
-      FirebaseService.firestore.collection('foodItems').doc(id).delete();
+  Future<void> addFoodItem(FoodItem item) async {
+    try {
+      await FirebaseService.firestore
+          .collection('foodItems')
+          .doc(item.id)
+          .set(item.toJson());
+    } catch (e, st) {
+      debugPrint('[Firestore] addFoodItem error: $e\n$st');
+      rethrow;
+    }
+  }
+
+  Future<void> updateFoodItem(FoodItem item) async {
+    try {
+      await FirebaseService.firestore
+          .collection('foodItems')
+          .doc(item.id)
+          .set(item.toJson());
+    } catch (e, st) {
+      debugPrint('[Firestore] updateFoodItem error: $e\n$st');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteFoodItem(String id) async {
+    try {
+      await FirebaseService.firestore.collection('foodItems').doc(id).delete();
+    } catch (e, st) {
+      debugPrint('[Firestore] deleteFoodItem error: $e\n$st');
+      rethrow;
+    }
+  }
 
   Future<void> refresh() async {
     final id = _activeFactoryId;
@@ -811,12 +898,19 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
           .snapshots()
           .listen(
             (snapshot) {
-              state = snapshot.docs
-                  .map(
-                    (doc) =>
-                        DeliveryRoute.fromJson({...doc.data(), 'id': doc.id}),
-                  )
-                  .toList();
+              final parsed = <DeliveryRoute>[];
+              for (final doc in snapshot.docs) {
+                try {
+                  parsed.add(
+                    DeliveryRoute.fromJson({...doc.data(), 'id': doc.id}),
+                  );
+                } catch (e) {
+                  debugPrint(
+                    '[Firestore] Skipping bad route doc ${doc.id}: $e',
+                  );
+                }
+              }
+              state = parsed;
               _scheduleRouteRefMigration(ref, factoryId);
               Future.microtask(() {
                 ref.read(routesLoadedProvider.notifier).state = true;
@@ -837,18 +931,38 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
     }
   }
 
-  Future<void> addRoute(DeliveryRoute route) => FirebaseService.firestore
-      .collection('routes')
-      .doc(route.id)
-      .set(route.toJson());
+  Future<void> addRoute(DeliveryRoute route) async {
+    try {
+      await FirebaseService.firestore
+          .collection('routes')
+          .doc(route.id)
+          .set(route.toJson());
+    } catch (e, st) {
+      debugPrint('[Firestore] addRoute error: $e\n$st');
+      rethrow;
+    }
+  }
 
-  Future<void> updateRoute(DeliveryRoute route) => FirebaseService.firestore
-      .collection('routes')
-      .doc(route.id)
-      .set(route.toJson());
+  Future<void> updateRoute(DeliveryRoute route) async {
+    try {
+      await FirebaseService.firestore
+          .collection('routes')
+          .doc(route.id)
+          .set(route.toJson());
+    } catch (e, st) {
+      debugPrint('[Firestore] updateRoute error: $e\n$st');
+      rethrow;
+    }
+  }
 
-  void deleteRoute(String id) =>
-      FirebaseService.firestore.collection('routes').doc(id).delete();
+  Future<void> deleteRoute(String id) async {
+    try {
+      await FirebaseService.firestore.collection('routes').doc(id).delete();
+    } catch (e, st) {
+      debugPrint('[Firestore] deleteRoute error: $e\n$st');
+      rethrow;
+    }
+  }
 
   Future<void> refresh() async {
     final id = _activeFactoryId;
@@ -912,9 +1026,17 @@ class DriversNotifier extends Notifier<List<Driver>> {
           .snapshots()
           .listen(
             (snapshot) {
-              state = snapshot.docs
-                  .map((doc) => Driver.fromJson({...doc.data(), 'id': doc.id}))
-                  .toList();
+              final parsed = <Driver>[];
+              for (final doc in snapshot.docs) {
+                try {
+                  parsed.add(Driver.fromJson({...doc.data(), 'id': doc.id}));
+                } catch (e) {
+                  debugPrint(
+                    '[Firestore] Skipping bad driver doc ${doc.id}: $e',
+                  );
+                }
+              }
+              state = parsed;
               Future.microtask(() {
                 ref.read(driversLoadedProvider.notifier).state = true;
               });
@@ -934,16 +1056,38 @@ class DriversNotifier extends Notifier<List<Driver>> {
     }
   }
 
-  void addDriver(Driver driver) => FirebaseService.firestore
-      .collection('drivers')
-      .doc(driver.id)
-      .set(driver.toJson());
-  void updateDriver(Driver driver) => FirebaseService.firestore
-      .collection('drivers')
-      .doc(driver.id)
-      .set(driver.toJson());
-  void deleteDriver(String id) =>
-      FirebaseService.firestore.collection('drivers').doc(id).delete();
+  Future<void> addDriver(Driver driver) async {
+    try {
+      await FirebaseService.firestore
+          .collection('drivers')
+          .doc(driver.id)
+          .set(driver.toJson());
+    } catch (e, st) {
+      debugPrint('[Firestore] addDriver error: $e\n$st');
+      rethrow;
+    }
+  }
+
+  Future<void> updateDriver(Driver driver) async {
+    try {
+      await FirebaseService.firestore
+          .collection('drivers')
+          .doc(driver.id)
+          .set(driver.toJson());
+    } catch (e, st) {
+      debugPrint('[Firestore] updateDriver error: $e\n$st');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteDriver(String id) async {
+    try {
+      await FirebaseService.firestore.collection('drivers').doc(id).delete();
+    } catch (e, st) {
+      debugPrint('[Firestore] deleteDriver error: $e\n$st');
+      rethrow;
+    }
+  }
 
   Future<void> refresh() async {
     final id = _activeFactoryId;

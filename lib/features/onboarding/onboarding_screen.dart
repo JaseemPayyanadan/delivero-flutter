@@ -99,8 +99,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       HapticFeedback.mediumImpact();
     } catch (_) {}
 
-    final factoryId =
-        await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+    final factoryId = await ref.read(factoryIdProvider.future);
+    if (factoryId == null || factoryId.isEmpty) return false;
     final now = DateTime.now();
     final route = DeliveryRoute(
       id: const Uuid().v4(),
@@ -143,8 +143,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       HapticFeedback.mediumImpact();
     } catch (_) {}
 
-    final factoryId =
-        await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+    final factoryId = await ref.read(factoryIdProvider.future);
+    if (factoryId == null || factoryId.isEmpty) return false;
     final now = DateTime.now();
     final customer = Customer(
       id: const Uuid().v4(),
@@ -191,8 +191,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       HapticFeedback.mediumImpact();
     } catch (_) {}
 
-    final factoryId =
-        await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+    final factoryId = await ref.read(factoryIdProvider.future);
+    if (factoryId == null || factoryId.isEmpty) return false;
     final now = DateTime.now();
     final item = FoodItem(
       id: const Uuid().v4(),

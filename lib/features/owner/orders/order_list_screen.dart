@@ -7,8 +7,11 @@ import 'package:collection/collection.dart';
 import '../../../app/providers.dart';
 import '../../../app/order_settings_provider.dart';
 import '../../../core/orders/business_day.dart';
+import '../../../core/orders/order_line_key.dart';
 import '../../../core/orders/order_sort.dart';
+import '../../../core/orders/split_order_label.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency_format.dart';
 import '../../../core/utils/route_refs.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
@@ -30,6 +33,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   PaymentStatus? _selectedPaymentStatus;
   OrderStatus? _selectedOrderStatus;
   DateTime? _productionDay;
+  DateTime? _selectedDate;
 
   String _formatBusinessDaySection(
     DateTime dayKey,
@@ -45,15 +49,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final yesterday = normalizedToday.subtract(const Duration(days: 1));
     if (normalizedDay == yesterday) return 'Yesterday';
     return DateFormat('EEE, d MMM').format(normalizedDay);
-  }
-
-  String _formatRupee(double amount) {
-    final whole = amount == amount.roundToDouble();
-    return NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: whole ? 0 : 2,
-    ).format(amount);
   }
 
   @override
@@ -90,6 +85,43 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     if (picked != null && mounted) {
       setState(() => _productionDay = _calendarDay(picked));
     }
+  }
+
+  Future<void> _pickOrderDay() async {
+    final initial = _selectedDate ?? _calendarDay(DateTime.now());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = _calendarDay(picked));
+    }
+  }
+
+  String _dateChipLabel(DateTime date, int rolloverHour) {
+    final todayKey = currentBusinessDayKey(rolloverHour: rolloverHour);
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedToday = DateTime(
+      todayKey.year,
+      todayKey.month,
+      todayKey.day,
+    );
+    if (normalizedDate == normalizedToday) return 'Today';
+    final yesterday = normalizedToday.subtract(const Duration(days: 1));
+    if (normalizedDate == yesterday) return 'Yesterday';
+    return DateFormat('d MMM').format(normalizedDate);
   }
 
   Future<void> _openProductionSummary({
@@ -186,7 +218,16 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           ? true
           : order.status == _selectedOrderStatus;
 
-      return matchesSearch && matchesRoute && matchesPayment && matchesOrderStatus;
+      final matchesDay = _selectedDate == null
+          ? true
+          : businessDayKey(order.orderDate, rolloverHour: rolloverHour) ==
+              _selectedDate;
+
+      return matchesSearch &&
+          matchesRoute &&
+          matchesPayment &&
+          matchesOrderStatus &&
+          matchesDay;
     }).toList();
 
     sortOrdersByDate(filteredOrders);
@@ -238,11 +279,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             parent: BouncingScrollPhysics(),
           ),
           slivers: [
-            if (!noOrdersYet && availableRouteIds.length > 1)
+            if (!noOrdersYet)
               SliverToBoxAdapter(
                 child: _buildFilters(
                   routes,
                   availableRouteIds,
+                  rolloverHour: rolloverHour,
                   routesLoaded: routesLoaded,
                 ),
               ),
@@ -302,7 +344,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         ),
       );
       for (final o in orders) {
-        widgets.add(_buildOrderCard(o));
+        widgets.add(_buildOrderCard(o, siblingOrders: orders));
       }
       widgets.add(const SizedBox(height: 10));
     }
@@ -312,46 +354,122 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   Widget _buildFilters(
     List<DeliveryRoute> routes,
     List<String> availableRouteIds, {
+    required int rolloverHour,
     required bool routesLoaded,
   }) {
+    final hasRouteFilter = availableRouteIds.length > 1;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Date filter row
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             child: Row(
               children: [
-                _buildRouteChip(null, 'All Routes', routesLoaded: routesLoaded),
-                const SizedBox(width: 2),
-                if (!routesLoaded && routes.isEmpty)
-                  _buildRouteChip(
-                    'loading',
-                    'Loading…',
-                    routesLoaded: routesLoaded,
-                  ),
-                ...availableRouteIds
-                    .sortedBy(
-                      (id) =>
-                          routes.firstWhereOrNull((r) => r.id == id)?.name ??
-                          '',
-                    )
-                    .map((routeId) {
-                      final route = routes.firstWhereOrNull(
-                        (r) => r.id == routeId,
-                      );
-                      return _buildRouteChip(
-                        routeId,
-                        route?.name ?? routeId,
-                        routesLoaded: routesLoaded,
-                      );
-                    }),
+                _buildDateChip(rolloverHour),
               ],
             ),
           ),
+          if (hasRouteFilter) ...[
+            const SizedBox(height: 6),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: [
+                  _buildRouteChip(
+                    null,
+                    'All Routes',
+                    routesLoaded: routesLoaded,
+                  ),
+                  const SizedBox(width: 2),
+                  if (!routesLoaded && routes.isEmpty)
+                    _buildRouteChip(
+                      'loading',
+                      'Loading…',
+                      routesLoaded: routesLoaded,
+                    ),
+                  ...availableRouteIds
+                      .sortedBy(
+                        (id) =>
+                            routes.firstWhereOrNull((r) => r.id == id)?.name ??
+                            '',
+                      )
+                      .map((routeId) {
+                        final route = routes.firstWhereOrNull(
+                          (r) => r.id == routeId,
+                        );
+                        return _buildRouteChip(
+                          routeId,
+                          route?.name ?? routeId,
+                          routesLoaded: routesLoaded,
+                        );
+                      }),
+                ],
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildDateChip(int rolloverHour) {
+    final isActive = _selectedDate != null;
+    final label = isActive
+        ? _dateChipLabel(_selectedDate!, rolloverHour)
+        : 'All days';
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: _pickOrderDay,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary : AppColors.backgroundSecondary,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.calendar_month_rounded,
+                size: 15,
+                color: isActive
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isActive
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: isActive ? FontWeight.w900 : FontWeight.w800,
+                  letterSpacing: -0.1,
+                ),
+              ),
+              if (isActive) ...[
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: () => setState(() => _selectedDate = null),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -532,7 +650,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                               chip(
                                 value: s,
                                 selected: status,
-                                label: _humanStatus(s),
+                                label: s.label,
                                 onPick: (v) => status = v,
                               ),
                           ],
@@ -612,6 +730,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     setState(() {
       _selectedPaymentStatus = res.clearAll ? null : res.payment;
       _selectedOrderStatus = res.clearAll ? null : res.status;
+      if (res.clearAll) _selectedDate = null;
     });
   }
 
@@ -634,7 +753,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
   }
 
-  Widget _buildOrderCard(Order order) {
+  Widget _buildOrderCard(
+    Order order, {
+    List<Order> siblingOrders = const [],
+  }) {
     final lastTouched = ref.watch(lastTouchedOrderProvider);
     final shouldHighlight =
         lastTouched != null &&
@@ -647,7 +769,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final customerName = order.customerName.trim().isEmpty
         ? 'Unknown'
         : order.customerName.trim();
-    final statusText = _humanStatus(order.status);
+    final statusText = order.status.label;
 
     final displayId = _displayOrderId(order.id);
 
@@ -665,7 +787,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final statusChipFg = _chipTextColor(statusChipBg);
 
     final dateLabel = DateFormat('EEE, d MMM').format(order.orderDate);
-    final metaLine = '$displayId · $dateLabel';
+    final rolloverHour = ref.watch(orderRolloverHourProvider);
+    final boxLabel = splitBoxSubtitle(
+      order,
+      siblingOrders,
+      rolloverHour: rolloverHour,
+    );
+    final metaLine = boxLabel == null
+        ? '$displayId · $dateLabel'
+        : '$displayId · $dateLabel · $boxLabel';
 
     final payment = order.paymentStatus ?? PaymentStatus.unpaid;
     final paymentColor = _getPaymentColor(payment);
@@ -683,7 +813,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final lineItemParts = previewItems.isEmpty
         ? const <String>[]
         : [
-            ...previewItems.map((i) => '${i.foodItemName} x${i.quantity}'),
+            ...previewItems.map(
+              (i) =>
+                  '${displayNameWithPackLabel(i.foodItemName, i.packLabel)} x${i.quantity}',
+            ),
             if (moreLines > 0) '+$moreLines more',
           ];
 
@@ -888,7 +1021,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  _formatRupee(order.totalAmount),
+                                  formatRupee(order.totalAmount),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w900,
                                     fontSize: 16,
@@ -979,57 +1112,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     }
     final short = upper.length > 4 ? upper.substring(0, 4) : upper;
     return '#ORD-$short';
-  }
-
-  String _humanStatus(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return 'Pending';
-      case OrderStatus.confirmed:
-        return 'Out for delivery';
-      case OrderStatus.preparing:
-        return 'Preparing';
-      case OrderStatus.ready:
-        return 'Ready';
-      case OrderStatus.delivered:
-        return 'Delivered';
-      case OrderStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
-  Color _statusChipBg(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return AppColors.successLighter.withValues(alpha: 0.85);
-      case OrderStatus.confirmed:
-        return AppColors.infoLighter.withValues(alpha: 0.85);
-      case OrderStatus.preparing:
-        return AppColors.secondary.withValues(alpha: 0.14);
-      case OrderStatus.ready:
-        return AppColors.primaryLighter.withValues(alpha: 0.75);
-      case OrderStatus.delivered:
-        return AppColors.backgroundTertiary.withValues(alpha: 0.8);
-      case OrderStatus.cancelled:
-        return AppColors.error.withValues(alpha: 0.12);
-    }
-  }
-
-  Color _statusChipFg(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return AppColors.success;
-      case OrderStatus.confirmed:
-        return AppColors.info;
-      case OrderStatus.preparing:
-        return AppColors.secondary;
-      case OrderStatus.ready:
-        return AppColors.primary;
-      case OrderStatus.delivered:
-        return AppColors.textSecondary;
-      case OrderStatus.cancelled:
-        return AppColors.error;
-    }
   }
 
   Color _getPaymentColor(PaymentStatus status) {
@@ -1181,83 +1263,6 @@ class _OrdersSearchSheet extends StatelessWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  final String label;
-  final Color bg;
-  final Color fg;
-  const _Pill({required this.label, required this.bg, required this.fg});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fg,
-          fontWeight: FontWeight.w900,
-          fontSize: 10,
-          letterSpacing: 0.7,
-        ),
-      ),
-    );
-  }
-}
-
-class _InlineMeta extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _InlineMeta({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 16, color: AppColors.textSecondary),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.1,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MetaDivider extends StatelessWidget {
-  const _MetaDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 18,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      color: AppColors.border,
-    );
-  }
-}
-
 class _DateSectionHeader extends StatelessWidget {
   final String title;
   final int count;
@@ -1295,60 +1300,6 @@ class _DateSectionHeader extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _OrdersTopBar extends StatelessWidget {
-  const _OrdersTopBar();
-
-  @override
-  Widget build(BuildContext context) {
-    final top = MediaQuery.paddingOf(context).top;
-    return Container(
-      color: AppColors.backgroundPrimary,
-      padding: EdgeInsets.fromLTRB(20, top + 18, 20, 10),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'Orders',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.8,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          InkWell(
-            onTap: () {},
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(999),
-                boxShadow: const [
-                  BoxShadow(
-                    color: AppColors.shadow,
-                    blurRadius: 16,
-                    offset: Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.notifications_none_rounded,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

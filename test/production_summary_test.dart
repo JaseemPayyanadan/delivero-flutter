@@ -45,7 +45,7 @@ void main() {
       ];
       final filtered = filterOrdersForProduction(
         orders,
-        ProductionSummaryScope(day: scopeDay, routes: routes),
+        ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
       );
       expect(filtered.length, 1);
       expect(filtered.first.id, 'o1');
@@ -62,6 +62,7 @@ void main() {
           day: scopeDay,
           routeId: 'route-1',
           routes: routes,
+          rolloverHour: 7,
         ),
       );
       expect(filtered.length, 1);
@@ -111,18 +112,18 @@ void main() {
 
       final summary = buildProductionSummary(
         orders,
-        ProductionSummaryScope(day: scopeDay, routes: routes),
+        ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
       );
 
       expect(summary.activeOrders, 3);
       expect(summary.lines.length, 1);
       final japathi = summary.lines.first;
       expect(japathi.productName, 'Japathi');
-      expect(japathi.totalUnits, 50);
+      expect(japathi.totalUnits, 70);
       expect(japathi.orderLineCount, 4);
       expect(japathi.packBreakdown[20], 3);
       expect(japathi.packBreakdown[10], 1);
-      expect(summary.totalUnits, 50);
+      expect(summary.totalUnits, 70);
     });
 
     test('groups multiple products', () {
@@ -152,11 +153,90 @@ void main() {
 
       final summary = buildProductionSummary(
         orders,
-        ProductionSummaryScope(day: scopeDay, routes: routes),
+        ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
       );
 
       expect(summary.lines.length, 2);
       expect(summary.totalUnits, 50);
+    });
+
+    test('separates pack labels for the same product', () {
+      final orders = [
+        productionTestOrder(
+          id: 'o1',
+          items: [
+            OrderItem(
+              id: 'l1',
+              foodItemId: 'food-1',
+              foodItemName: 'Japathi',
+              quantity: 50,
+              unitPrice: 10,
+              totalPrice: 500,
+              packLabel: 'Box 1',
+            ),
+            OrderItem(
+              id: 'l2',
+              foodItemId: 'food-1',
+              foodItemName: 'Japathi',
+              quantity: 50,
+              unitPrice: 10,
+              totalPrice: 500,
+              packLabel: 'Box 2',
+            ),
+          ],
+        ),
+      ];
+
+      final summary = buildProductionSummary(
+        orders,
+        ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
+      );
+
+      expect(summary.lines.length, 2);
+      expect(summary.totalUnits, 100);
+      expect(
+        summary.lines.map((l) => l.productName).toSet(),
+        {'Japathi (Box 1)', 'Japathi (Box 2)'},
+      );
+    });
+
+    test('separates items with same name and different pack labels when foodItemId is empty', () {
+      final orders = [
+        productionTestOrder(
+          id: 'o1',
+          items: [
+            OrderItem(
+              id: 'l1',
+              foodItemId: '',
+              foodItemName: 'Milk',
+              quantity: 10,
+              unitPrice: 20,
+              totalPrice: 200,
+              packLabel: '500ml',
+            ),
+            OrderItem(
+              id: 'l2',
+              foodItemId: '',
+              foodItemName: 'Milk',
+              quantity: 5,
+              unitPrice: 40,
+              totalPrice: 200,
+              packLabel: '1L',
+            ),
+          ],
+        ),
+      ];
+
+      final summary = buildProductionSummary(
+        orders,
+        ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
+      );
+
+      expect(summary.lines.length, 2);
+      expect(
+        summary.lines.map((l) => l.productName).toSet(),
+        {'Milk (500ml)', 'Milk (1L)'},
+      );
     });
 
     test('counts orders by type', () {
@@ -166,7 +246,7 @@ void main() {
       ];
       final summary = buildProductionSummary(
         orders,
-        ProductionSummaryScope(day: scopeDay, routes: routes),
+        ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
       );
       expect(summary.ordersByType[OrderType.daily], 1);
       expect(summary.ordersByType[OrderType.oneTime], 1);
@@ -195,6 +275,7 @@ void main() {
         ProductionSummaryScope(
           day: scopeDay,
           routes: routes,
+          rolloverHour: 7,
           routeLabel: 'North Loop',
         ),
       );

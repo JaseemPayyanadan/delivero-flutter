@@ -140,7 +140,7 @@ class LocalNotificationsService {
         iOS: DarwinNotificationDetails(presentSound: true),
         macOS: DarwinNotificationDetails(presentSound: true),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
       payload: 'order_day_reset',
     );

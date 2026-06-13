@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../core/utils/date_utils.dart' as app_utils;
 
 enum OrderType { daily, oneTime, special }
@@ -20,6 +22,17 @@ enum PaymentMethod { cash, upi, card, online }
 
 enum OrderStatus { pending, confirmed, preparing, ready, delivered, cancelled }
 
+extension OrderStatusLabel on OrderStatus {
+  String get label => switch (this) {
+    OrderStatus.pending => 'Pending',
+    OrderStatus.confirmed => 'Confirmed',
+    OrderStatus.preparing => 'Preparing',
+    OrderStatus.ready => 'Ready',
+    OrderStatus.delivered => 'Delivered',
+    OrderStatus.cancelled => 'Cancelled',
+  };
+}
+
 class OrderItem {
   final String id;
   final String foodItemId;
@@ -27,6 +40,8 @@ class OrderItem {
   final int quantity;
   final double unitPrice;
   final double totalPrice;
+  /// Optional pack/box label when the same product appears on multiple lines.
+  final String? packLabel;
 
   const OrderItem({
     required this.id,
@@ -35,6 +50,7 @@ class OrderItem {
     required this.quantity,
     required this.unitPrice,
     required this.totalPrice,
+    this.packLabel,
   });
 
   Map<String, dynamic> toJson() {
@@ -45,6 +61,8 @@ class OrderItem {
       'quantity': quantity,
       'unitPrice': unitPrice,
       'totalPrice': totalPrice,
+      if (packLabel != null && packLabel!.trim().isNotEmpty)
+        'packLabel': packLabel!.trim(),
     };
   }
 
@@ -80,6 +98,11 @@ class OrderItem {
         ? unitPrice * quantity
         : readDouble(totalPriceRaw);
 
+    final packLabelRaw = json['packLabel'] ?? json['pack_label'] ?? json['boxLabel'];
+    final packLabel = packLabelRaw == null
+        ? null
+        : readString(packLabelRaw).trim();
+
     return OrderItem(
       id: readString(json['id'] ?? json['lineId'] ?? foodItemId),
       foodItemId: foodItemId,
@@ -87,6 +110,7 @@ class OrderItem {
       quantity: quantity,
       unitPrice: unitPrice,
       totalPrice: totalPrice,
+      packLabel: packLabel == null || packLabel.isEmpty ? null : packLabel,
     );
   }
 }
@@ -277,9 +301,16 @@ class Order {
           : readString(
               json['assignedDriver'] ?? json['driverId'] ?? json['driver_id'],
             ),
-      orderDate: app_utils.DateUtils.parse(
-        json['orderDate'] ?? json['order_date'] ?? json['createdAt'],
-      ),
+      orderDate: () {
+        final raw =
+            json['orderDate'] ?? json['order_date'];
+        if (raw == null) {
+          debugPrint(
+            '[Order] orderDate missing for id=${json['id']} — falling back to createdAt',
+          );
+        }
+        return app_utils.DateUtils.parse(raw ?? json['createdAt']);
+      }(),
       deliveryDate: json['deliveryDate'] != null
           ? app_utils.DateUtils.parse(json['deliveryDate'])
           : null,
@@ -305,7 +336,10 @@ class Order {
     if (stringValue == 'special') return OrderType.special;
     return OrderType.values.firstWhere(
       (v) => v.name.toLowerCase() == stringValue,
-      orElse: () => OrderType.daily,
+      orElse: () {
+        debugPrint('[Order] Unknown orderType "$value" — defaulting to daily');
+        return OrderType.daily;
+      },
     );
   }
 

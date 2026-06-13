@@ -64,6 +64,12 @@ class FirebaseService {
     if (kDebugMode) {
       print('[Firebase] Initialized successfully');
     }
+
+    // L7: enable offline persistence so the app works with intermittent connectivity
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
   }
 
   static FirebaseFirestore get firestore => FirebaseFirestore.instance;

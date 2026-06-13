@@ -1,6 +1,7 @@
 import '../../data/models/delivery_route.dart';
 import '../../data/models/order.dart';
 import '../orders/business_day.dart';
+import '../orders/order_line_key.dart';
 import '../utils/route_refs.dart';
 
 /// One aggregated product row for kitchen / packing.
@@ -83,6 +84,15 @@ List<Order> filterOrdersForProduction(
   }).toList();
 }
 
+String _productionLineKey(OrderItem item) {
+  final id = item.foodItemId.isNotEmpty
+      ? item.foodItemId
+      : item.foodItemName.trim().toLowerCase();
+  final label = item.packLabel?.trim();
+  if (label == null || label.isEmpty) return id;
+  return '$id|$label';
+}
+
 ProductionSummary buildProductionSummary(
   List<Order> orders,
   ProductionSummaryScope scope,
@@ -95,15 +105,14 @@ ProductionSummary buildProductionSummary(
     ordersByType[order.orderType] = (ordersByType[order.orderType] ?? 0) + 1;
     for (final item in order.items) {
       if (item.quantity <= 0) continue;
-      final key = item.foodItemId.isNotEmpty
-          ? item.foodItemId
-          : item.foodItemName.trim().toLowerCase();
+      final baseName = item.foodItemName.trim().isEmpty
+          ? 'Unknown item'
+          : item.foodItemName.trim();
+      final key = _productionLineKey(item);
       final acc = lineMap.putIfAbsent(
         key,
         () => _LineAccumulator(
-          productName: item.foodItemName.trim().isEmpty
-              ? 'Unknown item'
-              : item.foodItemName.trim(),
+          productName: displayNameWithPackLabel(baseName, item.packLabel),
           foodItemId: item.foodItemId.isNotEmpty ? item.foodItemId : null,
         ),
       );

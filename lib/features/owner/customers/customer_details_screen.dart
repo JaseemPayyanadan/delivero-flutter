@@ -392,6 +392,37 @@ class CustomerDetailsScreen extends ConsumerWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _ProfileCard(
+                icon: Icons.history_rounded,
+                iconBg: AppColors.infoLighter.withValues(alpha: 0.75),
+                title: 'Order history',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (customerOrders.length > 10)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => context.push('/owner/orders'),
+                            child: Text(
+                              'View all (${customerOrders.length})',
+                              style: const TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ),
+                      ),
+                    _RecentOrdersList(
+                      orders: customerOrders.take(10).toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

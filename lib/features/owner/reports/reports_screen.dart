@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
+import '../../../core/reports/reports_export.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/pdf_download.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_skeleton.dart';
 import '../../../data/models/order.dart';
@@ -38,11 +41,18 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   static const _kPresetLast7 = 'last7';
   static const _kPresetThisMonth = 'month';
   String _preset = _kPresetLast7;
+  bool _exporting = false;
 
   Future<void> _selectDateRange() async {
+    final allOrders = ref.read(ordersProvider);
+    final earliest = allOrders.isEmpty
+        ? DateTime(2020)
+        : allOrders
+              .map((o) => o.orderDate)
+              .reduce((a, b) => a.isBefore(b) ? a : b);
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
-      firstDate: DateTime(2023),
+      firstDate: DateTime(earliest.year, earliest.month, earliest.day),
       lastDate: DateTime.now(),
       initialDateRange: _selectedDateRange,
       builder: (context, child) {
@@ -116,117 +126,168 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  ReportsData _computeReports(List<Order> orders) {
-    if (orders.isEmpty) return ReportsData.empty();
-
-    double totalRevenue = 0;
-    double totalPendingRevenue = 0;
-    int completedOrders = 0;
-    int pendingOrders = 0;
-    int cancelledOrders = 0;
-    final Map<String, double> paymentMethodBreakdown = {};
-    final Map<String, int> orderStatusBreakdown = {};
-    final Map<DateTime, DailySalesData> dailyMap = {};
-    final Map<String, ProductSalesData> productSalesMap = {};
-    final Map<String, CustomerRevenueData> customerRevenueMap = {};
-
-    for (final order in orders) {
-      if (order.paymentStatus == PaymentStatus.paid) {
-        totalRevenue += order.totalAmount;
-      } else if (order.paymentStatus == PaymentStatus.partial) {
-        totalRevenue += (order.amountPaid ?? 0);
-        totalPendingRevenue += (order.totalAmount - (order.amountPaid ?? 0));
-      } else {
-        totalPendingRevenue += order.totalAmount;
-      }
-
-      if (order.status == OrderStatus.delivered) {
-        completedOrders++;
-      } else if (order.status == OrderStatus.pending) {
-        pendingOrders++;
-      } else if (order.status == OrderStatus.cancelled) {
-        cancelledOrders++;
-      }
-
-      final pm = order.paymentMethod?.name ?? 'unknown';
-      paymentMethodBreakdown[pm] =
-          (paymentMethodBreakdown[pm] ?? 0) + order.totalAmount;
-
-      final status = order.status.name;
-      orderStatusBreakdown[status] = (orderStatusBreakdown[status] ?? 0) + 1;
-
-      for (final item in order.items) {
-        final existing = productSalesMap[item.foodItemName];
-        if (existing != null) {
-          productSalesMap[item.foodItemName] = ProductSalesData(
-            name: item.foodItemName,
-            quantity: existing.quantity + item.quantity,
-            revenue: existing.revenue + item.totalPrice,
-          );
-        } else {
-          productSalesMap[item.foodItemName] = ProductSalesData(
-            name: item.foodItemName,
-            quantity: item.quantity,
-            revenue: item.totalPrice,
-          );
-        }
-      }
-
-      final custExisting = customerRevenueMap[order.customerName];
-      if (custExisting != null) {
-        customerRevenueMap[order.customerName] = CustomerRevenueData(
-          name: order.customerName,
-          revenue: custExisting.revenue + order.totalAmount,
-          orderCount: custExisting.orderCount + 1,
-        );
-      } else {
-        customerRevenueMap[order.customerName] = CustomerRevenueData(
-          name: order.customerName,
-          revenue: order.totalAmount,
-          orderCount: 1,
-        );
-      }
-
-      final date = DateTime(
-        order.orderDate.year,
-        order.orderDate.month,
-        order.orderDate.day,
+  Future<void> _exportCsv(ReportsData reports) async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      final csv = buildReportsCsv(
+        reports: reports,
+        dateRange: _selectedDateRange,
       );
-      if (dailyMap.containsKey(date)) {
-        final existing = dailyMap[date]!;
-        dailyMap[date] = DailySalesData(
-          date: date,
-          amount: existing.amount + order.totalAmount,
-          count: existing.count + 1,
-        );
-      } else {
-        dailyMap[date] = DailySalesData(
-          date: date,
-          amount: order.totalAmount,
-          count: 1,
-        );
-      }
+      final stamp = DateFormat('yyyyMMdd').format(DateTime.now());
+      await Share.shareXFiles(
+        [
+          XFile.fromData(
+            reportsCsvBytes(csv),
+            name: 'delivero-insights-$stamp.csv',
+            mimeType: 'text/csv',
+          ),
+        ],
+        subject: 'Delivero insights export',
+      );
+    } catch (e) {
+      if (mounted) _toast('Could not export CSV. Try again.');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
     }
+  }
 
-    final dailySales = dailyMap.values.toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
-    final avgOrderValue = totalRevenue / (orders.isEmpty ? 1 : orders.length);
+  Future<void> _exportPdf(ReportsData reports) async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      final stamp = DateFormat('yyyyMMdd').format(DateTime.now());
+      final bytes = await buildReportsPdfBytes(
+        reports: reports,
+        dateRange: _selectedDateRange,
+        generatedAt: DateTime.now(),
+      );
+      await downloadPdfFile(bytes, 'delivero-insights-$stamp.pdf');
+    } catch (e) {
+      if (mounted) _toast('Could not export PDF. Try again.');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
-    return ReportsData(
-      totalRevenue: totalRevenue,
-      totalPendingRevenue: totalPendingRevenue,
-      totalOrders: orders.length,
-      completedOrders: completedOrders,
-      pendingOrders: pendingOrders,
-      cancelledOrders: cancelledOrders,
-      paymentMethodBreakdown: paymentMethodBreakdown,
-      orderStatusBreakdown: orderStatusBreakdown,
-      dailySales: dailySales,
-      averageOrderValue: avgOrderValue,
-      productSales: productSalesMap,
-      customerRevenue: customerRevenueMap,
+  void _showProductDrilldown(ReportsData reports) {
+    final products = reports.productSales.values.toList()
+      ..sort((a, b) => b.revenue.compareTo(a.revenue));
+    _showDrilldownSheet(
+      title: 'Products in range',
+      emptyMessage: 'No product sales in this date range.',
+      rows: products
+          .map(
+            (p) => _DrilldownRow(
+              title: p.name,
+              subtitle: '${p.quantity} units sold',
+              value: _formatInsightRupee(p.revenue),
+            ),
+          )
+          .toList(),
     );
   }
+
+  void _showCustomerDrilldown(ReportsData reports) {
+    final customers = reports.customerRevenue.values.toList()
+      ..sort((a, b) => b.revenue.compareTo(a.revenue));
+    _showDrilldownSheet(
+      title: 'Customers in range',
+      emptyMessage: 'No customer revenue in this date range.',
+      rows: customers
+          .map(
+            (c) => _DrilldownRow(
+              title: c.name,
+              subtitle: '${c.orderCount} orders',
+              value: _formatInsightRupee(c.revenue),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  void _showDrilldownSheet({
+    required String title,
+    required String emptyMessage,
+    required List<_DrilldownRow> rows,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(title, style: context.appTextStyles.sectionHeader),
+                const SizedBox(height: 12),
+                if (rows.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      emptyMessage,
+                      style: context.appTextStyles.body.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: rows.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, color: AppColors.divider),
+                      itemBuilder: (context, index) {
+                        final row = rows[index];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            row.title,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          subtitle: Text(
+                            row.subtitle,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          trailing: Text(
+                            row.value,
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -255,7 +316,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         .toList();
     final reports = (isLoading || inRange.isEmpty)
         ? ReportsData.empty()
-        : _computeReports(inRange);
+        : computeReports(inRange);
     final df = DateFormat('MMM d');
     final rangeLabel =
         '${df.format(_selectedDateRange.start)} — ${df.format(_selectedDateRange.end)}';
@@ -394,19 +455,17 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                   _ExportChip(
                                     label: 'CSV',
                                     icon: Icons.table_chart_rounded,
-                                    onTap: () => _toast(
-                                      'CSV export coming soon',
-                                      color: AppColors.info,
-                                    ),
+                                    onTap: _exporting
+                                        ? () {}
+                                        : () => _exportCsv(reports),
                                   ),
                                   const SizedBox(width: 8),
                                   _ExportChip(
                                     label: 'PDF',
                                     icon: Icons.picture_as_pdf_rounded,
-                                    onTap: () => _toast(
-                                      'PDF export coming soon',
-                                      color: AppColors.info,
-                                    ),
+                                    onTap: _exporting
+                                        ? () {}
+                                        : () => _exportPdf(reports),
                                   ),
                                 ],
                               ),
@@ -557,9 +616,45 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    _ReportCard(
+                      title: 'Top products',
+                      trailing: TextButton(
+                        onPressed: () => _showProductDrilldown(reports),
+                        child: const Text(
+                          'View all',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      child: _TopProductsPreview(
+                        reports: reports,
+                        onOpen: () => _showProductDrilldown(reports),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _ReportCard(
+                      title: 'Top customers',
+                      trailing: TextButton(
+                        onPressed: () => _showCustomerDrilldown(reports),
+                        child: const Text(
+                          'View all',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      child: _TopCustomersPreview(
+                        reports: reports,
+                        onOpen: () => _showCustomerDrilldown(reports),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     _InsightsFooterTip(
                       onLearnMore: () => _toast(
-                        'Exports and scheduled reports are on the roadmap.',
+                        'Use CSV for spreadsheets or PDF for sharing with your team.',
                         color: AppColors.info,
                       ),
                     ),
@@ -769,7 +864,7 @@ class _InsightsFooterTip extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'CSV and PDF exports and deeper breakdowns will appear here as they ship.',
+                  'Export insights as CSV or PDF for the selected date range.',
                   style: context.appTextStyles.caption.copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
@@ -1250,6 +1345,118 @@ class _ReportCard extends StatelessWidget {
           child,
         ],
       ),
+    );
+  }
+}
+
+class _DrilldownRow {
+  final String title;
+  final String subtitle;
+  final String value;
+
+  const _DrilldownRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+  });
+}
+
+class _TopProductsPreview extends StatelessWidget {
+  final ReportsData reports;
+  final VoidCallback onOpen;
+
+  const _TopProductsPreview({required this.reports, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final products = reports.productSales.values.toList()
+      ..sort((a, b) => b.revenue.compareTo(a.revenue));
+    if (products.isEmpty) {
+      return Text(
+        'No product sales in this range.',
+        style: context.appTextStyles.body.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.textSecondary,
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final product in products.take(5)) ...[
+          ListTile(
+            onTap: onOpen,
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              product.name,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            subtitle: Text(
+              '${product.quantity} units',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            trailing: Text(
+              _formatInsightRupee(product.revenue),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+          if (product != products.take(5).last)
+            const Divider(height: 1, color: AppColors.divider),
+        ],
+      ],
+    );
+  }
+}
+
+class _TopCustomersPreview extends StatelessWidget {
+  final ReportsData reports;
+  final VoidCallback onOpen;
+
+  const _TopCustomersPreview({required this.reports, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final customers = reports.customerRevenue.values.toList()
+      ..sort((a, b) => b.revenue.compareTo(a.revenue));
+    if (customers.isEmpty) {
+      return Text(
+        'No customer revenue in this range.',
+        style: context.appTextStyles.body.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.textSecondary,
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final customer in customers.take(5)) ...[
+          ListTile(
+            onTap: onOpen,
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              customer.name,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            subtitle: Text(
+              '${customer.orderCount} orders',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            trailing: Text(
+              _formatInsightRupee(customer.revenue),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+          if (customer != customers.take(5).last)
+            const Divider(height: 1, color: AppColors.divider),
+        ],
+      ],
     );
   }
 }

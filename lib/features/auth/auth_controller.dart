@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/services/firebase_service.dart';
@@ -76,7 +76,10 @@ class AuthState {
 
 class AuthNotifier extends Notifier<AuthState> {
   static const _kUserKey = 'auth_user';
-  SharedPreferences? _prefs;
+  static const _kVerificationIdKey = 'auth_verification_id';
+  static const _kLastAuthAtKey = 'auth_last_authenticated_at';
+  static const _sessionMaxAge = Duration(days: 90);
+  static const _secureStorage = FlutterSecureStorage();
   final _uuid = const Uuid();
 
   /// Web-only handle to the active phone-auth confirmation flow. On mobile we
@@ -91,7 +94,6 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> init() async {
     debugPrint('[Auth] Initializing...');
-    _prefs ??= await SharedPreferences.getInstance();
 
     if (!FirebaseService.isInitialized) {
       debugPrint('[Auth] Firebase not initialised; skipping session restore.');
@@ -102,11 +104,18 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       final current = FirebaseService.auth.currentUser;
       if (current != null && current.phoneNumber != null) {
+        if (await _isSessionExpired()) {
+          debugPrint('[Auth] Session older than 90 days; requiring re-login.');
+          await _clearStoredSession(signOutFirebase: true);
+          state = state.copyWith(isInitialized: true);
+          return;
+        }
+
         final user = await _loadUserFromFirestore(uid: current.uid);
         if (user != null) {
           debugPrint('[Auth] Loaded Firebase user: ${user.phone}');
+          await _persistSession(user);
           state = state.copyWith(user: user, isInitialized: true);
-          await _prefs!.setString(_kUserKey, jsonEncode(user.toJson()));
           return;
         }
         // Verified phone but no profile doc → auto-create a minimal owner
@@ -121,15 +130,23 @@ class AuthNotifier extends Notifier<AuthState> {
       debugPrint('[Auth] Firebase session load skipped: $e');
     }
 
-    final userJson = _prefs!.getString(_kUserKey);
+    final userJson = await _secureStorage.read(key: _kUserKey);
     if (userJson != null) {
+      if (await _isSessionExpired()) {
+        debugPrint('[Auth] Cached session older than 90 days; requiring re-login.');
+        await _clearStoredSession(signOutFirebase: true);
+        state = state.copyWith(isInitialized: true);
+        return;
+      }
+
       try {
         final user = User.fromJson(jsonDecode(userJson));
         debugPrint('[Auth] Loaded cached user: ${user.phone}');
         state = state.copyWith(user: user, isInitialized: true);
       } catch (e) {
         debugPrint('[Auth] Error loading cached user: $e');
-        await _prefs!.remove(_kUserKey);
+        await _secureStorage.delete(key: _kUserKey);
+        await _secureStorage.delete(key: _kLastAuthAtKey);
       }
     }
     state = state.copyWith(isInitialized: true);
@@ -217,6 +234,7 @@ class AuthNotifier extends Notifier<AuthState> {
           if (!completer.isCompleted) completer.complete();
         },
         codeSent: (String verificationId, int? resendToken) {
+          _saveVerificationId(verificationId);
           state = state.copyWith(
             isLoading: false,
             verificationId: verificationId,
@@ -225,7 +243,7 @@ class AuthNotifier extends Notifier<AuthState> {
           if (!completer.isCompleted) completer.complete();
         },
         codeAutoRetrievalTimeout: (String verificationId) {
-          // Keep the verification id around for manual entry after auto-retrieval times out.
+          _saveVerificationId(verificationId);
           state = state.copyWith(verificationId: verificationId);
         },
       );
@@ -249,10 +267,15 @@ class AuthNotifier extends Notifier<AuthState> {
       return;
     }
     if (!kIsWeb && state.verificationId == null) {
-      state = state.copyWith(
-        error: 'OTP session expired. Please request a new code.',
-      );
-      return;
+      // C4: try to restore verificationId that survived an app kill
+      final stored = await _secureStorage.read(key: _kVerificationIdKey);
+      if (stored == null) {
+        state = state.copyWith(
+          error: 'OTP session expired. Please request a new code.',
+        );
+        return;
+      }
+      state = state.copyWith(verificationId: stored);
     }
     if (kIsWeb && _webConfirmation == null) {
       state = state.copyWith(
@@ -397,8 +420,8 @@ class AuthNotifier extends Notifier<AuthState> {
     required String phone,
   }) async {
     try {
-      final factoryId = 'FAC_${_uuid.v4().substring(0, 8).toUpperCase()}';
-      final ownerId = 'OWN_${_uuid.v4().substring(0, 8).toUpperCase()}';
+      final factoryId = 'FAC_${_uuid.v4().replaceAll('-', '').toUpperCase()}';
+      final ownerId = 'OWN_${_uuid.v4().replaceAll('-', '').toUpperCase()}';
 
       final batch = FirebaseService.firestore.batch();
       batch.set(
@@ -562,12 +585,24 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.remove(_kUserKey);
-    _webConfirmation = null;
-    try {
-      await FirebaseService.auth.signOut();
-    } catch (_) {}
+    // C5: delete FCM token so this device stops receiving notifications
+    final user = state.user;
+    if (user != null) {
+      final factoryId = user.factoryId;
+      if (factoryId != null && factoryId.isNotEmpty) {
+        try {
+          await FirebaseService.firestore
+              .collection('factories')
+              .doc(factoryId)
+              .collection('deliveroPushDevices')
+              .doc(user.id)
+              .delete();
+        } catch (e) {
+          debugPrint('[FCM] Failed to delete device token on logout: $e');
+        }
+      }
+    }
+    await _clearStoredSession(signOutFirebase: true);
     state = const AuthState(isInitialized: true);
   }
 
@@ -579,12 +614,26 @@ class AuthNotifier extends Notifier<AuthState> {
 
   void cancelPendingOtp() {
     _webConfirmation = null;
+    _clearVerificationId();
     state = state.copyWith(
       verificationId: null,
       pendingPhone: null,
       resendToken: null,
       error: null,
       isLoading: false,
+    );
+  }
+
+  void _saveVerificationId(String id) {
+    _secureStorage.write(key: _kVerificationIdKey, value: id).catchError(
+      (Object e) =>
+          debugPrint('[Auth] Failed to persist verificationId: $e'),
+    );
+  }
+
+  void _clearVerificationId() {
+    _secureStorage.delete(key: _kVerificationIdKey).catchError(
+      (Object e) => debugPrint('[Auth] Failed to clear verificationId: $e'),
     );
   }
 
@@ -607,8 +656,35 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> _persistSession(User user) async {
-    _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setString(_kUserKey, jsonEncode(user.toJson()));
+    await _secureStorage.write(
+      key: _kUserKey,
+      value: jsonEncode(user.toJson()),
+    );
+    await _secureStorage.write(
+      key: _kLastAuthAtKey,
+      value: DateTime.now().toUtc().toIso8601String(),
+    );
+    _clearVerificationId();
+  }
+
+  Future<bool> _isSessionExpired() async {
+    final raw = await _secureStorage.read(key: _kLastAuthAtKey);
+    if (raw == null || raw.trim().isEmpty) return false;
+    final lastAuth = DateTime.tryParse(raw);
+    if (lastAuth == null) return false;
+    return DateTime.now().toUtc().difference(lastAuth.toUtc()) > _sessionMaxAge;
+  }
+
+  Future<void> _clearStoredSession({required bool signOutFirebase}) async {
+    await _secureStorage.delete(key: _kUserKey);
+    await _secureStorage.delete(key: _kLastAuthAtKey);
+    _clearVerificationId();
+    _webConfirmation = null;
+    if (signOutFirebase) {
+      try {
+        await FirebaseService.auth.signOut();
+      } catch (_) {}
+    }
   }
 
   String _humanizePhoneError(fb.FirebaseAuthException e) {

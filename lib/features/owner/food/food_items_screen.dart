@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/unsaved_changes_guard.dart';
+import '../../../data/models/order.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/food_item.dart';
@@ -306,12 +308,48 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
               ),
               ListTile(
                 onTap: () async {
+                  final sm = ScaffoldMessenger.of(this.context);
                   Navigator.pop(context);
+                  // H2: block delete if active orders reference this item
+                  const activeStatuses = {
+                    OrderStatus.pending,
+                    OrderStatus.confirmed,
+                    OrderStatus.preparing,
+                    OrderStatus.ready,
+                  };
+                  final activeCount = ref
+                      .read(ordersProvider)
+                      .where(
+                        (o) =>
+                            activeStatuses.contains(o.status) &&
+                            o.items.any((i) => i.foodItemId == item.id),
+                      )
+                      .length;
+                  if (activeCount > 0) {
+                    sm.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '"${item.name}" is on $activeCount active order(s). Deliver or cancel them first.',
+                        ),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                    return;
+                  }
                   final confirmed = await _confirmDelete(this.context, item);
                   if (confirmed == true) {
-                    ref
-                        .read(foodItemsProvider.notifier)
-                        .deleteFoodItem(item.id);
+                    try {
+                      await ref
+                          .read(foodItemsProvider.notifier)
+                          .deleteFoodItem(item.id);
+                    } catch (e) {
+                      sm.showSnackBar(
+                        const SnackBar(
+                          content: Text('Failed to delete product. Try again.'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    }
                   }
                 },
                 leading: const Icon(
@@ -374,22 +412,165 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
     FoodItem? item,
   ]) {
     final isEdit = item != null;
-    final nameController = TextEditingController(text: item?.name);
-    final priceController = TextEditingController(text: item?.price.toString());
+    final initialName = item?.name ?? '';
+    final initialPrice = item?.price.toString() ?? '';
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) {
+        return _FoodItemEditorDialog(
+          isEdit: isEdit,
+          item: item,
+          initialName: initialName,
+          initialPrice: initialPrice,
+          onSave: (name, price) async {
+            final factoryId = await ref.read(factoryIdProvider.future);
+            if (factoryId == null || factoryId.isEmpty) return false;
+            if (isEdit) {
+              await ref.read(foodItemsProvider.notifier).updateFoodItem(
+                    FoodItem(
+                      id: item!.id,
+                      factoryId: item.factoryId,
+                      name: name,
+                      price: price,
+                      createdAt: item.createdAt,
+                      updatedAt: DateTime.now(),
+                    ),
+                  );
+            } else {
+              await ref.read(foodItemsProvider.notifier).addFoodItem(
+                    FoodItem(
+                      id: const Uuid().v4(),
+                      factoryId: factoryId,
+                      name: name,
+                      price: price,
+                      createdAt: DateTime.now(),
+                      updatedAt: DateTime.now(),
+                    ),
+                  );
+            }
+            return true;
+          },
+          onDelete: isEdit
+              ? () async {
+                  final sm = ScaffoldMessenger.of(this.context);
+                  const activeStatuses = {
+                    OrderStatus.pending,
+                    OrderStatus.confirmed,
+                    OrderStatus.preparing,
+                    OrderStatus.ready,
+                  };
+                  final activeCount = ref
+                      .read(ordersProvider)
+                      .where(
+                        (o) =>
+                            activeStatuses.contains(o.status) &&
+                            o.items.any((i) => i.foodItemId == item!.id),
+                      )
+                      .length;
+                  if (activeCount > 0) {
+                    sm.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '"${item!.name}" is on $activeCount active order(s). Deliver or cancel them first.',
+                        ),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                    return;
+                  }
+                  final confirmed = await _confirmDelete(this.context, item!);
+                  if (confirmed == true) {
+                    try {
+                      await ref
+                          .read(foodItemsProvider.notifier)
+                          .deleteFoodItem(item.id);
+                    } catch (e) {
+                      sm.showSnackBar(
+                        const SnackBar(
+                          content: Text('Failed to delete product. Try again.'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    }
+                  }
+                }
+              : null,
+        );
+      },
+    );
+  }
+}
+
+class _FoodItemEditorDialog extends StatefulWidget {
+  const _FoodItemEditorDialog({
+    required this.isEdit,
+    required this.item,
+    required this.initialName,
+    required this.initialPrice,
+    required this.onSave,
+    this.onDelete,
+  });
+
+  final bool isEdit;
+  final FoodItem? item;
+  final String initialName;
+  final String initialPrice;
+  final Future<bool> Function(String name, double price) onSave;
+  final Future<void> Function()? onDelete;
+
+  @override
+  State<_FoodItemEditorDialog> createState() => _FoodItemEditorDialogState();
+}
+
+class _FoodItemEditorDialogState extends State<_FoodItemEditorDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _priceController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.initialName);
+    _priceController = TextEditingController(text: widget.initialPrice);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  bool get _hasUnsavedChanges {
+    return _nameController.text.trim() != widget.initialName.trim() ||
+        _priceController.text.trim() != widget.initialPrice.trim();
+  }
+
+  Future<void> _closeDialog() async {
+    if (!_hasUnsavedChanges) {
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+    final discard = await confirmDiscardUnsavedChanges(context);
+    if (discard && mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return UnsavedChangesGuard(
+      hasUnsavedChanges: _hasUnsavedChanges,
+      child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: Text(
-          isEdit ? 'Edit product' : 'Add product',
+          widget.isEdit ? 'Edit product' : 'Add product',
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: nameController,
+              controller: _nameController,
+              onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
                 labelText: 'Name',
                 hintText: 'e.g. Premium basmati rice',
@@ -397,7 +578,8 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
             ),
             const SizedBox(height: 20),
             TextField(
-              controller: priceController,
+              controller: _priceController,
+              onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
                 labelText: 'Unit Price (₹)',
                 hintText: '0.00',
@@ -409,14 +591,11 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
           ],
         ),
         actions: [
-          if (isEdit)
+          if (widget.isEdit && widget.onDelete != null)
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
-                final confirmed = await _confirmDelete(this.context, item);
-                if (confirmed == true) {
-                  ref.read(foodItemsProvider.notifier).deleteFoodItem(item.id);
-                }
+                await widget.onDelete!();
               },
               child: const Text(
                 'Delete',
@@ -428,7 +607,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
               ),
             ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: _closeDialog,
             child: const Text(
               'Cancel',
               style: TextStyle(
@@ -440,33 +619,13 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              final name = nameController.text.trim();
-              final price = double.tryParse(priceController.text) ?? 0;
+              final name = _nameController.text.trim();
+              final price = double.tryParse(_priceController.text) ?? 0;
               if (name.isEmpty || price <= 0) return;
-
-              final factoryId =
-                  await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
-
-              final newItem = FoodItem(
-                id: isEdit ? item.id : const Uuid().v4(),
-                factoryId: factoryId,
-                name: name,
-                price: price,
-                createdAt: item?.createdAt ?? DateTime.now(),
-                updatedAt: DateTime.now(),
-              );
-
-              if (isEdit) {
-                ref.read(foodItemsProvider.notifier).updateFoodItem(newItem);
-              } else {
-                ref.read(foodItemsProvider.notifier).addFoodItem(newItem);
-              }
-              if (context.mounted) Navigator.pop(context);
+              final ok = await widget.onSave(name, price);
+              if (ok && context.mounted) Navigator.pop(context);
             },
-            child: Text(
-              isEdit ? 'Save' : 'Add',
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
+            child: Text(widget.isEdit ? 'Save' : 'Add'),
           ),
         ],
       ),

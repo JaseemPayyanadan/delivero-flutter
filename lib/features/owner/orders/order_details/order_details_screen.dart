@@ -126,16 +126,21 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                   _handleDelete(context, ref, order);
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: _OrderMenuAction.edit,
-                child: Text('Edit order'),
-              ),
-              PopupMenuItem(
-                value: _OrderMenuAction.delete,
-                child: Text('Delete order'),
-              ),
-            ],
+            itemBuilder: (context) {
+              final canEdit = order.status != OrderStatus.delivered &&
+                  order.status != OrderStatus.cancelled;
+              return [
+                if (canEdit)
+                  const PopupMenuItem(
+                    value: _OrderMenuAction.edit,
+                    child: Text('Edit order'),
+                  ),
+                const PopupMenuItem(
+                  value: _OrderMenuAction.delete,
+                  child: Text('Delete order'),
+                ),
+              ];
+            },
           ),
         ],
       ),
@@ -334,6 +339,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
           : order.deliveryDate,
     );
     ref.read(ordersProvider.notifier).updateOrder(updatedOrder);
+    ref
+        .read(lastTouchedOrderProvider.notifier)
+        .set(id: updatedOrder.id, wasCreated: false);
 
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(

@@ -163,7 +163,11 @@ class PushNotificationService {
 
   Future<void> _persistToken(String token, User user) async {
     try {
-      final factoryId = user.factoryId ?? 'FAC_00001';
+      final factoryId = user.factoryId;
+      if (factoryId == null) {
+        debugPrint('[FCM] Skipping token persist: user has no factoryId');
+        return;
+      }
       await FirebaseService.firestore
           .collection('factories')
           .doc(factoryId)

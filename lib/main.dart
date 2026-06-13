@@ -79,6 +79,7 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
     final factoryId = user?.factoryId;
     if (factoryId == null || factoryId.isEmpty) return;
     if (!ref.read(ordersLoadedProvider)) return;
+    if (!ref.read(customersLoadedProvider)) return;
 
     final result = await ref
         .read(ordersProvider.notifier)
