@@ -11,6 +11,7 @@ import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../core/utils/route_refs.dart';
+import '../../../core/widgets/unsaved_changes_guard.dart';
 import '../../../data/models/food_item.dart';
 
 class AddEditCustomerScreen extends ConsumerStatefulWidget {
@@ -27,6 +28,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   late TextEditingController _nameController;
   late TextEditingController _ownerNameController;
   late TextEditingController _phoneController;
+  late TextEditingController _addressController;
+  late TextEditingController _discountController;
   String? _selectedRouteId;
   List<CustomerProduct> _selectedProducts = [];
   final Map<String, TextEditingController> _quantityControllers = {};
@@ -34,6 +37,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
   bool _hydratedFromProvider = false;
   bool _hydratePostFrameScheduled = false;
+  String? _savedFormSignature;
 
   bool get _isEditMode => widget.customerId != null;
 
@@ -43,12 +47,21 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     _nameController = TextEditingController();
     _ownerNameController = TextEditingController();
     _phoneController = TextEditingController();
+    _addressController = TextEditingController();
+    _discountController = TextEditingController();
+    if (!_isEditMode) {
+      _savedFormSignature = _currentFormSignature();
+    }
   }
 
   void _populateFromCustomer(Customer customer) {
     _nameController.text = customer.name;
     _ownerNameController.text = customer.ownerName ?? '';
     _phoneController.text = customer.phone;
+    _addressController.text = customer.address;
+    final discount = customer.discountPercentage;
+    _discountController.text =
+        (discount != null && discount > 0) ? discount.toString() : '';
 
     final routes = ref.read(routesProvider);
     final route = RouteRefs.routeForRef(customer.assignedRoute, routes);
@@ -74,6 +87,32 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         );
       }
     }
+    _savedFormSignature = _currentFormSignature();
+  }
+
+  String _currentFormSignature() {
+    final productSig = _selectedProducts
+        .map((p) {
+          final qty = _quantityControllers[p.id]?.text ?? '';
+          final price = _priceControllers[p.id]?.text ?? '';
+          return '${p.id}:$qty:$price';
+        })
+        .join('|');
+    return [
+      _nameController.text.trim(),
+      _ownerNameController.text.trim(),
+      _phoneController.text.trim(),
+      _addressController.text.trim(),
+      _discountController.text.trim(),
+      _selectedRouteId ?? '',
+      productSig,
+    ].join('::');
+  }
+
+  bool get _hasUnsavedChanges {
+    final baseline = _savedFormSignature;
+    if (baseline == null) return false;
+    return _currentFormSignature() != baseline;
   }
 
   @override
@@ -81,6 +120,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     _nameController.dispose();
     _ownerNameController.dispose();
     _phoneController.dispose();
+    _addressController.dispose();
+    _discountController.dispose();
     for (var c in _quantityControllers.values) {
       c.dispose();
     }
@@ -92,6 +133,20 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
   Future<void> _onSave() async {
     if (!_formKey.currentState!.validate()) return;
+    // H7: basic phone format check
+    final rawPhone = _phoneController.text.trim();
+    if (rawPhone.isNotEmpty) {
+      final digits = rawPhone.replaceAll(RegExp(r'\D'), '');
+      if (digits.length < 7 || digits.length > 15) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Phone number looks invalid — check and try again.'),
+            backgroundColor: Color(0xFFD32F2F),
+          ),
+        );
+        return;
+      }
+    }
 
     final List<CustomerProduct> products = [];
     for (var sp in _selectedProducts) {
@@ -116,7 +171,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         RouteRefs.routeIdForRef(_selectedRouteId, routes) ??
         _selectedRouteId;
 
-    final factoryId = await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+    final factoryId = await ref.read(factoryIdProvider.future);
+    if (factoryId == null || factoryId.isEmpty) return;
     final existingCustomer = _isEditMode
         ? ref
               .read(customersProvider)
@@ -133,10 +189,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           : _ownerNameController.text.trim(),
       email: existingCustomerEmail,
       phone: _phoneController.text.trim(),
-      address: _isEditMode ? (existingCustomer?.address ?? '') : '',
+      address: _addressController.text.trim(),
       area: selectedRoute?.area ?? 'Central',
       isActive: existingCustomer?.isActive ?? true,
-      discountPercentage: existingCustomer?.discountPercentage,
+      discountPercentage: double.tryParse(_discountController.text.trim()),
       assignedRoute: assignedRouteId,
       products: products,
       createdAt: _isEditMode
@@ -145,11 +201,21 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       updatedAt: DateTime.now(),
     );
 
-    if (_isEditMode) {
-      ref.read(customersProvider.notifier).updateCustomer(newCustomer);
-    } else {
-      ref.read(customersProvider.notifier).addCustomer(newCustomer);
-    }
+    final saveFuture = _isEditMode
+        ? ref.read(customersProvider.notifier).updateCustomer(newCustomer)
+        : ref.read(customersProvider.notifier).addCustomer(newCustomer);
+    saveFuture.catchError((Object e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Failed to save customer. Check your connection and retry.',
+            ),
+            backgroundColor: Color(0xFFD32F2F),
+          ),
+        );
+      }
+    });
 
     if (mounted) {
       try {
@@ -240,7 +306,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       }
     }
 
-    return Scaffold(
+    return UnsavedChangesGuard(
+      hasUnsavedChanges: _hasUnsavedChanges,
+      child: Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
@@ -287,6 +355,32 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                       keyboardType: TextInputType.phone,
                       hint: '+91 00000 00000',
                       requiredField: false,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      'Delivery address',
+                      _addressController,
+                      Icons.location_on_rounded,
+                      hint: 'e.g. 12, MG Road, Bangalore',
+                      requiredField: false,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      'Discount (%)',
+                      _discountController,
+                      Icons.discount_rounded,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      hint: '0',
+                      requiredField: false,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        final d = double.tryParse(v.trim());
+                        if (d == null) return 'Enter a number';
+                        if (d < 0 || d > 100) return '0–100 only';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 32),
                     _buildSectionHeader('Delivery route'),
@@ -346,6 +440,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -470,16 +565,18 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     int maxLines = 1,
     String? hint,
     bool requiredField = true,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      validator: requiredField
-          ? (value) => (value == null || value.isEmpty)
-                ? 'This field is required'
-                : null
-          : null,
+      validator: validator ??
+          (requiredField
+              ? (value) => (value == null || value.isEmpty)
+                    ? 'This field is required'
+                    : null
+              : null),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

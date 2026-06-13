@@ -83,8 +83,10 @@ class DailySalesData {
   });
 }
 
-final reportsProvider = Provider<ReportsData>((ref) {
-  final orders = ref.watch(ordersProvider);
+/// Computes a [ReportsData] snapshot from [orders]. Extracted so both the
+/// provider (all-time) and the reports screen (date-filtered) share one
+/// implementation.
+ReportsData computeReports(List<Order> orders) {
   if (orders.isEmpty) return ReportsData.empty();
 
   double totalRevenue = 0;
@@ -143,16 +145,18 @@ final reportsProvider = Provider<ReportsData>((ref) {
       }
     }
 
-    // Customer revenue
-    final custExisting = customerRevenueMap[order.customerName];
+    // Customer revenue — keyed by customerId to prevent name-mismatch duplicates
+    final custKey =
+        order.customerId.isNotEmpty ? order.customerId : order.customerName;
+    final custExisting = customerRevenueMap[custKey];
     if (custExisting != null) {
-      customerRevenueMap[order.customerName] = CustomerRevenueData(
+      customerRevenueMap[custKey] = CustomerRevenueData(
         name: order.customerName,
         revenue: custExisting.revenue + order.totalAmount,
         orderCount: custExisting.orderCount + 1,
       );
     } else {
-      customerRevenueMap[order.customerName] = CustomerRevenueData(
+      customerRevenueMap[custKey] = CustomerRevenueData(
         name: order.customerName,
         revenue: order.totalAmount,
         orderCount: 1,
@@ -199,4 +203,8 @@ final reportsProvider = Provider<ReportsData>((ref) {
     productSales: productSalesMap,
     customerRevenue: customerRevenueMap,
   );
+}
+
+final reportsProvider = Provider<ReportsData>((ref) {
+  return computeReports(ref.watch(ordersProvider));
 });

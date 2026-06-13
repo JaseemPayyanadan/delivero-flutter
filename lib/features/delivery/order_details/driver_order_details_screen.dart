@@ -334,7 +334,7 @@ class _DriverOrderDetailsScreenState
             ),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
               try {
                 HapticFeedback.mediumImpact();
@@ -345,21 +345,42 @@ class _DriverOrderDetailsScreenState
                 deliveryTime: order.deliveryTime ?? now,
                 deliveryDate: order.deliveryDate ?? now,
               );
-              ref.read(ordersProvider.notifier).updateOrder(updated);
-              ScaffoldMessenger.of(context).removeCurrentSnackBar();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text(
-                    'Order marked as delivered',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: AppColors.success,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              );
+              try {
+                await ref.read(ordersProvider.notifier).updateOrder(updated);
+                ref
+                    .read(lastTouchedOrderProvider.notifier)
+                    .set(id: updated.id, wasCreated: false);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        'Order marked as delivered',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: AppColors.success,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                  try {
+                    HapticFeedback.heavyImpact();
+                  } catch (_) {}
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Failed to update order. Check your connection.',
+                      ),
+                      backgroundColor: Color(0xFFD32F2F),
+                    ),
+                  );
+                }
+              }
             },
             style: FilledButton.styleFrom(backgroundColor: AppColors.success),
             child: const Text(

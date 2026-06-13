@@ -91,6 +91,9 @@ class OrderDetailPaymentSection extends StatelessWidget {
       updatedAt: DateTime.now(),
     );
     ref.read(ordersProvider.notifier).updateOrder(next);
+    ref
+        .read(lastTouchedOrderProvider.notifier)
+        .set(id: next.id, wasCreated: false);
     try {
       HapticFeedback.lightImpact();
     } catch (_) {}

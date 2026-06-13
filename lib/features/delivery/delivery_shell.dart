@@ -3,17 +3,37 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/order_settings_provider.dart';
+import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
 import 'dashboard/delivery_dashboard_screen.dart';
 import 'order_status_list_screen.dart';
 import '../profile/settings_screen.dart';
 import 'delivery_nav_provider.dart';
 
-class DeliveryShell extends ConsumerWidget {
+class DeliveryShell extends ConsumerStatefulWidget {
   const DeliveryShell({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DeliveryShell> createState() => _DeliveryShellState();
+}
+
+class _DeliveryShellState extends ConsumerState<DeliveryShell> {
+  String? _syncedRolloverFactory;
+
+  @override
+  Widget build(BuildContext context) {
+    final factoryId = ref.watch(authProvider).user?.factoryId;
+    if (factoryId != null &&
+        factoryId.isNotEmpty &&
+        _syncedRolloverFactory != factoryId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _syncedRolloverFactory = factoryId);
+        ref.read(orderRolloverHourProvider.notifier).syncForFactory(factoryId);
+      });
+    }
+
     final selectedIndex = ref.watch(deliveryNavIndexProvider);
     final screens = const [
       DeliveryDashboardScreen(),

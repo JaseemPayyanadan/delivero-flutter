@@ -86,7 +86,7 @@ void main() {
       );
     });
 
-    test('skips when open order already exists for target day', () {
+    test('skips when linked pending child already exists for target day', () {
       final delivered = productionTestOrder(
         id: 'src-1',
         orderDate: day1Morning,
@@ -96,12 +96,78 @@ void main() {
         id: 'existing',
         orderDate: day2Morning,
         status: OrderStatus.pending,
-      );
+      ).copyWith(recreatedFromOrderId: 'src-1');
       final created = <Order>[];
 
       final result = runBatchForTargetDay(
         targetBusinessDay: DateTime(2025, 6, 21),
         orders: [delivered, existing],
+        customers: [activeCustomer()],
+        rolloverHour: rolloverHour,
+        addOrder: created.add,
+      );
+
+      expect(result.createdCount, 0);
+      expect(created, isEmpty);
+    });
+
+    test('recreates each split order same customer and run', () {
+      final box1 = productionTestOrder(
+        id: 'box-1',
+        orderDate: day1Morning,
+        status: OrderStatus.pending,
+        items: [
+          OrderItem(
+            id: 'line-1',
+            foodItemId: 'food-1',
+            foodItemName: 'Japathi',
+            quantity: 50,
+            unitPrice: 10,
+            totalPrice: 500,
+          ),
+        ],
+      ).copyWith(subtotal: 500, totalAmount: 500);
+      final box2 = productionTestOrder(
+        id: 'box-2',
+        orderDate: day1Morning,
+        status: OrderStatus.pending,
+        items: [
+          OrderItem(
+            id: 'line-2',
+            foodItemId: 'food-1',
+            foodItemName: 'Japathi',
+            quantity: 50,
+            unitPrice: 10,
+            totalPrice: 500,
+          ),
+        ],
+      ).copyWith(subtotal: 500, totalAmount: 500);
+      final created = <Order>[];
+
+      final result = runBatchForTargetDay(
+        targetBusinessDay: DateTime(2025, 6, 21),
+        orders: [box1, box2],
+        customers: [activeCustomer()],
+        rolloverHour: rolloverHour,
+        addOrder: created.add,
+      );
+
+      expect(result.createdCount, 2);
+      expect(created.map((o) => o.recreatedFromOrderId).toSet(), {'box-1', 'box-2'});
+      expect(created.every((o) => o.items.first.quantity == 50), isTrue);
+    });
+
+    test('skips order whose customer is not in the customers list', () {
+      final orphaned = productionTestOrder(
+        id: 'orphan',
+        orderDate: day1Morning,
+        status: OrderStatus.delivered,
+      ).copyWith(customerId: 'unknown-cust');
+      final created = <Order>[];
+
+      final result = runBatchForTargetDay(
+        targetBusinessDay: DateTime(2025, 6, 21),
+        orders: [orphaned],
         customers: [activeCustomer()],
         rolloverHour: rolloverHour,
         addOrder: created.add,
@@ -294,6 +360,28 @@ void main() {
 
       expect(result?.cancelledCount, 1);
       expect(updated?.status, OrderStatus.cancelled);
+    });
+  });
+
+  group('ensureRecreatedOrderIsPending', () {
+    test('forces pending and clears delivery/payment fields', () {
+      final delivered = productionTestOrder(
+        id: 'src-1',
+        orderDate: day1Morning,
+        status: OrderStatus.delivered,
+      ).copyWith(
+        recreatedFromOrderId: 'parent',
+        paymentStatus: PaymentStatus.paid,
+        deliveryDate: day1Morning,
+        deliveryTime: day1Morning,
+      );
+
+      final normalized = ensureRecreatedOrderIsPending(delivered);
+
+      expect(normalized.status, OrderStatus.pending);
+      expect(normalized.paymentStatus, PaymentStatus.unpaid);
+      expect(normalized.deliveryDate, isNull);
+      expect(normalized.deliveryTime, isNull);
     });
   });
 

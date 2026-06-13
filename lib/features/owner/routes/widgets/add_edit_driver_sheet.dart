@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../app/providers.dart';
 import '../../../../core/services/firebase_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/unsaved_changes_guard.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../data/models/delivery_route.dart';
 import '../../../../data/models/driver.dart';
@@ -184,6 +185,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
   late VehicleType _vehicle;
   String? _selectedRouteId;
   var _submitting = false;
+  late final String _savedSignature;
 
   bool get _isEdit => widget.driver != null;
   bool get _isLinked =>
@@ -202,7 +204,23 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
     _phoneController = TextEditingController(text: _nationalPart(initialPhone));
     _vehicle = d?.vehicleType ?? VehicleType.bike;
     _selectedRouteId = d?.currentRoute;
+    _savedSignature = _formSignature();
   }
+
+  String _formSignature() {
+    final phone = _phoneNumber;
+    final phoneSig = (phone != null && phone.number.trim().isNotEmpty)
+        ? '+${phone.countryCode.replaceAll('+', '')}${_digitsOnlyPhone(phone.number)}'
+        : _digitsOnlyPhone(_phoneController.text);
+    return [
+      _nameController.text.trim(),
+      phoneSig,
+      _vehicle.name,
+      _selectedRouteId ?? '',
+    ].join('::');
+  }
+
+  bool get _hasUnsavedChanges => _formSignature() != _savedSignature;
 
   @override
   void dispose() {
@@ -258,7 +276,8 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
       if (!mounted || confirmed != true) return;
     }
 
-    final factoryId = await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+    final factoryId = await ref.read(factoryIdProvider.future);
+    if (factoryId == null || factoryId.isEmpty) return;
     if (!mounted) return;
 
     setState(() => _submitting = true);
@@ -412,7 +431,9 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
         sortedRoutes.any((r) => r.id == _selectedRouteId);
     final routeDropdownValue = hasSelectedRouteInList ? _selectedRouteId : null;
 
-    return Padding(
+    return UnsavedChangesGuard(
+      hasUnsavedChanges: _hasUnsavedChanges && !_submitting,
+      child: Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
         constraints: BoxConstraints(
@@ -739,6 +760,7 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
           ],
         ),
       ),
+    ),
     );
   }
 }

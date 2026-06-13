@@ -6,6 +6,9 @@ import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/utils/debounced_refresh.dart';
+import '../../../core/services/connectivity_provider.dart';
+import '../../../core/widgets/offline_banner.dart';
 import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/order.dart';
@@ -16,11 +19,24 @@ import '../delivery_nav_provider.dart';
 // Public screen
 // ---------------------------------------------------------------------------
 
-class DeliveryDashboardScreen extends ConsumerWidget {
+class DeliveryDashboardScreen extends ConsumerStatefulWidget {
   const DeliveryDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DeliveryDashboardScreen> createState() =>
+      _DeliveryDashboardScreenState();
+}
+
+class _DeliveryDashboardScreenState
+    extends ConsumerState<DeliveryDashboardScreen> {
+  final _refresh = DebouncedRefresh();
+
+  Future<void> _onRefresh() {
+    return _refresh.run(() => ref.read(ordersProvider.notifier).refresh());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final allOrders = ref.watch(ordersProvider);
     final ordersLoaded = ref.watch(ordersLoadedProvider);
@@ -90,18 +106,21 @@ class DeliveryDashboardScreen extends ConsumerWidget {
       });
 
     final bottomInset = MediaQuery.paddingOf(context).bottom + 100;
+    final isOnline = ref.watch(connectivityProvider);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       body: RefreshIndicator(
         color: AppColors.primary,
         displacement: 56,
-        onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
+        onRefresh: _onRefresh,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
           ),
           slivers: [
+            if (!isOnline)
+              const SliverToBoxAdapter(child: OfflineBanner()),
             SliverToBoxAdapter(
               child: _DriverHero(
                 displayName: user?.name ?? 'Driver',
@@ -971,23 +990,6 @@ class _DeliveryTile extends StatelessWidget {
     }
   }
 
-  String _humanStatus(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return 'Pending';
-      case OrderStatus.confirmed:
-        return 'Out for delivery';
-      case OrderStatus.preparing:
-        return 'Preparing';
-      case OrderStatus.ready:
-        return 'Ready';
-      case OrderStatus.delivered:
-        return 'Delivered';
-      case OrderStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts.first.isEmpty) return '?';
@@ -1066,7 +1068,7 @@ class _DeliveryTile extends StatelessWidget {
                 Row(
                   children: [
                     _StatusChip(
-                      text: _humanStatus(order.status),
+                      text: order.status.label,
                       color: statusChipBg,
                       solid: true,
                     ),

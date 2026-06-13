@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -95,7 +97,7 @@ bool isCustomerActiveForRecreation(
   final customer = customers.firstWhereOrNull(
     (c) => c.id == source.customerId,
   );
-  if (customer == null) return true;
+  if (customer == null) return false;
   return customer.isActive;
 }
 
@@ -121,37 +123,42 @@ bool isEligibleRecreationSource(
   return normalized == source;
 }
 
-/// Locates the pending next-day order linked to [source].
+bool _orderOnBusinessDay(
+  Order order,
+  DateTime businessDay, {
+  int rolloverHour = kDefaultBusinessDayRolloverHour,
+}) {
+  final key = businessDayKey(order.orderDate, rolloverHour: rolloverHour);
+  final normalized = DateTime(key.year, key.month, key.day);
+  final target = DateTime(
+    businessDay.year,
+    businessDay.month,
+    businessDay.day,
+  );
+  return normalized == target;
+}
+
+/// Locates the pending next-day order linked to [source] via [recreatedFromOrderId].
 Order? findNextDayPendingOrder({
   required Order source,
   required List<Order> orders,
   required DateTime targetBusinessDay,
   int rolloverHour = kDefaultBusinessDayRolloverHour,
 }) {
-  final byLineage = orders.firstWhereOrNull(
+  return orders.firstWhereOrNull(
     (o) =>
         o.recreatedFromOrderId == source.id &&
-        o.status == OrderStatus.pending,
+        o.status == OrderStatus.pending &&
+        _orderOnBusinessDay(
+          o,
+          targetBusinessDay,
+          rolloverHour: rolloverHour,
+        ),
   );
-  if (byLineage != null) return byLineage;
-
-  final target = DateTime(
-    targetBusinessDay.year,
-    targetBusinessDay.month,
-    targetBusinessDay.day,
-  );
-  return orders.firstWhereOrNull((o) {
-    if (o.customerId != source.customerId) return false;
-    if (o.orderType != OrderType.daily) return false;
-    if (o.deliveryRun != source.deliveryRun) return false;
-    if (o.status != OrderStatus.pending) return false;
-    final key = businessDayKey(o.orderDate, rolloverHour: rolloverHour);
-    final normalized = DateTime(key.year, key.month, key.day);
-    return normalized == target;
-  });
 }
 
-bool hasOpenOrderForTargetDay({
+/// True when this [source] already has a pending child on [targetBusinessDay].
+bool hasPendingOrderForTargetDay({
   required Order source,
   required List<Order> orders,
   required DateTime targetBusinessDay,
@@ -163,24 +170,40 @@ bool hasOpenOrderForTargetDay({
         targetBusinessDay: targetBusinessDay,
         rolloverHour: rolloverHour,
       ) !=
-      null ||
-      orders.any((o) {
-        if (o.customerId != source.customerId) return false;
-        if (o.orderType != OrderType.daily) return false;
-        if (o.deliveryRun != source.deliveryRun) return false;
-        if (o.status == OrderStatus.cancelled ||
-            o.status == OrderStatus.delivered) {
-          return false;
-        }
-        final key = businessDayKey(o.orderDate, rolloverHour: rolloverHour);
-        final normalized = DateTime(key.year, key.month, key.day);
-        final target = DateTime(
-          targetBusinessDay.year,
-          targetBusinessDay.month,
-          targetBusinessDay.day,
-        );
-        return normalized == target;
-      });
+      null;
+}
+
+/// Every auto-recreated order must start as pending with a clean payment state.
+Order ensureRecreatedOrderIsPending(Order order) {
+  return Order(
+    id: order.id,
+    factoryId: order.factoryId,
+    orderType: order.orderType,
+    deliveryRun: order.deliveryRun,
+    customerId: order.customerId,
+    customerName: order.customerName,
+    customerEmail: order.customerEmail,
+    customerPhone: order.customerPhone,
+    customerAddress: order.customerAddress,
+    items: order.items,
+    subtotal: order.subtotal,
+    discountAmount: order.discountAmount,
+    totalAmount: order.totalAmount,
+    paymentStatus: PaymentStatus.unpaid,
+    paymentMethod: null,
+    amountPaid: null,
+    status: OrderStatus.pending,
+    assignedRoute: order.assignedRoute,
+    assignedDriver: order.assignedDriver,
+    orderDate: order.orderDate,
+    deliveryDate: null,
+    paymentTime: null,
+    deliveryTime: null,
+    notes: order.notes,
+    recreatedFromOrderId: order.recreatedFromOrderId,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+  );
 }
 
 Order buildRecreatedOrder({
@@ -228,6 +251,7 @@ Order buildRecreatedOrder({
 Order buildSyncedNextDayOrder(Order existing, Order source) {
   final now = DateTime.now();
   return existing.copyWith(
+    deliveryRun: source.deliveryRun,
     items: source.items,
     subtotal: source.subtotal,
     discountAmount: source.discountAmount,
@@ -243,12 +267,6 @@ Order buildSyncedNextDayOrder(Order existing, Order source) {
     paymentStatus: PaymentStatus.unpaid,
     updatedAt: now,
   );
-}
-
-int _recreationSourcePriority(Order order) {
-  // Prefer delivered when both exist; otherwise use the most recently touched order.
-  final deliveredBoost = order.status == OrderStatus.delivered ? 1000 : 0;
-  return deliveredBoost + order.updatedAt.millisecondsSinceEpoch;
 }
 
 /// Layer A — sync only: update an existing pending next-day order from a daily source.
@@ -300,7 +318,9 @@ DailyOrderRecreationResult? syncNextDayFromSource({
   );
   if (existing == null || existing.status != OrderStatus.pending) return null;
 
-  final synced = buildSyncedNextDayOrder(existing, source);
+  final synced = ensureRecreatedOrderIsPending(
+    buildSyncedNextDayOrder(existing, source),
+  );
   if (const DeepCollectionEquality().equals(
     _orderContentSnapshot(existing),
     _orderContentSnapshot(synced),
@@ -314,6 +334,7 @@ DailyOrderRecreationResult? syncNextDayFromSource({
 
 Map<String, dynamic> _orderContentSnapshot(Order order) {
   return {
+    'deliveryRun': order.deliveryRun.name,
     'items': order.items.map((i) => i.toJson()).toList(),
     'subtotal': order.subtotal,
     'discountAmount': order.discountAmount,
@@ -330,7 +351,7 @@ DailyOrderRecreationResult runBatchForTargetDay({
   required List<Order> orders,
   required List<Customer> customers,
   required int rolloverHour,
-  required void Function(Order order) addOrder,
+  required FutureOr<void> Function(Order order) addOrder,
 }) {
   final sourceDay = DateTime(
     targetBusinessDay.year,
@@ -338,29 +359,18 @@ DailyOrderRecreationResult runBatchForTargetDay({
     targetBusinessDay.day,
   ).subtract(const Duration(days: 1));
 
-  final sources = orders
-      .where(
-        (o) => isEligibleRecreationSource(
-          o,
-          sourceDay,
-          rolloverHour: rolloverHour,
-        ),
-      )
-      .toList()
-    ..sort(
-      (a, b) => _recreationSourcePriority(b).compareTo(
-        _recreationSourcePriority(a),
-      ),
-    );
+  final sources = orders.where(
+    (o) => isEligibleRecreationSource(
+      o,
+      sourceDay,
+      rolloverHour: rolloverHour,
+    ),
+  );
 
   final createdIds = <String>[];
-  final seenCustomerRun = <String>{};
   for (final source in sources) {
-    final dedupeKey = '${source.customerId}|${source.deliveryRun.name}';
-    if (seenCustomerRun.contains(dedupeKey)) continue;
-    seenCustomerRun.add(dedupeKey);
     if (!isCustomerActiveForRecreation(source, customers)) continue;
-    if (hasOpenOrderForTargetDay(
+    if (hasPendingOrderForTargetDay(
       source: source,
       orders: orders,
       targetBusinessDay: targetBusinessDay,
@@ -370,11 +380,13 @@ DailyOrderRecreationResult runBatchForTargetDay({
     }
 
     const uuid = Uuid();
-    final created = buildRecreatedOrder(
-      source: source,
-      targetBusinessDay: targetBusinessDay,
-      newId: uuid.v4(),
-      rolloverHour: rolloverHour,
+    final created = ensureRecreatedOrderIsPending(
+      buildRecreatedOrder(
+        source: source,
+        targetBusinessDay: targetBusinessDay,
+        newId: uuid.v4(),
+        rolloverHour: rolloverHour,
+      ),
     );
     addOrder(created);
     createdIds.add(created.id);
@@ -394,7 +406,7 @@ Future<DailyOrderRecreationResult> runRolloverBatch({
   required List<Customer> customers,
   required int rolloverHour,
   required DateTime now,
-  required void Function(Order order) addOrder,
+  required FutureOr<void> Function(Order order) addOrder,
   bool autoRecreationEnabled = true,
 }) async {
   if (!autoRecreationEnabled) {

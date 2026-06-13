@@ -20,12 +20,14 @@ class OtpVerifyScreen extends ConsumerStatefulWidget {
 class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   static const _resendCooldown = 60;
   static const _codeLength = 6;
+  static const _maxAttempts = 3;
 
   final _codeController = TextEditingController();
   final _errorController = StreamController<ErrorAnimationType>();
   final _formKey = GlobalKey<FormState>();
   Timer? _resendTimer;
   int _secondsLeft = _resendCooldown;
+  int _failedAttempts = 0;
 
   @override
   void initState() {
@@ -59,6 +61,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   }
 
   Future<void> _handleVerify() async {
+    if (_failedAttempts >= _maxAttempts) return;
     FocusScope.of(context).unfocus();
     final code = _codeController.text.trim();
     if (code.length < _codeLength) {
@@ -78,6 +81,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
     if (state.error != null) {
       _codeController.clear();
       _errorController.add(ErrorAnimationType.shake);
+      setState(() => _failedAttempts++);
     }
   }
 
@@ -91,6 +95,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
     await ref.read(authProvider.notifier).sendOtp(phone, forceResend: true);
     if (!mounted) return;
     _codeController.clear();
+    setState(() => _failedAttempts = 0);
     _startResendTimer();
   }
 
@@ -361,13 +366,34 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                         hasError: hasError,
                       ),
                       const SizedBox(height: 22),
-                      DeliveroButton(
-                        label: 'Verify & continue',
-                        onPressed: authState.isLoading ? null : _handleVerify,
-                        isLoading: authState.isLoading,
-                        icon: Icons.verified_outlined,
-                        borderRadius: 12,
-                      ),
+                      if (_failedAttempts >= _maxAttempts)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFEBEE),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Too many wrong attempts — tap "Resend" to get a new code.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Color(0xFFD32F2F),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      else
+                        DeliveroButton(
+                          label: 'Verify & continue',
+                          onPressed:
+                              authState.isLoading ? null : _handleVerify,
+                          isLoading: authState.isLoading,
+                          icon: Icons.verified_outlined,
+                          borderRadius: 12,
+                        ),
                       const SizedBox(height: 20),
                       _buildResendRow(isLoading: authState.isLoading),
                       const SizedBox(height: 6),

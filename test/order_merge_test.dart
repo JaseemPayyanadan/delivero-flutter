@@ -58,6 +58,57 @@ void main() {
       expect(target, isNull);
     });
 
+    test('ignores confirmed orders — kitchen already has it', () {
+      final confirmed = productionTestOrder(
+        id: 'conf',
+        orderDate: day,
+        status: OrderStatus.confirmed,
+        deliveryRun: DeliveryRun.morning,
+      );
+      final target = findMergeTargetOrder(
+        orders: [confirmed],
+        customerId: 'cust-1',
+        orderType: OrderType.daily,
+        deliveryRun: DeliveryRun.morning,
+        referenceTime: day.add(const Duration(hours: 2)),
+      );
+      expect(target, isNull);
+    });
+
+    test('ignores preparing orders', () {
+      final preparing = productionTestOrder(
+        id: 'prep',
+        orderDate: day,
+        status: OrderStatus.preparing,
+        deliveryRun: DeliveryRun.morning,
+      );
+      final target = findMergeTargetOrder(
+        orders: [preparing],
+        customerId: 'cust-1',
+        orderType: OrderType.daily,
+        deliveryRun: DeliveryRun.morning,
+        referenceTime: day.add(const Duration(hours: 2)),
+      );
+      expect(target, isNull);
+    });
+
+    test('ignores ready orders', () {
+      final ready = productionTestOrder(
+        id: 'rdy',
+        orderDate: day,
+        status: OrderStatus.ready,
+        deliveryRun: DeliveryRun.morning,
+      );
+      final target = findMergeTargetOrder(
+        orders: [ready],
+        customerId: 'cust-1',
+        orderType: OrderType.daily,
+        deliveryRun: DeliveryRun.morning,
+        referenceTime: day.add(const Duration(hours: 2)),
+      );
+      expect(target, isNull);
+    });
+
     test('does not merge across 7 AM business-day reset', () {
       final beforeSeven = productionTestOrder(
         id: 'early',
@@ -70,6 +121,7 @@ void main() {
         orderType: OrderType.daily,
         deliveryRun: DeliveryRun.morning,
         referenceTime: DateTime(2025, 6, 20, 8),
+        rolloverHour: 7,
       );
       expect(target, isNull);
     });
@@ -86,6 +138,7 @@ void main() {
         orderType: OrderType.daily,
         deliveryRun: DeliveryRun.morning,
         referenceTime: DateTime(2025, 6, 20, 9),
+        rolloverHour: 7,
       );
       expect(target?.id, 'late');
     });

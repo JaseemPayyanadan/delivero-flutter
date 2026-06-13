@@ -8,6 +8,7 @@ import 'package:collection/collection.dart';
 import '../../../app/providers.dart';
 import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../data/models/order.dart';
@@ -25,15 +26,6 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
   String _selectedStatus = 'all';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-
-  String _formatRupee(double amount) {
-    final whole = amount == amount.roundToDouble();
-    return NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: whole ? 0 : 2,
-    ).format(amount);
-  }
 
   @override
   void dispose() {
@@ -224,23 +216,6 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     return '#ORD-$short';
   }
 
-  String _humanStatus(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return 'Pending';
-      case OrderStatus.confirmed:
-        return 'Out for delivery';
-      case OrderStatus.preparing:
-        return 'Preparing';
-      case OrderStatus.ready:
-        return 'Ready';
-      case OrderStatus.delivered:
-        return 'Delivered';
-      case OrderStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
   Color _getStatusColor(OrderStatus status) {
     switch (status) {
       case OrderStatus.pending:
@@ -296,7 +271,7 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     };
     final typeLabel = '${order.deliveryRun.label} · $typeKind';
 
-    final statusText = _humanStatus(order.status);
+    final statusText = order.status.label;
     final statusColor = _getStatusColor(order.status);
     final statusChipBase = switch (order.status) {
       OrderStatus.pending => AppColors.warning,
@@ -533,7 +508,7 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  _formatRupee(order.totalAmount),
+                                  formatRupee(order.totalAmount),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w900,
                                     fontSize: 16,

@@ -34,8 +34,7 @@ Order? findMergeTargetOrder({
     )) {
       return false;
     }
-    if (o.status == OrderStatus.cancelled) return false;
-    if (o.status == OrderStatus.delivered) return false;
+    if (o.status != OrderStatus.pending) return false;
     return true;
   }).toList()
     ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));

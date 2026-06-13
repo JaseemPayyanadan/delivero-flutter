@@ -210,7 +210,7 @@ class _OrderReviewReport extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      _formatRupee(orderTotal),
+                      formatRupee(orderTotal),
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 15,
@@ -323,7 +323,7 @@ class _ReportTableDataRow extends StatelessWidget {
           Expanded(
             flex: 5,
             child: Text(
-              _formatRupee(line.unitPrice),
+              formatRupee(line.unitPrice),
               textAlign: TextAlign.right,
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
@@ -335,7 +335,7 @@ class _ReportTableDataRow extends StatelessWidget {
           Expanded(
             flex: 6,
             child: Text(
-              _formatRupee(line.lineTotal),
+              formatRupee(line.lineTotal),
               textAlign: TextAlign.right,
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
@@ -710,7 +710,7 @@ class _SelectedMenuItemCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      _formatRupee(unitPrice),
+                      formatRupee(unitPrice),
                       style: TextStyle(
                         color: isCustom
                             ? AppColors.primary
@@ -974,7 +974,7 @@ class _CatalogList extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            '${_formatRupee(unitPrice)} / unit',
+                            '${formatRupee(unitPrice)} / unit',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

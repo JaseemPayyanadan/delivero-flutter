@@ -9,8 +9,10 @@ import 'package:intl/intl.dart';
 import '../../../../app/providers.dart';
 import '../../../../app/order_settings_provider.dart';
 import '../../../../core/orders/business_day.dart';
+import '../../../../core/orders/order_line_key.dart';
 import '../../../../core/orders/order_merge.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/currency_format.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/delivero_sliver_header.dart';
 import '../../../../core/utils/route_refs.dart';
@@ -20,15 +22,6 @@ import '../../../../data/models/order.dart';
 import '../../../../data/models/delivery_route.dart';
 
 part 'create_order_widgets.dart';
-
-String _formatRupee(double amount) {
-  final whole = amount == amount.roundToDouble();
-  return NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-    decimalDigits: whole ? 0 : 2,
-  ).format(amount);
-}
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   final String? orderId;
@@ -52,8 +45,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   Customer? _selectedCustomer;
   DeliveryRun _deliveryRun = DeliveryRun.morning;
   OrderType? _orderType;
-  Map<String, int> _selectedItems = {}; // foodItemId -> quantity
-  Map<String, double> _customUnitPrices = {}; // foodItemId -> unit price
+  Map<String, int> _selectedItems = {}; // lineKey -> quantity
+  Map<String, double> _customUnitPrices = {}; // lineKey -> unit price
   bool _isSubmitting = false;
   bool _createSeparateOrder = false;
   bool _initializedFromOrder = false;
@@ -139,10 +132,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             _orderType = existing.orderType;
             _deliveryRun = existing.deliveryRun;
             _selectedItems = {
-              for (final i in existing.items) i.foodItemId: i.quantity,
+              for (final i in existing.items)
+                orderLineKey(i.foodItemId, i.packLabel): i.quantity,
             };
             _customUnitPrices = {
-              for (final i in existing.items) i.foodItemId: i.unitPrice,
+              for (final i in existing.items)
+                orderLineKey(i.foodItemId, i.packLabel): i.unitPrice,
             };
             _initializedFromOrder = true;
           });
@@ -480,8 +475,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       case 3:
         final name = _selectedCustomer?.name ?? '';
         return name.isEmpty
-            ? 'Total ${_formatRupee(total)}'
-            : 'Total ${_formatRupee(total)} · $name';
+            ? 'Total ${formatRupee(total)}'
+            : 'Total ${formatRupee(total)} · $name';
       default:
         return '';
     }
@@ -499,7 +494,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     try {
       HapticFeedback.heavyImpact();
     } catch (_) {}
-    _submitOrder();
+    _submitOrder(popOnSuccess: true);
   }
 
   Widget _buildReviewStep({
@@ -511,21 +506,38 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         _selectedItems.entries
             .where((e) => e.value > 0)
             .map((e) {
-              final item = foodItems.firstWhereOrNull((f) => f.id == e.key);
-              return item == null ? null : (item, e.value);
+              final foodItemId = foodItemIdFromLineKey(e.key);
+              final item = foodItems.firstWhereOrNull((f) => f.id == foodItemId);
+              if (item == null) return null;
+              return (
+                lineKey: e.key,
+                item: item,
+                qty: e.value,
+                packLabel: packLabelFromLineKey(e.key),
+              );
             })
-            .whereType<(FoodItem, int)>()
+            .whereType<({
+              String lineKey,
+              FoodItem item,
+              int qty,
+              String? packLabel,
+            })>()
             .toList()
-          ..sort((a, b) => a.$1.name.compareTo(b.$1.name));
+          ..sort((a, b) {
+            final byName = a.item.name.compareTo(b.item.name);
+            if (byName != 0) return byName;
+            return (a.packLabel ?? '').compareTo(b.packLabel ?? '');
+          });
 
     final reportLines = <_ReportLineItem>[
-      for (final (item, qty) in selectedLines)
+      for (final line in selectedLines)
         _ReportLineItem(
-          name: item.name,
-          quantity: qty,
-          unitPrice: _effectiveUnitPrice(item),
-          lineTotal: _effectiveUnitPrice(item) * qty,
-          isCustomRate: _customUnitPrices.containsKey(item.id),
+          name: displayNameWithPackLabel(line.item.name, line.packLabel),
+          quantity: line.qty,
+          unitPrice: _effectiveUnitPriceForLine(line.lineKey, line.item),
+          lineTotal: _effectiveUnitPriceForLine(line.lineKey, line.item) *
+              line.qty,
+          isCustomRate: _customUnitPrices.containsKey(line.lineKey),
         ),
     ];
 
@@ -543,6 +555,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           lineCount: selection.distinctItems,
           unitCount: selection.totalUnits,
         ),
+        if (selectedLines.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildPackLabelSection(selectedLines),
+        ],
         if (existing == null && !widget.forDriver) ...[
           const SizedBox(height: 12),
           DecoratedBox(
@@ -569,10 +585,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         const SizedBox(height: 4),
                         Text(
                           mergeTarget == null
-                              ? 'Creates a new ${_deliveryRun.label.toLowerCase()} order for this customer (today\'s kitchen day, after ${formatOrderRolloverLabel(ref.watch(orderRolloverHourProvider))}).'
+                              ? 'Use for split packing — e.g. 50 in Box 1 and 50 in Box 2 as two separate orders.'
                               : (_createSeparateOrder
-                                    ? 'Creates a new order. Turn off to add items to today\'s ${_deliveryRun.label.toLowerCase()} order instead.'
-                                    : 'Items will be added to today\'s ${_deliveryRun.label.toLowerCase()} order (same run, after reset time). Turn on for a separate order.'),
+                                    ? 'Creates a new order for split packing. Turn off to add items to today\'s ${_deliveryRun.label.toLowerCase()} order instead.'
+                                    : 'Items will merge into today\'s ${_deliveryRun.label.toLowerCase()} order. Turn on for split packing (separate box/order).'),
                           style: context.appTextStyles.caption.copyWith(
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w600,
@@ -593,13 +609,304 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               ),
             ),
           ),
+          if (selection.totalUnits > 1) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _isSubmitting
+                  ? null
+                  : () => _submitOrder(popOnSuccess: false, splitAfterSave: true),
+              icon: const Icon(Icons.call_split_rounded, size: 18),
+              label: const Text(
+                'Save this box & add another order',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ],
         ],
       ],
     );
   }
 
+  void _resetForNextSplitBox() {
+    for (final c in _qtyControllers.values) {
+      c.dispose();
+    }
+    for (final c in _catalogQtyControllers.values) {
+      c.dispose();
+    }
+    _qtyControllers.clear();
+    _catalogQtyControllers.clear();
+    _selectedItems = {};
+    _customUnitPrices = {};
+    _createSeparateOrder = true;
+    _step = 2;
+  }
+
   double _effectiveUnitPrice(FoodItem item) {
     return _customUnitPrices[item.id] ?? item.price;
+  }
+
+  double _effectiveUnitPriceForLine(String lineKey, FoodItem item) {
+    return _customUnitPrices[lineKey] ?? item.price;
+  }
+
+  Widget _buildPackLabelSection(
+    List<({
+      String lineKey,
+      FoodItem item,
+      int qty,
+      String? packLabel,
+    })> lines,
+  ) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Pack labels (optional)',
+              style: context.appTextStyles.sectionHeader.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Label each box when splitting the same product — e.g. Box 1 and Box 2.',
+              style: context.appTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 10),
+            for (final line in lines) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${line.item.name} × ${line.qty}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          line.packLabel == null || line.packLabel!.isEmpty
+                              ? 'No box label'
+                              : line.packLabel!,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: line.packLabel == null ||
+                                    line.packLabel!.isEmpty
+                                ? AppColors.textLight
+                                : AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => _editPackLabel(line.lineKey, line.item),
+                    child: const Text('Set label'),
+                  ),
+                  IconButton(
+                    tooltip: 'Add another box for this product',
+                    onPressed: () => _addAnotherPackLine(line.item),
+                    icon: const Icon(Icons.add_box_outlined),
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+              if (line != lines.last) const SizedBox(height: 10),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editPackLabel(String lineKey, FoodItem item) async {
+    final current = packLabelFromLineKey(lineKey) ?? '';
+    final controller = TextEditingController(text: current);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Box label'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Label',
+              hintText: 'e.g. Box 1',
+            ),
+            textCapitalization: TextCapitalization.words,
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            if (current.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  controller.clear();
+                  Navigator.pop(dialogContext, true);
+                },
+                child: const Text('Clear'),
+              ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result != true || !mounted) {
+      controller.dispose();
+      return;
+    }
+    _updatePackLabel(lineKey, controller.text);
+    controller.dispose();
+  }
+
+  void _updatePackLabel(String oldLineKey, String rawLabel) {
+    final foodItemId = foodItemIdFromLineKey(oldLineKey);
+    final qty = _selectedItems[oldLineKey] ?? 0;
+    if (qty <= 0) return;
+    final newLineKey = orderLineKey(foodItemId, rawLabel);
+    if (newLineKey == oldLineKey) return;
+    if (_selectedItems.containsKey(newLineKey)) return;
+
+    final customPrice = _customUnitPrices.remove(oldLineKey);
+    final qtyController = _qtyControllers.remove(oldLineKey);
+    setState(() {
+      _selectedItems.remove(oldLineKey);
+      _selectedItems[newLineKey] = qty;
+      if (customPrice != null) {
+        _customUnitPrices[newLineKey] = customPrice;
+      }
+      if (qtyController != null) {
+        _qtyControllers[newLineKey] = qtyController;
+      }
+    });
+  }
+
+  Future<void> _addAnotherPackLine(FoodItem item) async {
+    final labelController = TextEditingController();
+    final qtyController = TextEditingController(text: '1');
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Add another box'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                item.name,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: labelController,
+                decoration: const InputDecoration(
+                  labelText: 'Box label',
+                  hintText: 'e.g. Box 2',
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: qtyController,
+                decoration: const InputDecoration(labelText: 'Quantity'),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result != true || !mounted) {
+      labelController.dispose();
+      qtyController.dispose();
+      return;
+    }
+
+    final label = labelController.text.trim();
+    labelController.dispose();
+    final qty = int.tryParse(qtyController.text.trim()) ?? 0;
+    qtyController.dispose();
+    if (label.isEmpty || qty <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Enter a box label and quantity',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.warning,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
+    final lineKey = orderLineKey(item.id, label);
+    if (_selectedItems.containsKey(lineKey)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'That box label already exists for this product',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.warning,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _selectedItems[lineKey] = qty);
   }
 
   Order? _findMergeTarget() {
@@ -618,9 +925,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
-  void _showCustomPriceDialog(FoodItem item, {VoidCallback? onApplied}) {
+  void _showCustomPriceDialog(
+    FoodItem item, {
+    String? lineKey,
+    VoidCallback? onApplied,
+  }) {
+    final priceKey = lineKey ?? item.id;
     final messenger = ScaffoldMessenger.of(context);
-    final current = _customUnitPrices[item.id];
+    final current = _customUnitPrices[priceKey];
     final controller = TextEditingController(
       text: current == null ? '' : current.toStringAsFixed(2),
     );
@@ -655,7 +967,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   decimal: true,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Default: ${_formatRupee(item.price)}',
+                  hintText: 'Default: ${formatRupee(item.price)}',
                   prefixIcon: const Icon(
                     Icons.currency_rupee_rounded,
                     size: 20,
@@ -668,7 +980,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             if (current != null)
               TextButton(
                 onPressed: () {
-                  setState(() => _customUnitPrices.remove(item.id));
+                  setState(() => _customUnitPrices.remove(priceKey));
                   onApplied?.call();
                   Navigator.pop(context);
                 },
@@ -694,7 +1006,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               onPressed: () {
                 final raw = controller.text.trim().replaceAll(',', '');
                 if (raw.isEmpty) {
-                  setState(() => _customUnitPrices.remove(item.id));
+                  setState(() => _customUnitPrices.remove(priceKey));
                   onApplied?.call();
                   Navigator.pop(context);
                   return;
@@ -716,7 +1028,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   );
                   return;
                 }
-                setState(() => _customUnitPrices[item.id] = parsed);
+                setState(() => _customUnitPrices[priceKey] = parsed);
                 onApplied?.call();
                 Navigator.pop(context);
               },
@@ -749,13 +1061,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     var distinct = 0;
     var units = 0;
     var subtotal = 0.0;
-    _selectedItems.forEach((id, qty) {
+    _selectedItems.forEach((lineKey, qty) {
       if (qty <= 0) return;
       distinct += 1;
       units += qty;
-      final item = byId[id];
+      final foodItemId = foodItemIdFromLineKey(lineKey);
+      final item = byId[foodItemId];
       if (item == null) return;
-      final unitPrice = _customUnitPrices[id] ?? item.price;
+      final unitPrice = _customUnitPrices[lineKey] ?? item.price;
       subtotal += unitPrice * qty;
     });
     return _SelectionSummary(
@@ -826,6 +1139,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         if (customer.products != null) {
           for (final p in customer.products!) {
             _selectedItems[p.id] = p.quantity;
+            if (p.customPrice != null) {
+              _customUnitPrices[p.id] = p.customPrice!;
+            }
           }
         }
       });
@@ -1178,12 +1494,28 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         _selectedItems.entries
             .where((e) => e.value > 0)
             .map((e) {
-              final item = foodItems.firstWhereOrNull((f) => f.id == e.key);
-              return item == null ? null : (item, e.value);
+              final foodItemId = foodItemIdFromLineKey(e.key);
+              final item = foodItems.firstWhereOrNull((f) => f.id == foodItemId);
+              if (item == null) return null;
+              return (
+                lineKey: e.key,
+                item: item,
+                qty: e.value,
+                packLabel: packLabelFromLineKey(e.key),
+              );
             })
-            .whereType<(FoodItem, int)>()
+            .whereType<({
+              String lineKey,
+              FoodItem item,
+              int qty,
+              String? packLabel,
+            })>()
             .toList()
-          ..sort((a, b) => a.$1.name.compareTo(b.$1.name));
+          ..sort((a, b) {
+            final byName = a.item.name.compareTo(b.item.name);
+            if (byName != 0) return byName;
+            return (a.packLabel ?? '').compareTo(b.packLabel ?? '');
+          });
 
     if (selected.isEmpty) {
       return Container(
@@ -1249,59 +1581,67 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       );
     }
 
-    final selectedIds = selected.map((e) => e.$1.id).toSet();
-    final staleIds = _qtyControllers.keys.where(
-      (k) => !selectedIds.contains(k),
+    final selectedLineKeys = selected.map((e) => e.lineKey).toSet();
+    final staleKeys = _qtyControllers.keys.where(
+      (k) => !selectedLineKeys.contains(k),
     );
-    for (final id in staleIds.toList()) {
-      _removeQtyController(id);
+    for (final key in staleKeys.toList()) {
+      _removeQtyController(key);
     }
 
     return Column(
       children: [
-        for (final (item, qty) in selected) ...[
+        for (final line in selected) ...[
           () {
             final controller = _qtyControllers.putIfAbsent(
-              item.id,
-              () => TextEditingController(text: qty.toString()),
+              line.lineKey,
+              () => TextEditingController(text: line.qty.toString()),
             );
-            if (controller.text != qty.toString()) {
-              controller.text = qty.toString();
+            if (controller.text != line.qty.toString()) {
+              controller.text = line.qty.toString();
               controller.selection = TextSelection.fromPosition(
                 TextPosition(offset: controller.text.length),
               );
             }
+            final displayName = displayNameWithPackLabel(
+              line.item.name,
+              line.packLabel,
+            );
             return _SelectedMenuItemCard(
-              name: item.name,
-              unitPrice: _effectiveUnitPrice(item),
-              isCustom: _customUnitPrices.containsKey(item.id),
-              qty: qty,
+              name: displayName,
+              unitPrice: _effectiveUnitPriceForLine(line.lineKey, line.item),
+              isCustom: _customUnitPrices.containsKey(line.lineKey),
+              qty: line.qty,
               qtyController: controller,
               onQtyChanged: (nextQty) => setState(() {
                 final safe = nextQty.clamp(0, 999);
                 if (safe <= 0) {
-                  _selectedItems.remove(item.id);
-                  _customUnitPrices.remove(item.id);
-                  _removeQtyController(item.id);
+                  _selectedItems.remove(line.lineKey);
+                  _customUnitPrices.remove(line.lineKey);
+                  _removeQtyController(line.lineKey);
                 } else {
-                  _selectedItems[item.id] = safe;
+                  _selectedItems[line.lineKey] = safe;
                 }
               }),
-              onCustomPrice: () => _showCustomPriceDialog(item),
+              onCustomPrice: () => _showCustomPriceDialog(
+                line.item,
+                lineKey: line.lineKey,
+              ),
               onDec: () {
-                if (qty <= 0) return;
+                if (line.qty <= 0) return;
                 setState(() {
-                  final next = qty - 1;
+                  final next = line.qty - 1;
                   if (next <= 0) {
-                    _selectedItems.remove(item.id);
-                    _customUnitPrices.remove(item.id);
-                    _removeQtyController(item.id);
+                    _selectedItems.remove(line.lineKey);
+                    _customUnitPrices.remove(line.lineKey);
+                    _removeQtyController(line.lineKey);
                   } else {
-                    _selectedItems[item.id] = next;
+                    _selectedItems[line.lineKey] = next;
                   }
                 });
               },
-              onInc: () => setState(() => _selectedItems[item.id] = qty + 1),
+              onInc: () =>
+                  setState(() => _selectedItems[line.lineKey] = line.qty + 1),
             );
           }(),
           const SizedBox(height: 12),
@@ -1436,8 +1776,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
-  void _submitOrder() {
+  void _submitOrder({
+    bool popOnSuccess = true,
+    bool splitAfterSave = false,
+  }) {
     if (_isSubmitting) return;
+    if (splitAfterSave) {
+      _createSeparateOrder = true;
+    }
     if (_selectedCustomer == null) return;
     final orderType = _orderType;
     if (orderType == null) return;
@@ -1458,21 +1804,23 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     double subtotal = 0;
     final List<OrderItem> items = [];
 
-    _selectedItems.forEach((id, qty) {
+    _selectedItems.forEach((lineKey, qty) {
       if (qty > 0) {
-        final foodItem = foodItems.firstWhereOrNull((f) => f.id == id);
+        final foodItemId = foodItemIdFromLineKey(lineKey);
+        final foodItem = foodItems.firstWhereOrNull((f) => f.id == foodItemId);
         if (foodItem == null) return;
-        final unitPrice = _customUnitPrices[id] ?? foodItem.price;
+        final unitPrice = _customUnitPrices[lineKey] ?? foodItem.price;
         final total = unitPrice * qty;
         subtotal += total;
         items.add(
           OrderItem(
             id: const Uuid().v4(),
-            foodItemId: id,
+            foodItemId: foodItemId,
             foodItemName: foodItem.name,
             quantity: qty,
             unitPrice: unitPrice,
             totalPrice: total,
+            packLabel: packLabelFromLineKey(lineKey),
           ),
         );
       }
@@ -1644,11 +1992,28 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       ),
     };
 
-    if (wasCreated) {
-      ref.read(ordersProvider.notifier).addOrder(nextOrder);
-    } else {
-      ref.read(ordersProvider.notifier).updateOrder(nextOrder);
-    }
+    final saveFuture = wasCreated
+        ? ref.read(ordersProvider.notifier).addOrder(nextOrder)
+        : ref.read(ordersProvider.notifier).updateOrder(nextOrder);
+    saveFuture.catchError((Object e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              wasCreated
+                  ? 'Failed to create order. Check your connection and retry.'
+                  : 'Failed to update order. Check your connection and retry.',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    });
     try {
       ref
           .read(lastTouchedOrderProvider.notifier)
@@ -1658,9 +2023,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          wasCreated
+          splitAfterSave
+              ? 'Box saved. Add items for the next order.'
+              : wasCreated
               ? 'Order created successfully'
-              : (mergeTarget == null ? 'Order updated' : 'Order updated'),
+              : 'Order updated',
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         behavior: SnackBarBehavior.floating,
@@ -1668,7 +2035,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
-    context.pop();
+    setState(() => _isSubmitting = false);
+    if (splitAfterSave) {
+      _resetForNextSplitBox();
+      setState(() {});
+      return;
+    }
+    if (popOnSuccess) {
+      context.pop();
+    }
   }
 
   Order _mergeIntoExistingOrder({
@@ -1682,7 +2057,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }) {
     final merged = List<OrderItem>.from(mergeTarget.items);
     for (final add in addedItems) {
-      final i = merged.indexWhere((m) => m.foodItemId == add.foodItemId);
+      final i = merged.indexWhere((m) => orderItemsMatchForMerge(m, add));
       if (i < 0) {
         merged.add(add);
         continue;
@@ -1697,6 +2072,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         quantity: nextQty,
         unitPrice: unitPrice,
         totalPrice: unitPrice * nextQty,
+        packLabel: old.packLabel,
       );
     }
     final nextSubtotal = merged.fold<double>(0, (sum, i) => sum + i.totalPrice);

@@ -1838,23 +1838,6 @@ class _RecentOrderTile extends StatelessWidget {
     }
   }
 
-  String _humanStatus(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return 'Pending';
-      case OrderStatus.confirmed:
-        return 'Out for delivery';
-      case OrderStatus.preparing:
-        return 'Preparing';
-      case OrderStatus.ready:
-        return 'Ready';
-      case OrderStatus.delivered:
-        return 'Delivered';
-      case OrderStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts.first.isEmpty) return '?';
@@ -1876,7 +1859,7 @@ class _RecentOrderTile extends StatelessWidget {
     return Semantics(
       button: true,
       label:
-          '${order.customerName}, $amountLabel, ${_humanStatus(order.status)}',
+          '${order.customerName}, $amountLabel, ${order.status.label}',
       hint: 'Opens order details',
       child: Material(
         color: Colors.transparent,
@@ -1984,7 +1967,7 @@ class _RecentOrderTile extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        _humanStatus(order.status),
+                        order.status.label,
                         style: context.appTextStyles.caption.copyWith(
                           color: statusChipFg,
                           fontWeight: FontWeight.w800,

@@ -6,7 +6,10 @@ import 'package:uuid/uuid.dart';
 import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/services/firebase_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/route_name_validation.dart';
+import '../../../data/models/order.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
@@ -230,6 +233,7 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
               TextField(
                 controller: nameController,
                 textCapitalization: TextCapitalization.words,
+                maxLength: kRouteNameMaxLength,
                 decoration: _mgmtInputDecoration(
                   label: 'Route name',
                   hint: 'e.g. Downtown Express',
@@ -261,16 +265,21 @@ class _RouteManagementScreenState extends ConsumerState<RouteManagementScreen>
           FilledButton(
             onPressed: () async {
               final nextName = nameController.text.trim();
-              if (nextName.isEmpty) {
+              final validationError = validateRouteName(
+                nextName,
+                existingRoutes: ref.read(routesProvider),
+                editingRouteId: isEdit ? route.id : null,
+              );
+              if (validationError != null) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter a route name.')),
+                  SnackBar(content: Text(validationError)),
                 );
                 return;
               }
 
               await _runRouteMutation(() async {
-                final factoryId =
-                    await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+                final factoryId = await ref.read(factoryIdProvider.future);
+                if (factoryId == null || factoryId.isEmpty) return;
                 final newRoute = DeliveryRoute(
                   id: isEdit ? route.id : const Uuid().v4(),
                   factoryId: factoryId,
@@ -678,17 +687,26 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                                       createdAt: route.createdAt,
                                       updatedAt: DateTime.now(),
                                     );
-                                    await ref
-                                        .read(routesProvider.notifier)
-                                        .updateRoute(updatedRoute);
-
                                     final updatedDriver = driver.copyWith(
                                       currentRoute: route.id,
                                       updatedAt: DateTime.now(),
                                     );
-                                    ref
-                                        .read(driversProvider.notifier)
-                                        .updateDriver(updatedDriver);
+                                    // Atomic batch: route + driver updated together
+                                    final batch =
+                                        FirebaseService.firestore.batch();
+                                    batch.set(
+                                      FirebaseService.firestore
+                                          .collection('routes')
+                                          .doc(updatedRoute.id),
+                                      updatedRoute.toJson(),
+                                    );
+                                    batch.set(
+                                      FirebaseService.firestore
+                                          .collection('drivers')
+                                          .doc(updatedDriver.id),
+                                      updatedDriver.toJson(),
+                                    );
+                                    await batch.commit();
                                   });
 
                                   try {
@@ -821,8 +839,8 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
               }
 
               await widget.runRouteMutation(() async {
-                final factoryId =
-                    await ref.read(factoryIdProvider.future) ?? 'FAC_00001';
+                final factoryId = await ref.read(factoryIdProvider.future);
+                if (factoryId == null || factoryId.isEmpty) return;
                 final updated = DeliveryRoute(
                   id: route.id,
                   factoryId: factoryId,
@@ -893,6 +911,35 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
           TextButton(
             onPressed: () async {
               final dialogContext = context;
+              // H3: block delete if active orders reference this route
+              const activeStatuses = {
+                OrderStatus.pending,
+                OrderStatus.confirmed,
+                OrderStatus.preparing,
+                OrderStatus.ready,
+              };
+              final activeCount = ref
+                  .read(ordersProvider)
+                  .where(
+                    (o) =>
+                        o.assignedRoute == route.id &&
+                        activeStatuses.contains(o.status),
+                  )
+                  .length;
+              if (activeCount > 0) {
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Cannot delete: $activeCount active order(s) on this route. Deliver or cancel them first.',
+                      ),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+                return;
+              }
               await widget.runRouteMutation(() async {
                 final assignedDriverId = route.assignedDriver;
                 if (assignedDriverId != null && assignedDriverId.isNotEmpty) {
@@ -904,12 +951,14 @@ class _RouteListTabBodyState extends ConsumerState<_RouteListTabBody> {
                       currentRoute: null,
                       updatedAt: DateTime.now(),
                     );
-                    ref
+                    await ref
                         .read(driversProvider.notifier)
                         .updateDriver(updatedDriver);
                   }
                 }
-                ref.read(routesProvider.notifier).deleteRoute(route.id);
+                await ref
+                    .read(routesProvider.notifier)
+                    .deleteRoute(route.id);
               });
               if (dialogContext.mounted) Navigator.pop(dialogContext);
             },

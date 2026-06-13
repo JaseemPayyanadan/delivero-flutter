@@ -15,7 +15,9 @@ abstract final class RouteRefs {
   ) {
     final key = ref?.trim();
     if (key == null || key.isEmpty) return null;
-    return routes.firstWhereOrNull((r) => r.id == key || r.name == key);
+    return routes.firstWhereOrNull(
+      (r) => r.id == key || r.name.toLowerCase() == key.toLowerCase(),
+    );
   }
 
   /// Resolves a stored ref (id or legacy name) to the canonical route id.
@@ -41,7 +43,7 @@ abstract final class RouteRefs {
   static bool matchesRoute(String? ref, DeliveryRoute route) {
     final key = ref?.trim();
     if (key == null || key.isEmpty) return false;
-    return key == route.id || key == route.name;
+    return key == route.id || key.toLowerCase() == route.name.toLowerCase();
   }
 
   static bool matchesRouteId(String? ref, String routeId) {
