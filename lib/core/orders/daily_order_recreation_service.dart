@@ -90,6 +90,33 @@ class DailyOrderRecreationPrefs {
   }
 }
 
+const _unresolvedStatuses = {
+  OrderStatus.pending,
+  OrderStatus.confirmed,
+  OrderStatus.preparing,
+  OrderStatus.ready,
+};
+
+/// Returns daily orders on [sourceBusinessDay] that were never delivered
+/// or cancelled — i.e. still need the owner to act on them.
+List<Order> findUnresolvedSourceOrders({
+  required List<Order> orders,
+  required DateTime sourceBusinessDay,
+  int rolloverHour = kDefaultBusinessDayRolloverHour,
+}) {
+  final normalized = DateTime(
+    sourceBusinessDay.year,
+    sourceBusinessDay.month,
+    sourceBusinessDay.day,
+  );
+  return orders.where((o) {
+    if (o.orderType != OrderType.daily) return false;
+    if (!_unresolvedStatuses.contains(o.status)) return false;
+    final key = businessDayKey(o.orderDate, rolloverHour: rolloverHour);
+    return DateTime(key.year, key.month, key.day) == normalized;
+  }).toList();
+}
+
 bool isCustomerActiveForRecreation(
   Order source,
   List<Customer> customers,
