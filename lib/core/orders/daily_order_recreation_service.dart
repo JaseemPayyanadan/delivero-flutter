@@ -90,7 +90,7 @@ class DailyOrderRecreationPrefs {
   }
 }
 
-const _unresolvedStatuses = {
+const kUnresolvedOrderStatuses = {
   OrderStatus.pending,
   OrderStatus.confirmed,
   OrderStatus.preparing,
@@ -111,7 +111,7 @@ List<Order> findUnresolvedSourceOrders({
   );
   return orders.where((o) {
     if (o.orderType != OrderType.daily) return false;
-    if (!_unresolvedStatuses.contains(o.status)) return false;
+    if (!kUnresolvedOrderStatuses.contains(o.status)) return false;
     final key = businessDayKey(o.orderDate, rolloverHour: rolloverHour);
     return DateTime(key.year, key.month, key.day) == normalized;
   }).toList();

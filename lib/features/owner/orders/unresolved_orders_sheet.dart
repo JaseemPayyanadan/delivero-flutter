@@ -22,7 +22,7 @@ class UnresolvedOrdersSheet extends ConsumerWidget {
         .where(
           (o) =>
               orderIds.contains(o.id) &&
-              _unresolvedStatuses.contains(o.status),
+              kUnresolvedOrderStatuses.contains(o.status),
         )
         .toList();
 
@@ -116,7 +116,7 @@ class UnresolvedOrdersSheet extends ConsumerWidget {
                   : ListView.separated(
                       shrinkWrap: true,
                       itemCount: unresolved.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, i) => _UnresolvedOrderRow(
                         order: unresolved[i],
                         money0: money0,
