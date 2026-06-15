@@ -14,33 +14,38 @@ Two issues in the current order flow:
 
 ---
 
-## Fix 1 — Auto-cancel stale daily orders at rollover
+## Fix 1 — Unresolved orders summary popup at rollover
 
 ### Behaviour
 
-When `runRolloverBatch` runs (at business day rollover), before creating tomorrow's orders it performs a **stale-order cleanup pass**:
+When the app detects a new business day (rollover has passed) and there are daily orders from yesterday still in an unresolved state (`pending`, `confirmed`, `preparing`, or `ready`), it shows a **bottom sheet summary** before auto-recreation runs.
 
-- Scan all daily orders whose `orderDate` falls on `sourceDay` (yesterday's business day)
-- Any order with status `pending`, `confirmed`, `preparing`, or `ready` at that point is auto-set to `cancelled`
-- The normal recreation logic then runs and creates a fresh `pending` order for today from that same source
+The popup:
+- Lists each unresolved order from yesterday: customer name, items summary, total, current status
+- For each order the owner can tap **Mark Delivered** or **Cancel**
+- A **Done** button at the bottom dismisses the sheet and triggers the normal auto-recreation pass
+- If there are no unresolved orders, the popup is skipped entirely and recreation runs silently
 
-**What does NOT get cancelled:** orders already `delivered` or already `cancelled`.
+The owner stays in control — the app does not auto-cancel or auto-deliver anything. Recreation only runs after the owner dismisses the popup (or if there is nothing to review).
 
-### Why `cancelled` and not a new status
+### When it appears
 
-Reusing `cancelled` keeps the model simple. The owner can distinguish auto-cancelled stale orders from intentional cancellations by looking at the order date — a `cancelled` order dated yesterday that also has a fresh `pending` order today is clearly a stale rollover, not a deliberate cancellation.
+- On app foreground/resume, after rollover is detected and before `runRolloverBatch` fires
+- Only shown once per business day (gated by the same `lastRunDay` preference already used by the recreation service)
+- If the owner force-quits without acting, it reappears the next time they open the app on the same day
 
 ### Implementation touch points
 
-- `daily_order_recreation_service.dart` — add a `cancelStaleSourceOrders` step inside `runRolloverBatch`, called before `runBatchForTargetDay`
-- The step takes `sourceDay`, the full `orders` list, and an `updateOrder` callback — same pattern as the existing sync layer
-- Must run synchronously (all cancellations applied) before recreation starts, so the `hasPendingOrderForTargetDay` check sees a clean slate
+- `daily_order_recreation_service.dart` — add a `findUnresolvedSourceOrders(sourceDay, orders)` helper that returns daily orders from yesterday with status not in `{delivered, cancelled}`
+- New widget `UnresolvedOrdersSheet` — a `DraggableScrollableSheet` bottom sheet with the order list and per-order action buttons
+- The sheet is shown from wherever rollover is currently triggered (the app startup / foreground hook that calls `runRolloverBatch`). Recreation is deferred until the sheet is dismissed.
+- Per-order actions call the existing `ordersProvider.notifier.updateOrder(...)` — no new data layer needed
 
 ### Edge cases
 
-- If the owner manually cancelled yesterday's order before rollover, the cleanup step skips it (already `cancelled`)
-- If an order is `delivered` at rollover time, it is NOT cancelled — recreation proceeds normally
-- Backfill runs (multiple missed days) apply the cleanup for each `sourceDay` in sequence before creating that day's orders
+- If the owner marks an order delivered from the sheet, it disappears from the list immediately
+- If all orders are resolved before tapping Done, the Done button auto-triggers and recreation runs
+- Backfill runs (app opened after multiple missed days): show the popup for the oldest unresolved day first, then proceed day by day
 
 ---
 
