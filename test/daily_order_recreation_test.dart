@@ -406,7 +406,6 @@ void main() {
   });
 
   group('findUnresolvedSourceOrders', () {
-    const rolloverHour = 7;
     final sourceDay = DateTime(2025, 6, 20);
 
     test('returns pending daily order on source day', () {
@@ -469,6 +468,31 @@ void main() {
         rolloverHour: rolloverHour,
       );
       expect(result, isEmpty);
+    });
+
+    test('returns confirmed, preparing, and ready orders', () {
+      final confirmed = productionTestOrder(
+        id: 'o6',
+        orderDate: DateTime(2025, 6, 20, 9),
+        status: OrderStatus.confirmed,
+      );
+      final preparing = productionTestOrder(
+        id: 'o7',
+        orderDate: DateTime(2025, 6, 20, 9),
+        status: OrderStatus.preparing,
+      );
+      final ready = productionTestOrder(
+        id: 'o8',
+        orderDate: DateTime(2025, 6, 20, 9),
+        status: OrderStatus.ready,
+      );
+      final result = findUnresolvedSourceOrders(
+        orders: [confirmed, preparing, ready],
+        sourceBusinessDay: sourceDay,
+        rolloverHour: rolloverHour,
+      );
+      expect(result.length, 3);
+      expect(result.map((o) => o.id), containsAll(['o6', 'o7', 'o8']));
     });
   });
 }
