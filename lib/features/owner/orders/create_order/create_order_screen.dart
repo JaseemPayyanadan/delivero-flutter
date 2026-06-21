@@ -58,6 +58,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   bool _initializedFromOrder = false;
   bool _initializedFromPreselect = false;
   Order? _editingOrder;
+  DateTime _orderDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+  );
   DateTime? _reviewEnteredAt;
   final Map<String, TextEditingController> _qtyControllers = {};
   final Map<String, TextEditingController> _catalogQtyControllers = {};
@@ -139,6 +144,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             _selectedCustomer = customer;
             _orderType = existing.orderType;
             _deliveryRun = existing.deliveryRun;
+            _orderDate = DateTime(
+              existing.orderDate.year,
+              existing.orderDate.month,
+              existing.orderDate.day,
+            );
             _selectedItems = {
               for (final i in existing.items)
                 orderLineKey(i.foodItemId, i.packLabel): i.quantity,
@@ -773,7 +783,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       customerId: customer.id,
       orderType: orderType,
       deliveryRun: _deliveryRun,
-      referenceTime: DateTime.now(),
+      referenceTime: _orderDate,
       rolloverHour: ref.read(orderRolloverHourProvider),
       forDriver: widget.forDriver,
     );
@@ -1799,7 +1809,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           status: OrderStatus.pending,
           assignedRoute: normalizedRouteId,
           assignedDriver: assignedDriver,
-          orderDate: now,
+          orderDate: _orderDate,
           createdAt: now,
           updatedAt: now,
         ),
