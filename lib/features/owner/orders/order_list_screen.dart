@@ -78,11 +78,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       );
       await ref.read(ordersProvider.notifier).updateOrder(updated);
     }
-    setState(() => _selectedIds = {});
-    if (mounted && targets.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${targets.length} orders marked as delivered')),
-      );
+    if (mounted) {
+      setState(() => _selectedIds = {});
+      if (targets.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${targets.length} orders marked as delivered')),
+        );
+      }
     }
   }
 
@@ -102,11 +104,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       );
       await ref.read(ordersProvider.notifier).updateOrder(updated);
     }
-    setState(() => _selectedIds = {});
-    if (mounted && targets.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${targets.length} orders marked as paid')),
-      );
+    if (mounted) {
+      setState(() => _selectedIds = {});
+      if (targets.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${targets.length} orders marked as paid')),
+        );
+      }
     }
   }
 
@@ -323,10 +327,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                     final allOrders = ref.watch(ordersProvider);
                     final selectedOrders =
                         allOrders.where((o) => _selectedIds.contains(o.id)).toList();
-                    final allDelivered = selectedOrders
-                        .every((o) => o.status == OrderStatus.delivered);
-                    final allPaid = selectedOrders
-                        .every((o) => o.paymentStatus == PaymentStatus.paid);
+                    final allDelivered = selectedOrders.isEmpty ||
+                        selectedOrders.every((o) => o.status == OrderStatus.delivered);
+                    final allPaid = selectedOrders.isEmpty ||
+                        selectedOrders.every((o) => o.paymentStatus == PaymentStatus.paid);
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                       child: Row(
