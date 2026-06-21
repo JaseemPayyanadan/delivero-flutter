@@ -14,10 +14,16 @@ import '../../../../data/models/order.dart';
 class OrderCard extends ConsumerWidget {
   final Order order;
   final List<Order> siblingOrders;
+  final bool isSelected;
+  final VoidCallback? onToggleSelect;
+  final VoidCallback? onEnterSelectMode;
 
   const OrderCard({
     required this.order,
     this.siblingOrders = const [],
+    this.isSelected = false,
+    this.onToggleSelect,
+    this.onEnterSelectMode,
   });
 
   @override
@@ -85,7 +91,9 @@ class OrderCard extends ConsumerWidget {
             if (moreLines > 0) '+$moreLines more',
           ];
 
-    return Container(
+    return Stack(
+      children: [
+        Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: shouldHighlight
@@ -111,7 +119,8 @@ class OrderCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => context.push('/owner/orders/${order.id}'),
+          onTap: onToggleSelect ?? () => context.push('/owner/orders/${order.id}'),
+          onLongPress: onEnterSelectMode,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -365,6 +374,28 @@ class OrderCard extends ConsumerWidget {
           ),
         ),
       ),
+        ),
+        if (onToggleSelect != null)
+          Positioned(
+            top: 10,
+            left: 10,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isSelected
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: isSelected ? AppColors.primary : AppColors.textLight,
+                size: 24,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
