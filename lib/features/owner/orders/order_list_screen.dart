@@ -12,6 +12,7 @@ import '../../../core/orders/business_day.dart';
 import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/route_refs.dart';
+import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/order.dart';
@@ -318,10 +319,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       final orders = groups[day]!..sort(
         (a, b) => compareOrdersByDate(a, b),
       );
+      final dayTotal = orders.fold(0.0, (sum, o) => sum + o.totalAmount);
       widgets.add(
         _DateSectionHeader(
           title: _formatBusinessDaySection(day, todayKey),
           count: orders.length,
+          dayTotal: dayTotal,
         ),
       );
       for (final o in orders) {
@@ -976,7 +979,12 @@ class _DayCell extends StatelessWidget {
 class _DateSectionHeader extends StatelessWidget {
   final String title;
   final int count;
-  const _DateSectionHeader({required this.title, required this.count});
+  final double dayTotal;
+  const _DateSectionHeader({
+    required this.title,
+    required this.count,
+    required this.dayTotal,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1001,7 +1009,7 @@ class _DateSectionHeader extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              '$count ${count == 1 ? 'Order' : 'Orders'}',
+              '${formatRupee(dayTotal)} · $count ${count == 1 ? 'Order' : 'Orders'}',
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: 11,
