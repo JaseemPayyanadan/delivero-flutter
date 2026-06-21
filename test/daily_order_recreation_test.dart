@@ -38,7 +38,7 @@ void main() {
   );
 
   group('runBatchForTargetDay', () {
-    test('creates pending order from yesterday pending daily order', () {
+    test('creates pending order from yesterday pending daily order', () async {
       final pending = productionTestOrder(
         id: 'src-pending',
         orderDate: day1Morning,
@@ -46,7 +46,7 @@ void main() {
       );
       final created = <Order>[];
 
-      final result = runBatchForTargetDay(
+      final result = await runBatchForTargetDay(
         targetBusinessDay: DateTime(2025, 6, 21),
         orders: [pending],
         customers: [activeCustomer()],
@@ -59,7 +59,7 @@ void main() {
       expect(created.first.status, OrderStatus.pending);
     });
 
-    test('creates pending order from yesterday delivered daily order', () {
+    test('creates pending order from yesterday delivered daily order', () async {
       final delivered = productionTestOrder(
         id: 'src-1',
         orderDate: day1Morning,
@@ -67,7 +67,7 @@ void main() {
       );
       final created = <Order>[];
 
-      final result = runBatchForTargetDay(
+      final result = await runBatchForTargetDay(
         targetBusinessDay: DateTime(2025, 6, 21),
         orders: [delivered],
         customers: [activeCustomer()],
@@ -86,7 +86,7 @@ void main() {
       );
     });
 
-    test('skips when linked pending child already exists for target day', () {
+    test('skips when linked pending child already exists for target day', () async {
       final delivered = productionTestOrder(
         id: 'src-1',
         orderDate: day1Morning,
@@ -99,7 +99,7 @@ void main() {
       ).copyWith(recreatedFromOrderId: 'src-1');
       final created = <Order>[];
 
-      final result = runBatchForTargetDay(
+      final result = await runBatchForTargetDay(
         targetBusinessDay: DateTime(2025, 6, 21),
         orders: [delivered, existing],
         customers: [activeCustomer()],
@@ -111,7 +111,7 @@ void main() {
       expect(created, isEmpty);
     });
 
-    test('recreates each split order same customer and run', () {
+    test('recreates each split order same customer and run', () async {
       final box1 = productionTestOrder(
         id: 'box-1',
         orderDate: day1Morning,
@@ -144,7 +144,7 @@ void main() {
       ).copyWith(subtotal: 500, totalAmount: 500);
       final created = <Order>[];
 
-      final result = runBatchForTargetDay(
+      final result = await runBatchForTargetDay(
         targetBusinessDay: DateTime(2025, 6, 21),
         orders: [box1, box2],
         customers: [activeCustomer()],
@@ -157,7 +157,7 @@ void main() {
       expect(created.every((o) => o.items.first.quantity == 50), isTrue);
     });
 
-    test('skips order whose customer is not in the customers list', () {
+    test('skips order whose customer is not in the customers list', () async {
       final orphaned = productionTestOrder(
         id: 'orphan',
         orderDate: day1Morning,
@@ -165,7 +165,7 @@ void main() {
       ).copyWith(customerId: 'unknown-cust');
       final created = <Order>[];
 
-      final result = runBatchForTargetDay(
+      final result = await runBatchForTargetDay(
         targetBusinessDay: DateTime(2025, 6, 21),
         orders: [orphaned],
         customers: [activeCustomer()],
@@ -177,7 +177,7 @@ void main() {
       expect(created, isEmpty);
     });
 
-    test('skips one-time, special, cancelled, and inactive customers', () {
+    test('skips one-time, special, cancelled, and inactive customers', () async {
       final oneTime = productionTestOrder(
         id: 'one-time',
         orderDate: day1Morning,
@@ -202,7 +202,7 @@ void main() {
       ).copyWith(customerId: 'cust-2');
       final created = <Order>[];
 
-      final result = runBatchForTargetDay(
+      final result = await runBatchForTargetDay(
         targetBusinessDay: DateTime(2025, 6, 21),
         orders: [oneTime, special, cancelled, inactive],
         customers: [activeCustomer(), inactiveCustomer()],
@@ -213,7 +213,7 @@ void main() {
       expect(result.createdCount, 0);
     });
 
-    test('creates separate orders per delivery run', () {
+    test('creates separate orders per delivery run', () async {
       final morning = productionTestOrder(
         id: 'morning',
         orderDate: day1Morning,
@@ -228,7 +228,7 @@ void main() {
       );
       final created = <Order>[];
 
-      final result = runBatchForTargetDay(
+      final result = await runBatchForTargetDay(
         targetBusinessDay: DateTime(2025, 6, 21),
         orders: [morning, evening],
         customers: [activeCustomer()],
@@ -402,6 +402,97 @@ void main() {
         ),
         isFalse,
       );
+    });
+  });
+
+  group('findUnresolvedSourceOrders', () {
+    final sourceDay = DateTime(2025, 6, 20);
+
+    test('returns pending daily order on source day', () {
+      final order = productionTestOrder(
+        id: 'o1',
+        orderDate: DateTime(2025, 6, 20, 9),
+        status: OrderStatus.pending,
+      );
+      final result = findUnresolvedSourceOrders(
+        orders: [order],
+        sourceBusinessDay: sourceDay,
+        rolloverHour: rolloverHour,
+      );
+      expect(result.length, 1);
+      expect(result.first.id, 'o1');
+    });
+
+    test('excludes delivered and cancelled orders', () {
+      final delivered = productionTestOrder(
+        id: 'o2',
+        orderDate: DateTime(2025, 6, 20, 9),
+        status: OrderStatus.delivered,
+      );
+      final cancelled = productionTestOrder(
+        id: 'o3',
+        orderDate: DateTime(2025, 6, 20, 9),
+        status: OrderStatus.cancelled,
+      );
+      final result = findUnresolvedSourceOrders(
+        orders: [delivered, cancelled],
+        sourceBusinessDay: sourceDay,
+        rolloverHour: rolloverHour,
+      );
+      expect(result, isEmpty);
+    });
+
+    test('excludes orders on a different business day', () {
+      final wrongDay = productionTestOrder(
+        id: 'o4',
+        orderDate: DateTime(2025, 6, 19, 9),
+        status: OrderStatus.pending,
+      );
+      final result = findUnresolvedSourceOrders(
+        orders: [wrongDay],
+        sourceBusinessDay: sourceDay,
+        rolloverHour: rolloverHour,
+      );
+      expect(result, isEmpty);
+    });
+
+    test('excludes non-daily orders', () {
+      final oneTime = productionTestOrder(
+        id: 'o5',
+        orderDate: DateTime(2025, 6, 20, 9),
+        status: OrderStatus.pending,
+      ).copyWith(orderType: OrderType.oneTime);
+      final result = findUnresolvedSourceOrders(
+        orders: [oneTime],
+        sourceBusinessDay: sourceDay,
+        rolloverHour: rolloverHour,
+      );
+      expect(result, isEmpty);
+    });
+
+    test('returns confirmed, preparing, and ready orders', () {
+      final confirmed = productionTestOrder(
+        id: 'o6',
+        orderDate: DateTime(2025, 6, 20, 9),
+        status: OrderStatus.confirmed,
+      );
+      final preparing = productionTestOrder(
+        id: 'o7',
+        orderDate: DateTime(2025, 6, 20, 9),
+        status: OrderStatus.preparing,
+      );
+      final ready = productionTestOrder(
+        id: 'o8',
+        orderDate: DateTime(2025, 6, 20, 9),
+        status: OrderStatus.ready,
+      );
+      final result = findUnresolvedSourceOrders(
+        orders: [confirmed, preparing, ready],
+        sourceBusinessDay: sourceDay,
+        rolloverHour: rolloverHour,
+      );
+      expect(result.length, 3);
+      expect(result.map((o) => o.id), containsAll(['o6', 'o7', 'o8']));
     });
   });
 }
