@@ -446,6 +446,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       );
       for (final o in orders) {
         widgets.add(OrderCard(
+          key: ValueKey(o.id),
           order: o,
           siblingOrders: orders,
           isSelected: _selectedIds.contains(o.id),

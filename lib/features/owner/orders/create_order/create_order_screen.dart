@@ -812,7 +812,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       customerId: customer.id,
       orderType: orderType,
       deliveryRun: _deliveryRun,
-      referenceTime: _orderDate,
+      referenceTime: orderDateForBusinessDay(
+        _orderDate,
+        rolloverHour: ref.read(orderRolloverHourProvider),
+      ),
       rolloverHour: ref.read(orderRolloverHourProvider),
       forDriver: widget.forDriver,
     );
@@ -1893,7 +1896,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           status: OrderStatus.pending,
           assignedRoute: normalizedRouteId,
           assignedDriver: assignedDriver,
-          orderDate: _orderDate,
+          orderDate: orderDateForBusinessDay(
+            _orderDate,
+            rolloverHour: rolloverHour,
+          ),
           createdAt: now,
           updatedAt: now,
         ),
@@ -1913,7 +1919,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           subtotal: subtotal,
           discountAmount: discountAmount,
           totalAmount: totalAmount,
-          orderDate: _orderDate,
+          orderDate: orderDateForBusinessDay(
+            _orderDate,
+            rolloverHour: rolloverHour,
+          ),
           assignedRoute: normalizedRouteId,
           assignedDriver: assignedDriver,
           updatedAt: now,

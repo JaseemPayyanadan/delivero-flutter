@@ -19,6 +19,7 @@ class OrderCard extends ConsumerWidget {
   final VoidCallback? onEnterSelectMode;
 
   const OrderCard({
+    super.key,
     required this.order,
     this.siblingOrders = const [],
     this.isSelected = false,
