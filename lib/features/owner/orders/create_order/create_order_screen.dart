@@ -1913,6 +1913,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           subtotal: subtotal,
           discountAmount: discountAmount,
           totalAmount: totalAmount,
+          orderDate: _orderDate,
           assignedRoute: normalizedRouteId,
           assignedDriver: assignedDriver,
           updatedAt: now,
