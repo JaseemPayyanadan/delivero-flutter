@@ -420,6 +420,35 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     super.dispose();
   }
 
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  Future<void> _pickOrderDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _orderDate,
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _orderDate = picked);
+    }
+  }
+
   String _digitsOnly(String value) {
     return value.replaceAll(RegExp(r'\D'), '');
   }
@@ -1554,6 +1583,61 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // ── Delivery date ────────────────────────────────────────────
+        Text(
+          'Delivery date',
+          style: context.appTextStyles.caption.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: _pickOrderDate,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.calendar_today_rounded,
+                  size: 15,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  DateFormat('EEE, d MMM y').format(_orderDate),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (!_isToday(_orderDate)) ...[
+          const SizedBox(height: 8),
+          Text(
+            "Orders for this date won't auto-merge with today's orders.",
+            style: context.appTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+              height: 1.4,
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        // ── Delivery run ─────────────────────────────────────────────
         Text(
           'Delivery run',
           style: context.appTextStyles.caption.copyWith(
