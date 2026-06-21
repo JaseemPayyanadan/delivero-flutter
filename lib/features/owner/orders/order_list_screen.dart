@@ -37,6 +37,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   DateTime? _selectedDate;
   Timer? _highlightClearTimer;
 
+  Set<String> _selectedIds = {};
+  bool get _isSelecting => _selectedIds.isNotEmpty;
+
   String _formatBusinessDaySection(
     DateTime dayKey,
     DateTime todayKey,
@@ -58,6 +61,53 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     _highlightClearTimer = Timer(const Duration(seconds: 9), () {
       if (mounted) setState(() {});
     });
+  }
+
+  Future<void> _bulkMarkDelivered(List<Order> allOrders) async {
+    final now = DateTime.now();
+    final targets = allOrders
+        .where((o) =>
+            _selectedIds.contains(o.id) && o.status != OrderStatus.delivered)
+        .toList();
+    for (final order in targets) {
+      final updated = order.copyWith(
+        status: OrderStatus.delivered,
+        deliveryTime: order.deliveryTime ?? now,
+        deliveryDate: order.deliveryDate ?? now,
+        updatedAt: now,
+      );
+      await ref.read(ordersProvider.notifier).updateOrder(updated);
+    }
+    setState(() => _selectedIds = {});
+    if (mounted && targets.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${targets.length} orders marked as delivered')),
+      );
+    }
+  }
+
+  Future<void> _bulkMarkPaid(List<Order> allOrders) async {
+    final now = DateTime.now();
+    final targets = allOrders
+        .where((o) =>
+            _selectedIds.contains(o.id) &&
+            o.paymentStatus != PaymentStatus.paid)
+        .toList();
+    for (final order in targets) {
+      final updated = order.copyWith(
+        paymentStatus: PaymentStatus.paid,
+        paymentMethod: order.paymentMethod ?? PaymentMethod.cash,
+        paymentTime: now,
+        updatedAt: now,
+      );
+      await ref.read(ordersProvider.notifier).updateOrder(updated);
+    }
+    setState(() => _selectedIds = {});
+    if (mounted && targets.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${targets.length} orders marked as paid')),
+      );
+    }
   }
 
   @override
@@ -209,45 +259,107 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     sortOrdersByDate(filteredOrders);
 
-    return Scaffold(
+    return PopScope(
+      canPop: !_isSelecting,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isSelecting) {
+          setState(() => _selectedIds = {});
+        }
+      },
+      child: Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: DeliveroAppBar(
-        title: 'Orders',
-        leading: Navigator.of(context).canPop()
+        title: _isSelecting ? '${_selectedIds.length} selected' : 'Orders',
+        leading: _isSelecting
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => context.pop(),
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => setState(() => _selectedIds = {}),
               )
-            : null,
-        actions: [
-          if (!noOrdersYet)
-            IconButton(
-              tooltip: 'Production list',
-              onPressed: () => _openProductionSummary(
-                orders: orders,
-                routes: routes,
-                productionDay: productionDay,
-                rolloverHour: rolloverHour,
-              ),
-              icon: const Icon(
-                Icons.inventory_2_rounded,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          IconButton(
-            tooltip: 'Search',
-            onPressed: () => _openSearchSheet(context),
-            icon: const Icon(
-              Icons.search_rounded,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Filter',
-            onPressed: () => _showFiltersSheet(context),
-            icon: const Icon(Icons.tune_rounded, color: AppColors.textPrimary),
-          ),
-        ],
+            : Navigator.of(context).canPop()
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: () => context.pop(),
+                  )
+                : null,
+        actions: _isSelecting
+            ? []
+            : [
+                if (!noOrdersYet)
+                  IconButton(
+                    tooltip: 'Production list',
+                    onPressed: () => _openProductionSummary(
+                      orders: orders,
+                      routes: routes,
+                      productionDay: productionDay,
+                      rolloverHour: rolloverHour,
+                    ),
+                    icon: const Icon(
+                      Icons.inventory_2_rounded,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                IconButton(
+                  tooltip: 'Search',
+                  onPressed: () => _openSearchSheet(context),
+                  icon: const Icon(
+                    Icons.search_rounded,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Filter',
+                  onPressed: () => _showFiltersSheet(context),
+                  icon: const Icon(Icons.tune_rounded, color: AppColors.textPrimary),
+                ),
+              ],
+      ),
+      bottomNavigationBar: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: _isSelecting
+            ? SafeArea(
+                key: const ValueKey('bulk-bar'),
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final allOrders = ref.watch(ordersProvider);
+                    final selectedOrders =
+                        allOrders.where((o) => _selectedIds.contains(o.id)).toList();
+                    final allDelivered = selectedOrders
+                        .every((o) => o.status == OrderStatus.delivered);
+                    final allPaid = selectedOrders
+                        .every((o) => o.paymentStatus == PaymentStatus.paid);
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: allDelivered
+                                  ? null
+                                  : () => _bulkMarkDelivered(allOrders),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                              ),
+                              child: const Text('Mark delivered'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed:
+                                  allPaid ? null : () => _bulkMarkPaid(allOrders),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                              ),
+                              child: const Text('Mark paid'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              )
+            : const SizedBox.shrink(),
       ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
@@ -295,6 +407,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -328,7 +441,26 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         ),
       );
       for (final o in orders) {
-        widgets.add(OrderCard(order: o, siblingOrders: orders));
+        widgets.add(OrderCard(
+          order: o,
+          siblingOrders: orders,
+          isSelected: _selectedIds.contains(o.id),
+          onToggleSelect: _isSelecting
+              ? () => setState(() {
+                    if (_selectedIds.contains(o.id)) {
+                      _selectedIds.remove(o.id);
+                    } else {
+                      _selectedIds.add(o.id);
+                    }
+                  })
+              : null,
+          onEnterSelectMode: _isSelecting
+              ? () => setState(() => _selectedIds.add(o.id))
+              : () {
+                  HapticFeedback.mediumImpact();
+                  setState(() => _selectedIds.add(o.id));
+                },
+        ));
       }
       widgets.add(const SizedBox(height: 10));
     }
