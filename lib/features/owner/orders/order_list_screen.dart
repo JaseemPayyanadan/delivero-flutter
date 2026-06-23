@@ -42,7 +42,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   DateTime? _selectedDate;
   Timer? _highlightClearTimer;
   late final PageController _weekPageController;
-  // ignore: unused_field — consumed by Tasks 3 & 4
   int _visibleWeekOffset = 0;
 
   Set<String> _selectedIds = {};
@@ -542,7 +541,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         ),
                       )
                     : Text(
-                        DateFormat('MMMM yyyy').format(DateTime.now()),
+                        DateFormat('MMMM yyyy').format(
+                          weekDaysForOffset(
+                            DateTime.now(),
+                            _visibleWeekOffset,
+                          )[3],
+                        ),
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
