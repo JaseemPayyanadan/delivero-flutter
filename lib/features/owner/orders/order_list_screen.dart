@@ -151,6 +151,28 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     }
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = _calendarDay(picked));
+    }
+  }
+
   Future<void> _openProductionSummary({
     required List<Order> orders,
     required List<DeliveryRoute> routes,
@@ -251,8 +273,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
       final matchesDay = _selectedDate == null
           ? true
-          : businessDayKey(order.orderDate, rolloverHour: rolloverHour) ==
-              _selectedDate;
+          : _calendarDay(order.orderDate) == _selectedDate;
 
       return matchesSearch &&
           matchesRoute &&
@@ -395,10 +416,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
                 sliver: Builder(
                   builder: (context) {
-                    final widgets = _buildGroupedOrderWidgets(
-                      filteredOrders,
-                      rolloverHour: rolloverHour,
-                    );
+                    final widgets = _buildGroupedOrderWidgets(filteredOrders);
                     return SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => widgets[index],
@@ -416,15 +434,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   List<Widget> _buildGroupedOrderWidgets(
-    List<Order> filteredOrders, {
-    required int rolloverHour,
-  }) {
-    final todayKey = currentBusinessDayKey(rolloverHour: rolloverHour);
+    List<Order> filteredOrders,
+  ) {
+    final todayKey = _calendarDay(DateTime.now());
     final groups = <DateTime, List<Order>>{};
 
     for (final order in filteredOrders) {
-      final dayKey = businessDayKey(order.orderDate, rolloverHour: rolloverHour);
-      final normalized = DateTime(dayKey.year, dayKey.month, dayKey.day);
+      final normalized = _calendarDay(order.orderDate);
       (groups[normalized] ??= []).add(order);
     }
 
@@ -481,6 +497,54 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: _selectedDate != null
+                    ? GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setState(() => _selectedDate = null),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              DateFormat('EEE, d MMM').format(_selectedDate!),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
+                      )
+                    : Text(
+                        DateFormat('MMMM yyyy').format(DateTime.now()),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+              ),
+              IconButton(
+                onPressed: _pickDate,
+                icon: const Icon(Icons.calendar_month_rounded),
+                color: AppColors.primary,
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Pick a date',
+              ),
+            ],
+          ),
+        ),
         _WeekStrip(
           selectedDate: _selectedDate,
           onDayTap: (date) => setState(() => _selectedDate = date),
