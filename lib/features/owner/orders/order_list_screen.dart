@@ -184,6 +184,14 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
     if (picked != null && mounted) {
       setState(() => _selectedDate = _calendarDay(picked));
+      final page = weekPageForDate(DateTime.now(), picked);
+      if (_weekPageController.hasClients) {
+        _weekPageController.animateToPage(
+          page,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
     }
   }
 
