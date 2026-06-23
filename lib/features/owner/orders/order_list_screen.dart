@@ -18,7 +18,12 @@ import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 import 'production_summary_sheet.dart';
+import 'week_strip_math.dart';
 import 'widgets/order_card.dart';
+
+/// Fixed height for the swipeable week strip (a [PageView] needs bounded
+/// height). Sized to comfortably fit one `_WeekStrip` row.
+const double _kWeekStripHeight = 88;
 
 class OrderListScreen extends ConsumerStatefulWidget {
   const OrderListScreen({super.key});
@@ -36,6 +41,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   DateTime? _productionDay;
   DateTime? _selectedDate;
   Timer? _highlightClearTimer;
+  late final PageController _weekPageController;
+  // ignore: unused_field — consumed by Tasks 3 & 4
+  int _visibleWeekOffset = 0;
 
   Set<String> _selectedIds = {};
   bool get _isSelecting => _selectedIds.isNotEmpty;
@@ -115,7 +123,14 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _weekPageController = PageController(initialPage: kWeekStripBasePage);
+  }
+
+  @override
   void dispose() {
+    _weekPageController.dispose();
     _highlightClearTimer?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -545,9 +560,48 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             ],
           ),
         ),
-        _WeekStrip(
-          selectedDate: _selectedDate,
-          onDayTap: (date) => setState(() => _selectedDate = date),
+        SizedBox(
+          height: _kWeekStripHeight,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              PageView.builder(
+                controller: _weekPageController,
+                onPageChanged: (page) => setState(
+                  () => _visibleWeekOffset = page - kWeekStripBasePage,
+                ),
+                itemBuilder: (context, page) {
+                  final now = DateTime.now();
+                  return _WeekStrip(
+                    days: weekDaysForOffset(now, page - kWeekStripBasePage),
+                    todayKey: _calendarDay(now),
+                    selectedDate: _selectedDate,
+                    onDayTap: (date) => setState(() => _selectedDate = date),
+                  );
+                },
+              ),
+              Positioned(
+                left: 2,
+                child: IgnorePointer(
+                  child: Icon(
+                    Icons.chevron_left_rounded,
+                    size: 20,
+                    color: AppColors.textLight.withValues(alpha: 0.45),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 2,
+                child: IgnorePointer(
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: AppColors.textLight.withValues(alpha: 0.45),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 180),
@@ -1054,19 +1108,20 @@ class _OrdersSearchSheet extends StatelessWidget {
 }
 
 class _WeekStrip extends StatelessWidget {
+  final List<DateTime> days;
+  final DateTime todayKey;
   final DateTime? selectedDate;
   final void Function(DateTime?) onDayTap;
 
-  const _WeekStrip({required this.selectedDate, required this.onDayTap});
+  const _WeekStrip({
+    required this.days,
+    required this.todayKey,
+    required this.selectedDate,
+    required this.onDayTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final todayKey = DateTime(now.year, now.month, now.day);
-    final daysFromSunday = now.weekday == 7 ? 0 : now.weekday;
-    final sunday = todayKey.subtract(Duration(days: daysFromSunday));
-    final days = List.generate(7, (i) => sunday.add(Duration(days: i)));
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
       child: Row(
