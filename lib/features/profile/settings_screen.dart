@@ -26,8 +26,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _vibrateOnStatus = false;
   String? _prefsKey;
   bool _prefsLoaded = false;
-  bool _availabilitySynced = false;
   String? _orderSettingsSyncedFactory;
+  bool _availabilitySynced = false;
   bool _isGeneratingDailyOrders = false;
 
   @override
