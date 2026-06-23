@@ -562,45 +562,49 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         ),
         SizedBox(
           height: _kWeekStripHeight,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              PageView.builder(
-                controller: _weekPageController,
-                onPageChanged: (page) => setState(
-                  () => _visibleWeekOffset = page - kWeekStripBasePage,
-                ),
-                itemBuilder: (context, page) {
-                  final now = DateTime.now();
-                  return _WeekStrip(
-                    days: weekDaysForOffset(now, page - kWeekStripBasePage),
-                    todayKey: _calendarDay(now),
-                    selectedDate: _selectedDate,
-                    onDayTap: (date) => setState(() => _selectedDate = date),
-                  );
-                },
-              ),
-              Positioned(
-                left: 2,
-                child: IgnorePointer(
-                  child: Icon(
-                    Icons.chevron_left_rounded,
-                    size: 20,
-                    color: AppColors.textLight.withValues(alpha: 0.45),
+          child: Builder(
+            builder: (context) {
+              final now = DateTime.now();
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  PageView.builder(
+                    controller: _weekPageController,
+                    onPageChanged: (page) => setState(
+                      () => _visibleWeekOffset = page - kWeekStripBasePage,
+                    ),
+                    itemBuilder: (context, page) {
+                      return _WeekStrip(
+                        days: weekDaysForOffset(now, page - kWeekStripBasePage),
+                        todayKey: _calendarDay(now),
+                        selectedDate: _selectedDate,
+                        onDayTap: (date) => setState(() => _selectedDate = date),
+                      );
+                    },
                   ),
-                ),
-              ),
-              Positioned(
-                right: 2,
-                child: IgnorePointer(
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    size: 20,
-                    color: AppColors.textLight.withValues(alpha: 0.45),
+                  Positioned(
+                    left: 2,
+                    child: IgnorePointer(
+                      child: Icon(
+                        Icons.chevron_left_rounded,
+                        size: 20,
+                        color: AppColors.textLight.withValues(alpha: 0.45),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ],
+                  Positioned(
+                    right: 2,
+                    child: IgnorePointer(
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: AppColors.textLight.withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
         AnimatedSwitcher(
