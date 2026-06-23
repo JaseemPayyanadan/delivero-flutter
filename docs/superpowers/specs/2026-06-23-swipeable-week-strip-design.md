@@ -1,10 +1,39 @@
 # Swipeable week strip — design
 
 **Date:** 2026-06-23
-**Status:** Approved (pending spec review)
+**Status:** Implemented
 **Supersedes:** the "Fix 2 — Swipeable week strip" section of
 `docs/superpowers/specs/2026-06-15-order-flow-fixes-design.md` (the calendar-jump
 icon from that spec is already implemented; the swipe behavior was not).
+
+## Revision 2026-06-24 — continuous day scroll (supersedes the week-paging behavior below)
+
+The original behavior below paged a whole Sun–Sat week per swipe via a
+`PageView`. Per user feedback, the strip is now a **continuous day scroll**:
+
+- The strip is a horizontally scrollable `ListView.builder` of single-day cells
+  (`_DayCell`), fixed at 7 cells across the available width (`itemExtent =
+  maxWidth / 7`). Dragging/flicking slides it smoothly day-by-day with no week
+  snapping; it scrolls far into the past (base index, ~27 years) and unbounded
+  into the future.
+- It opens framed on the current week: a one-time post-frame `jumpTo` positions
+  the current week's Sunday at the left edge (`initialDayStripIndex`).
+- Tapping a cell toggles `_selectedDate` (the day filter) — unchanged. The
+  highlight shows wherever that day scrolls into view.
+- The month/year header (no-date-selected state) follows the **leftmost visible
+  day**, updated on `ScrollEndNotification` via `_updateVisibleLeadDate()`.
+- The calendar picker scrolls the strip to the picked date
+  (`_dayScrollController.animateTo(dayIndexForDate(...) * cellWidth)`).
+- Faint non-tappable edge chevrons remain as swipe hints.
+
+Pure helpers live in `lib/features/owner/orders/day_strip_math.dart`
+(`kDayStripBaseIndex`, `currentWeekSunday`, `dayForIndex`, `dayIndexForDate`,
+`initialDayStripIndex`), tested in `test/day_strip_math_test.dart`. The old
+week-based helpers (`week_strip_math.dart`) and the `_WeekStrip` row widget were
+removed. The calendar-date filter/grouping model is unchanged.
+
+The sections below describe the original (now superseded) week-paging behavior
+and are kept for history.
 
 ## Context
 
