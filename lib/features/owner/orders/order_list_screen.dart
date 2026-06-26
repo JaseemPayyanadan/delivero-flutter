@@ -299,9 +299,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           ? true
           : order.status == _selectedOrderStatus;
 
+      // Match by business day (kitchen day) so a tapped date shows that day's
+      // run, consistent with the dashboard and the 7 PM rollover. Orders store
+      // orderDate at the rollover hour, so this lines up with the day cells.
       final matchesDay = _selectedDate == null
           ? true
-          : _calendarDay(order.orderDate) == _selectedDate;
+          : businessDayKey(order.orderDate, rolloverHour: rolloverHour) ==
+              _selectedDate;
 
       return matchesSearch &&
           matchesRoute &&
@@ -427,6 +431,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   routes,
                   availableRouteIds,
                   routesLoaded: routesLoaded,
+                  rolloverHour: rolloverHour,
                 ),
               ),
             if (!ordersLoaded && orders.isEmpty)
@@ -444,7 +449,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
                 sliver: Builder(
                   builder: (context) {
-                    final widgets = _buildGroupedOrderWidgets(filteredOrders);
+                    final widgets = _buildGroupedOrderWidgets(
+                      filteredOrders,
+                      rolloverHour: rolloverHour,
+                    );
                     return SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => widgets[index],
@@ -462,13 +470,17 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   List<Widget> _buildGroupedOrderWidgets(
-    List<Order> filteredOrders,
-  ) {
-    final todayKey = _calendarDay(DateTime.now());
+    List<Order> filteredOrders, {
+    required int rolloverHour,
+  }) {
+    final todayKey = currentBusinessDayKey(rolloverHour: rolloverHour);
     final groups = <DateTime, List<Order>>{};
 
     for (final order in filteredOrders) {
-      final normalized = _calendarDay(order.orderDate);
+      final normalized = businessDayKey(
+        order.orderDate,
+        rolloverHour: rolloverHour,
+      );
       (groups[normalized] ??= []).add(order);
     }
 
@@ -520,6 +532,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     List<DeliveryRoute> routes,
     List<String> availableRouteIds, {
     required bool routesLoaded,
+    required int rolloverHour,
   }) {
     final hasRouteFilter = availableRouteIds.length > 1;
     return Column(
@@ -580,7 +593,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final now = DateTime.now();
-              final todayKey = _calendarDay(now);
+              // "Today" on the strip is the current kitchen/business day so the
+              // highlight tracks the active run across the 7 PM rollover.
+              final todayKey = currentBusinessDayKey(rolloverHour: rolloverHour);
               final cellWidth = constraints.maxWidth / 7;
               _dayCellWidth = cellWidth;
               // Frame the strip on the current week the first time we know the
