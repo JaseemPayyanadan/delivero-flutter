@@ -1,6 +1,6 @@
 {
-    "name": "delivero_flutter",
-    "short_name": "delivero_flutter",
+    "name": "Delivro",
+    "short_name": "Delivro",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#2563EB",

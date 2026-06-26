@@ -82,7 +82,6 @@ class OwnerDashboardScreen extends ConsumerWidget {
     final routesLoaded = ref.watch(routesLoadedProvider);
 
     final now = DateTime.now();
-    final dateStr = DateFormat('EEEE, d MMMM').format(now);
     final collectedRevenue = reports.totalRevenue;
     final pendingRevenue = reports.totalPendingRevenue;
     final totalRevenue = collectedRevenue + pendingRevenue;
@@ -175,7 +174,6 @@ class OwnerDashboardScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: _DashboardHero(
                 displayName: displayName,
-                dateStr: dateStr,
                 isLoading: isLoading,
                 totalRevenue: totalRevenue,
                 collectedRevenue: collectedRevenue,
@@ -327,7 +325,6 @@ class OwnerDashboardScreen extends ConsumerWidget {
 
 class _DashboardHero extends StatelessWidget {
   final String displayName;
-  final String dateStr;
   final bool isLoading;
   final double totalRevenue;
   final double collectedRevenue;
@@ -338,7 +335,6 @@ class _DashboardHero extends StatelessWidget {
 
   const _DashboardHero({
     required this.displayName,
-    required this.dateStr,
     required this.isLoading,
     required this.totalRevenue,
     required this.collectedRevenue,
@@ -395,16 +391,6 @@ class _DashboardHero extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _HeroTopRow(greeting: _greeting(), name: displayName),
-              const SizedBox(height: 16),
-              Text(
-                dateStr,
-                style: context.appTextStyles.sliverSubtitle.copyWith(
-                  color: Colors.white.withValues(alpha: 0.78),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.1,
-                ),
-              ),
               const SizedBox(height: 22),
               _HeroRevenue(
                 isLoading: isLoading,
@@ -419,7 +405,6 @@ class _DashboardHero extends StatelessWidget {
                 deliveredToday: todayDeliveredCount,
                 pendingToday: todayPendingOrderCount,
                 pendingRevenue: pendingRevenue,
-                dateStr: dateStr,
               ),
             ],
           ),
@@ -711,14 +696,12 @@ class _KpiStrip extends StatelessWidget {
   final int deliveredToday;
   final int pendingToday;
   final double pendingRevenue;
-  final String dateStr;
 
   const _KpiStrip({
     required this.isLoading,
     required this.deliveredToday,
     required this.pendingToday,
     required this.pendingRevenue,
-    required this.dateStr,
   });
 
   @override
@@ -728,7 +711,6 @@ class _KpiStrip extends StatelessWidget {
       symbol: 'Rs ',
       decimalDigits: 0,
     );
-    final t = context.appTextStyles;
 
     return Transform.translate(
       offset: const Offset(0, 36),
@@ -747,30 +729,6 @@ class _KpiStrip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today_rounded,
-                    size: 11,
-                    color: AppColors.textLight,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    DateFormat('EEE, d MMM').format(DateTime.now()).toUpperCase(),
-                    style: t.caption.copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textLight,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Divider(height: 1, thickness: 1, color: AppColors.divider),
             Padding(
               padding: const EdgeInsets.all(8),
               child: IntrinsicHeight(

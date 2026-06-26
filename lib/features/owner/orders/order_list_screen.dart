@@ -18,7 +18,12 @@ import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 import 'production_summary_sheet.dart';
+import 'day_strip_math.dart';
 import 'widgets/order_card.dart';
+
+/// Fixed height for the swipeable day strip (a horizontal scroll list needs
+/// bounded height). Sized to comfortably fit one row of day cells.
+const double _kDayStripHeight = 88;
 
 class OrderListScreen extends ConsumerStatefulWidget {
   const OrderListScreen({super.key});
@@ -36,6 +41,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   DateTime? _productionDay;
   DateTime? _selectedDate;
   Timer? _highlightClearTimer;
+  final ScrollController _dayScrollController = ScrollController();
+  bool _dayStripPositioned = false;
+  double _dayCellWidth = 0;
+  DateTime? _visibleLeadDate;
 
   Set<String> _selectedIds = {};
   bool get _isSelecting => _selectedIds.isNotEmpty;
@@ -116,9 +125,21 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
   @override
   void dispose() {
+    _dayScrollController.dispose();
     _highlightClearTimer?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Update the header's lead-date label from the strip's current scroll
+  /// position (the leftmost day in view).
+  void _updateVisibleLeadDate() {
+    if (!_dayScrollController.hasClients || _dayCellWidth <= 0) return;
+    final leadIndex = (_dayScrollController.offset / _dayCellWidth).round();
+    final lead = dayForIndex(DateTime.now(), leadIndex);
+    if (lead != _visibleLeadDate) {
+      setState(() => _visibleLeadDate = lead);
+    }
   }
 
   DateTime _calendarDay(DateTime value) =>
@@ -148,6 +169,35 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
     if (picked != null && mounted) {
       setState(() => _productionDay = _calendarDay(picked));
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = _calendarDay(picked));
+      if (_dayScrollController.hasClients && _dayCellWidth > 0) {
+        _dayScrollController.animateTo(
+          dayIndexForDate(DateTime.now(), picked) * _dayCellWidth,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
     }
   }
 
@@ -249,6 +299,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           ? true
           : order.status == _selectedOrderStatus;
 
+      // Match by business day (kitchen day) so a tapped date shows that day's
+      // run, consistent with the dashboard and the 7 PM rollover. Orders store
+      // orderDate at the rollover hour, so this lines up with the day cells.
       final matchesDay = _selectedDate == null
           ? true
           : businessDayKey(order.orderDate, rolloverHour: rolloverHour) ==
@@ -378,6 +431,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   routes,
                   availableRouteIds,
                   routesLoaded: routesLoaded,
+                  rolloverHour: rolloverHour,
                 ),
               ),
             if (!ordersLoaded && orders.isEmpty)
@@ -423,8 +477,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     final groups = <DateTime, List<Order>>{};
 
     for (final order in filteredOrders) {
-      final dayKey = businessDayKey(order.orderDate, rolloverHour: rolloverHour);
-      final normalized = DateTime(dayKey.year, dayKey.month, dayKey.day);
+      final normalized = businessDayKey(
+        order.orderDate,
+        rolloverHour: rolloverHour,
+      );
       (groups[normalized] ??= []).add(order);
     }
 
@@ -476,14 +532,142 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     List<DeliveryRoute> routes,
     List<String> availableRouteIds, {
     required bool routesLoaded,
+    required int rolloverHour,
   }) {
     final hasRouteFilter = availableRouteIds.length > 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _WeekStrip(
-          selectedDate: _selectedDate,
-          onDayTap: (date) => setState(() => _selectedDate = date),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: _selectedDate != null
+                    ? GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setState(() => _selectedDate = null),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              DateFormat('EEE, d MMM').format(_selectedDate!),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
+                      )
+                    : Text(
+                        DateFormat('MMMM yyyy').format(
+                          _visibleLeadDate ?? DateTime.now(),
+                        ),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+              ),
+              IconButton(
+                onPressed: _pickDate,
+                icon: const Icon(Icons.calendar_month_rounded),
+                color: AppColors.primary,
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Pick a date',
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: _kDayStripHeight,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final now = DateTime.now();
+              // "Today" on the strip is the current kitchen/business day so the
+              // highlight tracks the active run across the 7 PM rollover.
+              final todayKey = currentBusinessDayKey(rolloverHour: rolloverHour);
+              final cellWidth = constraints.maxWidth / 7;
+              _dayCellWidth = cellWidth;
+              // Frame the strip on the current week the first time we know the
+              // available width.
+              if (!_dayStripPositioned) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted ||
+                      _dayStripPositioned ||
+                      !_dayScrollController.hasClients) {
+                    return;
+                  }
+                  _dayScrollController.jumpTo(
+                    initialDayStripIndex(now) * cellWidth,
+                  );
+                  _dayStripPositioned = true;
+                  _updateVisibleLeadDate();
+                });
+              }
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  NotificationListener<ScrollEndNotification>(
+                    onNotification: (_) {
+                      _updateVisibleLeadDate();
+                      return false;
+                    },
+                    child: ListView.builder(
+                      controller: _dayScrollController,
+                      scrollDirection: Axis.horizontal,
+                      itemExtent: cellWidth,
+                      physics: const BouncingScrollPhysics(),
+                      itemBuilder: (context, index) {
+                        final day = dayForIndex(now, index);
+                        final isSelected = _selectedDate == day;
+                        return Center(
+                          child: _DayCell(
+                            day: day,
+                            isToday: day == todayKey,
+                            isSelected: isSelected,
+                            isPast: day.isBefore(todayKey),
+                            onTap: () => setState(
+                              () => _selectedDate = isSelected ? null : day,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Positioned(
+                    left: 2,
+                    child: IgnorePointer(
+                      child: Icon(
+                        Icons.chevron_left_rounded,
+                        size: 20,
+                        color: AppColors.textLight.withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 2,
+                    child: IgnorePointer(
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: AppColors.textLight.withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 180),
@@ -984,41 +1168,6 @@ class _OrdersSearchSheet extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _WeekStrip extends StatelessWidget {
-  final DateTime? selectedDate;
-  final void Function(DateTime?) onDayTap;
-
-  const _WeekStrip({required this.selectedDate, required this.onDayTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final todayKey = DateTime(now.year, now.month, now.day);
-    final daysFromSunday = now.weekday == 7 ? 0 : now.weekday;
-    final sunday = todayKey.subtract(Duration(days: daysFromSunday));
-    final days = List.generate(7, (i) => sunday.add(Duration(days: i)));
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: days.map((day) {
-          final isToday = day == todayKey;
-          final isSelected = selectedDate == day;
-          final isPast = day.isBefore(todayKey);
-          return _DayCell(
-            day: day,
-            isToday: isToday,
-            isSelected: isSelected,
-            isPast: isPast,
-            onTap: () => onDayTap(isSelected ? null : day),
-          );
-        }).toList(),
       ),
     );
   }

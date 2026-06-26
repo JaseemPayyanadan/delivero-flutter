@@ -219,6 +219,20 @@ class OrdersNotifier extends Notifier<List<Order>> {
         (_, next) => Future.microtask(() => _setFactoryId(next.asData?.value)),
         fireImmediately: true,
       );
+      // Daily recreation catch-up bails out when customers aren't loaded yet
+      // (see runDailyRecreationCatchUp). On a cold start the orders snapshot
+      // can arrive before customers finish loading, so the catch-up scheduled
+      // from that snapshot does nothing and today's daily orders are never
+      // created until a manual refresh. Re-schedule it the moment customers
+      // become available so generation happens automatically.
+      ref.listen<bool>(customersLoadedProvider, (prev, next) {
+        if (next && prev != true) {
+          final factoryId = _activeFactoryId;
+          if (factoryId != null) {
+            _scheduleDailyRecreationCatchUp(factoryId);
+          }
+        }
+      });
     }
 
     return [];
