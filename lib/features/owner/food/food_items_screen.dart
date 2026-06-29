@@ -10,6 +10,7 @@ import '../../../data/models/order.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/food_item.dart';
+import '../../../data/models/product_unit.dart';
 
 class FoodItemsScreen extends ConsumerStatefulWidget {
   const FoodItemsScreen({super.key});
@@ -423,7 +424,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
           item: item,
           initialName: initialName,
           initialPrice: initialPrice,
-          onSave: (name, price) async {
+          onSave: (name, price, unit) async {
             final factoryId = await ref.read(factoryIdProvider.future);
             if (factoryId == null || factoryId.isEmpty) return false;
             if (isEdit) {
@@ -433,6 +434,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                       factoryId: item.factoryId,
                       name: name,
                       price: price,
+                      unit: unit,
                       createdAt: item.createdAt,
                       updatedAt: DateTime.now(),
                     ),
@@ -444,6 +446,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                       factoryId: factoryId,
                       name: name,
                       price: price,
+                      unit: unit,
                       createdAt: DateTime.now(),
                       updatedAt: DateTime.now(),
                     ),
@@ -516,7 +519,7 @@ class _FoodItemEditorDialog extends StatefulWidget {
   final FoodItem? item;
   final String initialName;
   final String initialPrice;
-  final Future<bool> Function(String name, double price) onSave;
+  final Future<bool> Function(String name, double price, ProductUnit unit) onSave;
   final Future<void> Function()? onDelete;
 
   @override
@@ -526,12 +529,14 @@ class _FoodItemEditorDialog extends StatefulWidget {
 class _FoodItemEditorDialogState extends State<_FoodItemEditorDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _priceController;
+  late ProductUnit _unit;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName);
     _priceController = TextEditingController(text: widget.initialPrice);
+    _unit = widget.item?.unit ?? ProductUnit.quantity;
   }
 
   @override
@@ -543,7 +548,8 @@ class _FoodItemEditorDialogState extends State<_FoodItemEditorDialog> {
 
   bool get _hasUnsavedChanges {
     return _nameController.text.trim() != widget.initialName.trim() ||
-        _priceController.text.trim() != widget.initialPrice.trim();
+        _priceController.text.trim() != widget.initialPrice.trim() ||
+        _unit != (widget.item?.unit ?? ProductUnit.quantity);
   }
 
   Future<void> _closeDialog() async {
@@ -577,11 +583,28 @@ class _FoodItemEditorDialogState extends State<_FoodItemEditorDialog> {
               ),
             ),
             const SizedBox(height: 20),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  for (final u in ProductUnit.values)
+                    ChoiceChip(
+                      label: Text(u.chipLabel),
+                      selected: _unit == u,
+                      onSelected: (_) => setState(() => _unit = u),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             TextField(
               controller: _priceController,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Unit Price (₹)',
+              decoration: InputDecoration(
+                labelText: _unit == ProductUnit.quantity
+                    ? 'Unit Price (₹)'
+                    : 'Unit Price (₹ ${_unit.priceSuffix})',
                 hintText: '0.00',
               ),
               keyboardType: const TextInputType.numberWithOptions(
@@ -622,7 +645,7 @@ class _FoodItemEditorDialogState extends State<_FoodItemEditorDialog> {
               final name = _nameController.text.trim();
               final price = double.tryParse(_priceController.text) ?? 0;
               if (name.isEmpty || price <= 0) return;
-              final ok = await widget.onSave(name, price);
+              final ok = await widget.onSave(name, price, _unit);
               if (ok && context.mounted) Navigator.pop(context);
             },
             child: Text(widget.isEdit ? 'Save' : 'Add'),
