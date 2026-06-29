@@ -19,6 +19,7 @@ import '../../../../core/utils/route_refs.dart';
 import '../../../../data/models/customer.dart';
 import '../../../../data/models/food_item.dart';
 import '../../../../data/models/order.dart';
+import '../../../../data/models/product_unit.dart';
 import '../../../../data/models/delivery_route.dart';
 
 part 'create_order_widgets.dart';
@@ -770,6 +771,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         quantity: qty,
         unitPrice: unitPrice,
         totalPrice: unitPrice * qty,
+        unit: foodItem.unit,
         packLabel: null,
       );
       final i = merged.indexWhere((m) => orderItemsMatchForMerge(m, addItem));
@@ -785,6 +787,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           quantity: nextQty,
           unitPrice: unitPrice,
           totalPrice: unitPrice * nextQty,
+          unit: old.unit,
           packLabel: old.packLabel,
         );
       }
@@ -798,6 +801,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           unitPrice: m.unitPrice,
           lineTotal: m.totalPrice,
           isCustomRate: _customUnitPrices.containsKey(m.foodItemId),
+          unit: m.unit,
         ),
     ];
   }
@@ -1764,6 +1768,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             quantity: qty,
             unitPrice: unitPrice,
             totalPrice: total,
+            unit: foodItem.unit,
             packLabel: null,
           ),
         );
@@ -2023,6 +2028,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         quantity: nextQty,
         unitPrice: unitPrice,
         totalPrice: unitPrice * nextQty,
+        unit: old.unit,
         packLabel: old.packLabel,
       );
     }

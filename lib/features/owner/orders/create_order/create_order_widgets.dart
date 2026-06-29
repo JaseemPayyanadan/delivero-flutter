@@ -65,6 +65,7 @@ class _ReportLineItem {
   final double unitPrice;
   final double lineTotal;
   final bool isCustomRate;
+  final ProductUnit unit;
 
   const _ReportLineItem({
     required this.name,
@@ -72,6 +73,7 @@ class _ReportLineItem {
     required this.unitPrice,
     required this.lineTotal,
     required this.isCustomRate,
+    this.unit = ProductUnit.quantity,
   });
 }
 
@@ -360,7 +362,9 @@ class _ReportTableDataRow extends StatelessWidget {
           Expanded(
             flex: 4,
             child: Text(
-              '${line.quantity}',
+              line.unit == ProductUnit.quantity
+                  ? '${line.quantity}'
+                  : line.unit.formatAmount(line.quantity),
               textAlign: TextAlign.right,
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
@@ -1039,7 +1043,9 @@ class _CatalogList extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            '${formatRupee(unitPrice)} / unit',
+                            item.unit == ProductUnit.quantity
+                                ? '${formatRupee(unitPrice)} / unit'
+                                : '${formatRupee(unitPrice)} ${item.unit.priceSuffix}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
