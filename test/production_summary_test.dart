@@ -1,5 +1,6 @@
 import 'package:delivero/core/production/production_summary.dart';
 import 'package:delivero/data/models/order.dart';
+import 'package:delivero/data/models/product_unit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers/production_test_data.dart';
@@ -250,6 +251,43 @@ void main() {
       );
       expect(summary.ordersByType[OrderType.daily], 1);
       expect(summary.ordersByType[OrderType.oneTime], 1);
+    });
+  });
+
+  group('production summary units', () {
+    test('kg product line uses kg wording', () {
+      final orders = [
+        productionTestOrder(
+          id: 'kg-order',
+          orderDate: DateTime(2025, 6, 20, 10),
+          items: const [
+            OrderItem(
+              id: 'l1',
+              foodItemId: 'rice',
+              foodItemName: 'Rice',
+              quantity: 12,
+              unitPrice: 50,
+              totalPrice: 600,
+              unit: ProductUnit.kilogram,
+            ),
+          ],
+        ),
+      ];
+      final summary = buildProductionSummary(
+        orders,
+        ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
+      );
+      final line = summary.lines.single;
+      expect(line.unit, ProductUnit.kilogram);
+      expect(formatProductionLine(line), contains('12 kg total'));
+    });
+
+    test('quantity product keeps legacy units wording', () {
+      final summary = buildProductionSummary(
+        [productionTestOrder(orderDate: DateTime(2025, 6, 20, 10))],
+        ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
+      );
+      expect(formatProductionLine(summary.lines.single), contains('units total'));
     });
   });
 
