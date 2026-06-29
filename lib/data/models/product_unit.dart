@@ -60,4 +60,9 @@ enum ProductUnit {
         ProductUnit.gram => 'Gram',
         ProductUnit.litre => 'Litre',
       };
+
+  /// Compact amount for dense preview rows: `x2` for quantity (unchanged),
+  /// `2 kg` / `2 g` / `2 L` otherwise.
+  String compactAmount(int n) =>
+      this == ProductUnit.quantity ? 'x$n' : formatAmount(n);
 }

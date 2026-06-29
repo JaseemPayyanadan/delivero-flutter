@@ -54,4 +54,15 @@ void main() {
       expect(ProductUnit.litre.chipLabel, 'Litre');
     });
   });
+
+  group('ProductUnit.compactAmount', () {
+    test('quantity keeps the leading-x form', () {
+      expect(ProductUnit.quantity.compactAmount(2), 'x2');
+    });
+    test('weight/volume read naturally', () {
+      expect(ProductUnit.kilogram.compactAmount(2), '2 kg');
+      expect(ProductUnit.gram.compactAmount(2), '2 g');
+      expect(ProductUnit.litre.compactAmount(2), '2 L');
+    });
+  });
 }
