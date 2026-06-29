@@ -45,10 +45,11 @@ void main() {
   test('merged lines keep the first-seen unit and sum quantity', () {
     final data = computeReports([
       _order([_item('Rice', 2, ProductUnit.kilogram)]),
-      _order([_item('Rice', 3, ProductUnit.kilogram)]),
+      _order([_item('Rice', 3, ProductUnit.gram)]),
     ]);
     final rice = data.productSales['Rice']!;
     expect(rice.quantity, 5);
+    // First-seen unit wins on merge — a later line must not flip it.
     expect(rice.unit, ProductUnit.kilogram);
   });
 }
