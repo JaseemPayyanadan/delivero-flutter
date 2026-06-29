@@ -180,7 +180,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           .map(
             (p) => _DrilldownRow(
               title: p.name,
-              subtitle: '${p.quantity} units sold',
+              subtitle: '${p.quantity} ${p.unit.productionWord} sold',
               value: _formatInsightRupee(p.revenue),
             ),
           )
@@ -1392,7 +1392,7 @@ class _TopProductsPreview extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
             subtitle: Text(
-              '${product.quantity} units',
+              '${product.quantity} ${product.unit.productionWord}',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
