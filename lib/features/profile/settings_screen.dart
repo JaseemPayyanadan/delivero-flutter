@@ -179,7 +179,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               await OrderDayResetNotificationService.instance
                                   .syncForOwner(
                                     user: user,
-                                    rolloverHour: rolloverHour,
+                                    rolloverHour: ref.read(
+                                      orderRolloverHourProvider,
+                                    ),
                                   );
                             }
                           },
@@ -275,6 +277,138 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text(
+          'You will need to sign in again to keep using the app.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Stay signed in',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textLight,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(authProvider.notifier).logout();
+            },
+            child: const Text(
+              'Sign out',
+              style: TextStyle(
+                color: AppColors.error,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class OrderSettingsScreen extends ConsumerStatefulWidget {
+  const OrderSettingsScreen({super.key});
+
+  @override
+  ConsumerState<OrderSettingsScreen> createState() =>
+      _OrderSettingsScreenState();
+}
+
+class _OrderSettingsScreenState extends ConsumerState<OrderSettingsScreen> {
+  bool _isGeneratingDailyOrders = false;
+  String? _syncedFactory;
+
+  @override
+  Widget build(BuildContext context) {
+    final rolloverHour = ref.watch(orderRolloverHourProvider);
+    final autoRecreateDaily = ref.watch(autoRecreateDailyOrdersProvider);
+
+    final factoryId = ref.watch(authProvider).user?.factoryId;
+    if (factoryId != null &&
+        factoryId.isNotEmpty &&
+        _syncedFactory != factoryId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _syncedFactory = factoryId);
+        ref.read(orderRolloverHourProvider.notifier).syncForFactory(factoryId);
+        ref
+            .read(autoRecreateDailyOrdersProvider.notifier)
+            .syncForFactory(factoryId);
+      });
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.backgroundPrimary,
+      appBar: DeliveroAppBar(
+        title: 'Order settings',
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => context.pop(),
+              )
+            : null,
+      ),
+      body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+              child: _SettingsGroupCard(
+                title: 'Daily orders',
+                child: Column(
+                  children: [
+                    _ProfileSwitchRow(
+                      title: 'Auto-recreate daily orders',
+                      description:
+                          'When on, daily orders (even if not delivered) are recreated automatically at the time below. Edits sync into the next day\'s pending order.',
+                      value: autoRecreateDaily,
+                      onChanged: (val) async {
+                        await ref
+                            .read(autoRecreateDailyOrdersProvider.notifier)
+                            .setEnabled(val);
+                      },
+                      icon: Icons.autorenew_rounded,
+                      iconColor: AppColors.success,
+                    ),
+                    const Divider(height: 1, color: AppColors.divider),
+                    _ProfileTimeRow(
+                      title: 'New order day starts at',
+                      description:
+                          'Before this time, orders count as the previous day. After this time, daily orders are recreated and earlier orders are locked.',
+                      timeLabel: formatOrderRolloverLabel(rolloverHour),
+                      icon: Icons.schedule_rounded,
+                      iconColor: AppColors.secondary,
+                      onTap: () => _pickOrderResetTime(rolloverHour),
+                    ),
+                    const Divider(height: 1, color: AppColors.divider),
+                    _ProfileGenerateOrdersRow(
+                      isLoading: _isGeneratingDailyOrders,
+                      onPressed: _isGeneratingDailyOrders
+                          ? null
+                          : () => _generateDailyOrdersNow(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _generateDailyOrdersNow() async {
     final factoryId = ref.read(authProvider).user?.factoryId;
     if (factoryId == null || factoryId.isEmpty) return;
@@ -342,43 +476,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.success,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: const Text(
-          'You will need to sign in again to keep using the app.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Stay signed in',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.textLight,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(authProvider.notifier).logout();
-            },
-            child: const Text(
-              'Sign out',
-              style: TextStyle(
-                color: AppColors.error,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
