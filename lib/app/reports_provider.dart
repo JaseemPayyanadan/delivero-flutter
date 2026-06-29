@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/order.dart';
+import '../data/models/product_unit.dart';
 import 'providers.dart';
 
 class ReportsData {
@@ -51,11 +52,13 @@ class ProductSalesData {
   final String name;
   final int quantity;
   final double revenue;
+  final ProductUnit unit;
 
   ProductSalesData({
     required this.name,
     required this.quantity,
     required this.revenue,
+    required this.unit,
   });
 }
 
@@ -135,12 +138,14 @@ ReportsData computeReports(List<Order> orders) {
           name: item.foodItemName,
           quantity: existing.quantity + item.quantity,
           revenue: existing.revenue + item.totalPrice,
+          unit: existing.unit,
         );
       } else {
         productSalesMap[item.foodItemName] = ProductSalesData(
           name: item.foodItemName,
           quantity: item.quantity,
           revenue: item.totalPrice,
+          unit: item.unit,
         );
       }
     }
