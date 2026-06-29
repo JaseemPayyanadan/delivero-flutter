@@ -73,7 +73,7 @@ class _ReportLineItem {
     required this.unitPrice,
     required this.lineTotal,
     required this.isCustomRate,
-    this.unit = ProductUnit.quantity,
+    required this.unit,
   });
 }
 

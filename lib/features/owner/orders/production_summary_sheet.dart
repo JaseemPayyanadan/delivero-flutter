@@ -439,7 +439,7 @@ class _ProductionLineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final splitRows = formatPackBreakdownLines(line.packBreakdown);
+    final splitRows = formatPackBreakdownLines(line.packBreakdown, word: line.unit.productionWord);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -469,7 +469,7 @@ class _ProductionLineTile extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          'units total',
+          '${line.unit.productionWord} total',
           style: context.appTextStyles.caption.copyWith(
             color: AppColors.textSecondary,
             fontWeight: FontWeight.w600,

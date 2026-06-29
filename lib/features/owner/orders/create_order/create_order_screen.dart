@@ -609,6 +609,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           lineTotal: _effectiveUnitPriceForLine(line.lineKey, line.item) *
               line.qty,
           isCustomRate: _customUnitPrices.containsKey(line.lineKey),
+          unit: line.item.unit,
         ),
     ];
 
