@@ -87,7 +87,7 @@ class OrderCard extends ConsumerWidget {
         : [
             ...previewItems.map(
               (i) =>
-                  '${displayNameWithPackLabel(i.foodItemName, i.packLabel)} x${i.quantity}',
+                  '${displayNameWithPackLabel(i.foodItemName, i.packLabel)} ${i.unit.compactAmount(i.quantity)}',
             ),
             if (moreLines > 0) '+$moreLines more',
           ];

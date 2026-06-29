@@ -294,7 +294,9 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     final lineItemParts = previewItems.isEmpty
         ? const <String>[]
         : [
-            ...previewItems.map((i) => '${i.foodItemName} x${i.quantity}'),
+            ...previewItems.map(
+              (i) => '${i.foodItemName} ${i.unit.compactAmount(i.quantity)}',
+            ),
             if (moreLines > 0) '+$moreLines more',
           ];
 

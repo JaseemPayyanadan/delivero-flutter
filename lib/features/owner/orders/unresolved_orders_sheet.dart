@@ -174,7 +174,7 @@ class _UnresolvedOrderRow extends ConsumerWidget {
         ? '—'
         : order.items
                 .take(2)
-                .map((i) => '${i.foodItemName} x${i.quantity}')
+                .map((i) => '${i.foodItemName} ${i.unit.compactAmount(i.quantity)}')
                 .join(', ') +
             (order.items.length > 2
                 ? ' +${order.items.length - 2} more'
