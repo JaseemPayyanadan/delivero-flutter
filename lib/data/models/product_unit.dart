@@ -3,12 +3,14 @@
 enum ProductUnit {
   quantity,
   kilogram,
+  gram,
   litre;
 
   /// Value persisted to Firestore / JSON.
   String get storageValue => switch (this) {
         ProductUnit.quantity => 'quantity',
         ProductUnit.kilogram => 'kg',
+        ProductUnit.gram => 'gram',
         ProductUnit.litre => 'litre',
       };
 
@@ -18,6 +20,8 @@ enum ProductUnit {
     switch (value?.toString()) {
       case 'kg':
         return ProductUnit.kilogram;
+      case 'gram':
+        return ProductUnit.gram;
       case 'litre':
         return ProductUnit.litre;
       default:
@@ -29,6 +33,7 @@ enum ProductUnit {
   String formatAmount(int n) => switch (this) {
         ProductUnit.quantity => '${n}x',
         ProductUnit.kilogram => '$n kg',
+        ProductUnit.gram => '$n g',
         ProductUnit.litre => '$n L',
       };
 
@@ -36,6 +41,7 @@ enum ProductUnit {
   String get priceSuffix => switch (this) {
         ProductUnit.quantity => '',
         ProductUnit.kilogram => '/ kg',
+        ProductUnit.gram => '/ g',
         ProductUnit.litre => '/ L',
       };
 
@@ -43,6 +49,7 @@ enum ProductUnit {
   String get productionWord => switch (this) {
         ProductUnit.quantity => 'units',
         ProductUnit.kilogram => 'kg',
+        ProductUnit.gram => 'g',
         ProductUnit.litre => 'L',
       };
 
@@ -50,6 +57,7 @@ enum ProductUnit {
   String get chipLabel => switch (this) {
         ProductUnit.quantity => 'Qty',
         ProductUnit.kilogram => 'Kg',
+        ProductUnit.gram => 'Gram',
         ProductUnit.litre => 'Litre',
       };
 }

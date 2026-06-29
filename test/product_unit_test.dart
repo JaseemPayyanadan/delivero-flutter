@@ -6,6 +6,7 @@ void main() {
     test('maps stored strings back to enum', () {
       expect(ProductUnit.fromStorage('quantity'), ProductUnit.quantity);
       expect(ProductUnit.fromStorage('kg'), ProductUnit.kilogram);
+      expect(ProductUnit.fromStorage('gram'), ProductUnit.gram);
       expect(ProductUnit.fromStorage('litre'), ProductUnit.litre);
     });
 
@@ -26,8 +27,9 @@ void main() {
     test('quantity keeps the legacy Nx form', () {
       expect(ProductUnit.quantity.formatAmount(2), '2x');
     });
-    test('kilogram and litre use a spaced suffix', () {
+    test('kilogram, gram and litre use a spaced suffix', () {
       expect(ProductUnit.kilogram.formatAmount(2), '2 kg');
+      expect(ProductUnit.gram.formatAmount(2), '2 g');
       expect(ProductUnit.litre.formatAmount(2), '2 L');
     });
   });
@@ -36,16 +38,19 @@ void main() {
     test('priceSuffix', () {
       expect(ProductUnit.quantity.priceSuffix, '');
       expect(ProductUnit.kilogram.priceSuffix, '/ kg');
+      expect(ProductUnit.gram.priceSuffix, '/ g');
       expect(ProductUnit.litre.priceSuffix, '/ L');
     });
     test('productionWord', () {
       expect(ProductUnit.quantity.productionWord, 'units');
       expect(ProductUnit.kilogram.productionWord, 'kg');
+      expect(ProductUnit.gram.productionWord, 'g');
       expect(ProductUnit.litre.productionWord, 'L');
     });
     test('chipLabel', () {
       expect(ProductUnit.quantity.chipLabel, 'Qty');
       expect(ProductUnit.kilogram.chipLabel, 'Kg');
+      expect(ProductUnit.gram.chipLabel, 'Gram');
       expect(ProductUnit.litre.chipLabel, 'Litre');
     });
   });
