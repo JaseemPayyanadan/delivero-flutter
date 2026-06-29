@@ -11,6 +11,7 @@ import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../core/utils/route_refs.dart';
+import '../../../core/utils/currency_format.dart';
 import '../../../data/models/order.dart';
 
 // ignore_for_file: unnecessary_underscores, unused_element_parameter, unused_local_variable
@@ -69,10 +70,10 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
         RouteRefs.routeForRef(c.assignedRoute, routes);
 
     String routeNameForCustomer(Customer c) => RouteRefs.routeLabelForRef(
-          c.assignedRoute,
-          routes,
-          routesLoaded: routesLoaded,
-        );
+      c.assignedRoute,
+      routes,
+      routesLoaded: routesLoaded,
+    );
 
     String? routeIdForCustomer(Customer c) {
       final r = routeForCustomer(c);
@@ -361,8 +362,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
           sliver: SliverList.separated(
             itemCount: items.length,
-            separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: AppColors.divider),
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final customer = items[index];
               final customerOrders = ordersByCustomer[customer.id] ?? const [];
@@ -406,6 +406,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                 phone: customer.phone,
                 paymentStatus: paymentStatus,
                 hasPending: hasPending,
+                pendingAmount: pendingAmount,
                 hasRoute: hasRoute,
                 scheduleLabel: scheduleLabel,
                 onTap: () {
@@ -513,6 +514,7 @@ class _CustomerListCard extends StatelessWidget {
   final String phone;
   final PaymentStatus? paymentStatus;
   final bool hasPending;
+  final double pendingAmount;
   final bool hasRoute;
   final String? scheduleLabel;
   final VoidCallback onTap;
@@ -523,184 +525,206 @@ class _CustomerListCard extends StatelessWidget {
     required this.phone,
     required this.paymentStatus,
     required this.hasPending,
+    required this.pendingAmount,
     required this.hasRoute,
     required this.scheduleLabel,
     required this.onTap,
     required this.onAssignRoute,
   });
 
+  // Accent color for the pending-dues edge + payment dot.
+  // Partial dues read as amber, anything else outstanding reads as red.
+  Color get _pendingColor => paymentStatus == PaymentStatus.partial
+      ? AppColors.warning
+      : AppColors.error;
+
   @override
   Widget build(BuildContext context) {
-    final payment = _PaymentPill.from(paymentStatus);
     final hasScheduleInfo = scheduleLabel != null;
+    final accent = _pendingColor;
 
-    return Material(
-      color: AppColors.surface,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(4, 10, 4, 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    _customerInitials(customer.name),
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                      letterSpacing: 0.5,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (hasPending)
+                    Container(width: 3, color: accent)
+                  else
+                    const SizedBox(width: 3),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _customerInitials(customer.name),
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        customer.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 16,
+                                          color: AppColors.textPrimary,
+                                          letterSpacing: -0.45,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    if (hasScheduleInfo)
+                                      _Pill(
+                                        label: scheduleLabel!,
+                                        fg: AppColors.primary,
+                                        bg: AppColors.primaryLighter,
+                                        isUppercase: false,
+                                        compact: true,
+                                      )
+                                    else
+                                      _Pill(
+                                        label: 'No orders yet',
+                                        fg: AppColors.textLight,
+                                        bg: AppColors.backgroundSecondary,
+                                        isUppercase: false,
+                                        compact: true,
+                                      ),
+                                  ],
+                                ),
+                                if (phone.trim().isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    phone.trim(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                      letterSpacing: 0.1,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 6),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    if (hasPending)
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: accent,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '${formatRupee(pendingAmount)} due',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 12.5,
+                                              color: accent,
+                                              letterSpacing: -0.2,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    const Spacer(),
+                                    if (!hasRoute)
+                                      TextButton.icon(
+                                        onPressed: onAssignRoute,
+                                        icon: const Icon(
+                                          Icons.alt_route_rounded,
+                                          size: 16,
+                                        ),
+                                        label: const Text(
+                                          'Assign route',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppColors.primary,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
+                                          backgroundColor: AppColors.primary
+                                              .withValues(alpha: 0.08),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                          ),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            customer.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                              color: AppColors.textPrimary,
-                              letterSpacing: -0.45,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        if (hasScheduleInfo)
-                          _Pill(
-                            label: scheduleLabel!,
-                            fg: AppColors.primary,
-                            bg: AppColors.primaryLighter,
-                            isUppercase: false,
-                            compact: true,
-                          )
-                        else
-                          _Pill(
-                            label: 'No orders yet',
-                            fg: AppColors.textLight,
-                            bg: AppColors.backgroundSecondary,
-                            isUppercase: false,
-                            compact: true,
-                          ),
-                      ],
-                    ),
-                    if (phone.trim().isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        phone.trim(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.1,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 6),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        if (hasPending) payment.pill,
-                        const Spacer(),
-                        if (!hasRoute)
-                          TextButton.icon(
-                            onPressed: onAssignRoute,
-                            icon: const Icon(
-                              Icons.alt_route_rounded,
-                              size: 16,
-                            ),
-                            label: const Text(
-                              'Assign route',
-                              style: TextStyle(fontWeight: FontWeight.w900),
-                            ),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              backgroundColor: AppColors.primary.withValues(
-                                alpha: 0.08,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
-  }
-}
-
-class _PaymentPill {
-  final _Pill pill;
-  const _PaymentPill._(this.pill);
-
-  factory _PaymentPill.from(PaymentStatus? status) {
-    return switch (status) {
-      PaymentStatus.paid => const _PaymentPill._(
-        _Pill(
-          label: 'PAID',
-          fg: AppColors.success,
-          bg: AppColors.successLighter,
-          compact: true,
-        ),
-      ),
-      PaymentStatus.partial => const _PaymentPill._(
-        _Pill(
-          label: 'PARTIAL',
-          fg: AppColors.warning,
-          bg: AppColors.warningLighter,
-          compact: true,
-        ),
-      ),
-      PaymentStatus.unpaid => const _PaymentPill._(
-        _Pill(
-          label: 'UNPAID',
-          fg: AppColors.error,
-          bg: AppColors.errorLighter,
-          compact: true,
-        ),
-      ),
-      _ => const _PaymentPill._(
-        _Pill(
-          label: 'UNPAID',
-          fg: AppColors.error,
-          bg: AppColors.errorLighter,
-          compact: true,
-        ),
-      ),
-    };
   }
 }
 

@@ -372,19 +372,52 @@ Map<String, dynamic> _orderContentSnapshot(Order order) {
   };
 }
 
+/// Most recent business day strictly before [before] that still has eligible
+/// daily-order sources, or null if none exist. Lets manual generation bridge a
+/// gap (e.g. recreation was broken for days) by copying from the last good day.
+DateTime? latestDayWithDailySources({
+  required List<Order> orders,
+  required DateTime before,
+  int rolloverHour = kDefaultBusinessDayRolloverHour,
+}) {
+  final beforeKey = DateTime(before.year, before.month, before.day);
+  DateTime? best;
+  for (final o in orders) {
+    if (o.orderType != OrderType.daily) continue;
+    if (!isActiveDailyOrderStatus(o.status)) continue;
+    if (o.items.isEmpty) continue;
+    final key = businessDayKey(o.orderDate, rolloverHour: rolloverHour);
+    final day = DateTime(key.year, key.month, key.day);
+    if (!day.isBefore(beforeKey)) continue;
+    if (best == null || day.isAfter(best)) best = day;
+  }
+  return best;
+}
+
 /// Layer B — create missing orders for one target business day.
+///
+/// By default the source is the day before [targetBusinessDay]. Pass
+/// [sourceBusinessDay] to copy from a specific earlier day instead — used to
+/// bridge gaps when the immediately-previous day has no orders.
 Future<DailyOrderRecreationResult> runBatchForTargetDay({
   required DateTime targetBusinessDay,
   required List<Order> orders,
   required List<Customer> customers,
   required int rolloverHour,
   required FutureOr<void> Function(Order order) addOrder,
+  DateTime? sourceBusinessDay,
 }) async {
-  final sourceDay = DateTime(
-    targetBusinessDay.year,
-    targetBusinessDay.month,
-    targetBusinessDay.day,
-  ).subtract(const Duration(days: 1));
+  final sourceDay = sourceBusinessDay == null
+      ? DateTime(
+          targetBusinessDay.year,
+          targetBusinessDay.month,
+          targetBusinessDay.day,
+        ).subtract(const Duration(days: 1))
+      : DateTime(
+          sourceBusinessDay.year,
+          sourceBusinessDay.month,
+          sourceBusinessDay.day,
+        );
 
   final sources = orders.where(
     (o) => isEligibleRecreationSource(
@@ -424,6 +457,97 @@ Future<DailyOrderRecreationResult> runBatchForTargetDay({
     createdCount: createdIds.length,
     createdOrderIds: createdIds,
   );
+}
+
+/// True when [customerId] already has a non-cancelled daily order on [day].
+bool _customerHasDailyOrderOn(
+  String customerId,
+  DateTime day,
+  List<Order> orders, {
+  int rolloverHour = kDefaultBusinessDayRolloverHour,
+}) {
+  final target = DateTime(day.year, day.month, day.day);
+  return orders.any((o) {
+    if (o.orderType != OrderType.daily) return false;
+    if (o.customerId != customerId) return false;
+    if (!isActiveDailyOrderStatus(o.status)) return false;
+    final key = businessDayKey(o.orderDate, rolloverHour: rolloverHour);
+    return DateTime(key.year, key.month, key.day) == target;
+  });
+}
+
+/// Fills every missing daily-order day from the last day that has orders up to
+/// (and including) [throughDay]. Each day is created from the previous day's
+/// orders, so a multi-day gap (recreation was broken for a stretch) is bridged.
+/// Dedup is by customer+day, so days already populated (e.g. today) are left
+/// untouched and never duplicated.
+Future<DailyOrderRecreationResult> runGapBackfill({
+  required DateTime throughDay,
+  required List<Order> orders,
+  required List<Customer> customers,
+  required int rolloverHour,
+  required FutureOr<void> Function(Order order) addOrder,
+  int maxDays = 60,
+}) async {
+  final today = DateTime(throughDay.year, throughDay.month, throughDay.day);
+  final anchor = latestDayWithDailySources(
+    orders: orders,
+    before: today,
+    rolloverHour: rolloverHour,
+  );
+  if (anchor == null) return const DailyOrderRecreationResult();
+
+  final mutableOrders = [...orders];
+  var result = const DailyOrderRecreationResult();
+  var day = anchor.add(const Duration(days: 1));
+  var processed = 0;
+
+  while (!day.isAfter(today) && processed < maxDays) {
+    final sourceDay = day.subtract(const Duration(days: 1));
+    final sources = mutableOrders
+        .where((o) => isEligibleRecreationSource(
+              o,
+              sourceDay,
+              rolloverHour: rolloverHour,
+            ))
+        .toList();
+
+    final createdIds = <String>[];
+    for (final source in sources) {
+      if (!isCustomerActiveForRecreation(source, customers)) continue;
+      if (_customerHasDailyOrderOn(
+        source.customerId,
+        day,
+        mutableOrders,
+        rolloverHour: rolloverHour,
+      )) {
+        continue;
+      }
+      const uuid = Uuid();
+      final created = ensureRecreatedOrderIsPending(
+        buildRecreatedOrder(
+          source: source,
+          targetBusinessDay: day,
+          newId: uuid.v4(),
+          rolloverHour: rolloverHour,
+        ),
+      );
+      await addOrder(created);
+      mutableOrders.add(created);
+      createdIds.add(created.id);
+    }
+
+    result = result.merge(
+      DailyOrderRecreationResult(
+        createdCount: createdIds.length,
+        createdOrderIds: createdIds,
+      ),
+    );
+    day = day.add(const Duration(days: 1));
+    processed++;
+  }
+
+  return result;
 }
 
 /// Layer B — multi-day catch-up from last run through today (when rollover passed).

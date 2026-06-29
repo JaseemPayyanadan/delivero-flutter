@@ -45,30 +45,20 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
     }
 
     final orders = ref.watch(ordersProvider);
-    final showOrderFab = _selectedIndex == 1 && orders.isNotEmpty;
+    // Hide the "+" FAB when the Orders view is showing an empty state — those
+    // states carry their own Generate/Add/Create actions.
+    final ordersViewEmpty = ref.watch(ordersViewIsEmptyProvider);
+    final showOrderFab =
+        _selectedIndex == 1 && orders.isNotEmpty && !ordersViewEmpty;
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.02, 0),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
-            ),
-          );
-        },
-        child: IndexedStack(
-          key: ValueKey<int>(_selectedIndex),
-          index: _selectedIndex,
-          children: _screens,
-        ),
+      // Plain IndexedStack (no AnimatedSwitcher): the switcher recreated the
+      // stack's children on every shell rebuild, throwing away each tab's
+      // State (e.g. the Orders screen's selected date kept resetting to today).
+      // IndexedStack keeps all tabs alive and preserves their state.
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
       ),
       floatingActionButton: !showOrderFab
           ? null

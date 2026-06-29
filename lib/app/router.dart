@@ -20,6 +20,7 @@ import '../features/owner/orders/order_details_screen.dart';
 import '../features/owner/orders/create_order_screen.dart';
 import '../features/owner/reports/reports_screen.dart';
 import '../features/owner/search/global_search_screen.dart';
+import '../features/profile/settings_screen.dart';
 import '../features/startup/app_intro_screen.dart';
 import '../features/startup/app_launcher_screen.dart';
 import 'providers.dart';
@@ -179,6 +180,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'search',
             builder: (context, state) => const GlobalSearchScreen(),
+          ),
+          GoRoute(
+            path: 'order-settings',
+            builder: (context, state) => const OrderSettingsScreen(),
           ),
         ],
       ),
