@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' hide Factory;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/auth_controller.dart';
 import 'app_startup.dart';
@@ -11,6 +11,7 @@ import '../data/models/customer.dart';
 import '../data/models/food_item.dart';
 import '../data/models/delivery_route.dart';
 import '../data/models/driver.dart';
+import '../data/models/factory.dart';
 import '../core/orders/business_day.dart';
 import '../core/orders/daily_order_recreation_service.dart';
 import '../core/services/firebase_service.dart';
@@ -20,15 +21,22 @@ import '../core/services/route_ref_migration.dart';
 import '../core/utils/route_refs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void _scheduleRouteRefMigration(Ref ref, String factoryId) {
+// Data is passed in (not read from providers here) so this can be called from
+// any notifier's `ref` without tripping Riverpod's "a provider cannot depend on
+// itself" assertion when the caller reads its own provider.
+void _scheduleRouteRefMigration(
+  String factoryId, {
+  required List<DeliveryRoute> routes,
+  required List<Customer> customers,
+  required List<Order> orders,
+}) {
   Future.microtask(() async {
-    final routes = ref.read(routesProvider);
     if (routes.isEmpty) return;
     await RouteRefMigration.syncIfNeeded(
       factoryId: factoryId,
       routes: routes,
-      customers: ref.read(customersProvider),
-      orders: ref.read(ordersProvider),
+      customers: customers,
+      orders: orders,
     );
   });
 }
@@ -63,6 +71,40 @@ final factoryIdProvider = FutureProvider<String?>((ref) async {
   } catch (e) {
     debugPrint('[FactoryIdProvider] Error: $e');
     return authState.user?.factoryId;
+  }
+});
+
+/// Loads the current user's factory/company record. Tolerant of partially
+/// written factory docs (onboarding may only set `name`), so it constructs a
+/// [Factory] with safe defaults rather than using the strict `fromJson`.
+final factoryProvider = FutureProvider<Factory?>((ref) async {
+  final factoryId = await ref.watch(factoryIdProvider.future);
+  if (factoryId == null || factoryId.isEmpty) return null;
+  if (!FirebaseService.isInitialized) return null;
+
+  try {
+    final doc = await FirebaseService.firestore
+        .collection('factories')
+        .doc(factoryId)
+        .get();
+    if (!doc.exists) return null;
+
+    final data = doc.data() ?? const <String, dynamic>{};
+    final name = (data['name'] as String?)?.trim() ?? '';
+    if (name.isEmpty) return null;
+
+    final now = DateTime.now();
+    return Factory(
+      id: factoryId,
+      name: name,
+      address: (data['address'] as String?)?.trim() ?? '',
+      phone: (data['phone'] as String?)?.trim(),
+      createdAt: now,
+      updatedAt: now,
+    );
+  } catch (e) {
+    debugPrint('[FactoryProvider] Error: $e');
+    return null;
   }
 });
 
@@ -135,6 +177,23 @@ final routesLoadedProvider = NotifierProvider<_LoadedFlagNotifier, bool>(
 final driversLoadedProvider = NotifierProvider<_LoadedFlagNotifier, bool>(
   _LoadedFlagNotifier.new,
 );
+
+/// True when the Orders screen's current filtered view is showing an empty
+/// state. The shell watches this to hide the "+" FAB (the empty state has its
+/// own actions, so the floating button would be redundant).
+final ordersViewIsEmptyProvider =
+    NotifierProvider<OrdersViewEmptyNotifier, bool>(
+      OrdersViewEmptyNotifier.new,
+    );
+
+class OrdersViewEmptyNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) {
+    if (state != value) state = value;
+  }
+}
 
 // Notifiers for domain states
 
@@ -356,7 +415,12 @@ class OrdersNotifier extends Notifier<List<Order>> {
           _emitOrderNotifications(nextOrders);
 
           state = nextOrders;
-          _scheduleRouteRefMigration(ref, factoryId);
+          _scheduleRouteRefMigration(
+            factoryId,
+            routes: ref.read(routesProvider),
+            customers: ref.read(customersProvider),
+            orders: state,
+          );
           _scheduleDailyRecreationCatchUp(factoryId);
           Future.microtask(() {
             ref.read(ordersLoadedProvider.notifier).state = true;
@@ -427,7 +491,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
 
       final rolloverHour = await _readRolloverHour(factoryId);
       final customers = ref.read(customersProvider);
-      final orders = ref.read(ordersProvider);
+      final orders = state;
 
       Order? syncedTarget;
       final result = syncNextDayFromSource(
@@ -488,7 +552,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
 
       final rolloverHour = await _readRolloverHour(factoryId);
       final customers = ref.read(customersProvider);
-      final orders = ref.read(ordersProvider);
+      final orders = state;
 
       final result = await runRolloverBatch(
         factoryId: factoryId,
@@ -512,26 +576,55 @@ class OrdersNotifier extends Notifier<List<Order>> {
     }
   }
 
-  /// Manual trigger from Settings — creates missing daily orders for today
-  /// without waiting for rollover time.
+  /// Manual trigger from Settings — fills every missing daily-order day from
+  /// the last day that has orders up to today, without waiting for the rollover.
+  /// Bridges multi-day gaps (e.g. recreation was broken for a stretch) and
+  /// never duplicates days that already have orders.
   Future<DailyOrderRecreationResult> runManualDailyOrderGeneration(
     String factoryId,
   ) async {
     final rolloverHour = await _readRolloverHour(factoryId);
     final customers = ref.read(customersProvider);
-    final orders = ref.read(ordersProvider);
-    final currentKey = currentBusinessDayKey(
+    final now = DateTime.now();
+
+    final result = await runGapBackfill(
+      throughDay: now,
+      orders: state,
+      customers: customers,
       rolloverHour: rolloverHour,
+      addOrder: addOrder,
     );
-    final targetDay = DateTime(
-      currentKey.year,
-      currentKey.month,
-      currentKey.day,
+
+    for (final id in result.createdOrderIds) {
+      ref
+          .read(lastTouchedOrderProvider.notifier)
+          .set(id: id, wasCreated: true);
+    }
+
+    return result;
+  }
+
+  /// Generate one specific day's daily orders (e.g. the owner picks a future
+  /// day and taps Generate). Sources from the most recent earlier day that has
+  /// orders and dedups, so re-running never duplicates.
+  Future<DailyOrderRecreationResult> runDailyGenerationForDay(
+    String factoryId,
+    DateTime targetDay,
+  ) async {
+    final rolloverHour = await _readRolloverHour(factoryId);
+    final customers = ref.read(customersProvider);
+    final target = DateTime(targetDay.year, targetDay.month, targetDay.day);
+
+    final sourceDay = latestDayWithDailySources(
+      orders: state,
+      before: target,
+      rolloverHour: rolloverHour,
     );
 
     final result = await runBatchForTargetDay(
-      targetBusinessDay: targetDay,
-      orders: orders,
+      targetBusinessDay: target,
+      sourceBusinessDay: sourceDay,
+      orders: state,
       customers: customers,
       rolloverHour: rolloverHour,
       addOrder: addOrder,
@@ -670,7 +763,12 @@ class CustomersNotifier extends Notifier<List<Customer>> {
                 }
               }
               state = parsed;
-              _scheduleRouteRefMigration(ref, factoryId);
+              _scheduleRouteRefMigration(
+                factoryId,
+                routes: ref.read(routesProvider),
+                customers: state,
+                orders: ref.read(ordersProvider),
+              );
               Future.microtask(() {
                 ref.read(customersLoadedProvider.notifier).state = true;
               });
@@ -925,7 +1023,12 @@ class RoutesNotifier extends Notifier<List<DeliveryRoute>> {
                 }
               }
               state = parsed;
-              _scheduleRouteRefMigration(ref, factoryId);
+              _scheduleRouteRefMigration(
+                factoryId,
+                routes: state,
+                customers: ref.read(customersProvider),
+                orders: ref.read(ordersProvider),
+              );
               Future.microtask(() {
                 ref.read(routesLoadedProvider.notifier).state = true;
               });

@@ -9,6 +9,7 @@ import 'package:collection/collection.dart';
 import '../../../app/providers.dart';
 import '../../../app/order_settings_provider.dart';
 import '../../../core/orders/business_day.dart';
+import '../../../core/orders/daily_order_recreation_service.dart';
 import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/route_refs.dart';
@@ -19,6 +20,7 @@ import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
 import 'production_summary_sheet.dart';
 import 'day_strip_math.dart';
+import 'unresolved_orders_sheet.dart';
 import 'widgets/order_card.dart';
 
 /// Fixed height for the swipeable day strip (a horizontal scroll list needs
@@ -40,6 +42,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   OrderStatus? _selectedOrderStatus;
   DateTime? _productionDay;
   DateTime? _selectedDate;
+  // When set, the list shows every order whose day falls in this inclusive
+  // range (grouped by day). Mutually exclusive with [_selectedDate].
+  DateTimeRange? _selectedRange;
+  bool _selectedDateInitialized = false;
   Timer? _highlightClearTimer;
   final ScrollController _dayScrollController = ScrollController();
   bool _dayStripPositioned = false;
@@ -172,12 +178,19 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     }
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+  Future<void> _pickRange() async {
+    final now = DateTime.now();
+    final initial =
+        _selectedRange ??
+        DateTimeRange(
+          start: DateTime(now.year, now.month, 1),
+          end: _calendarDay(now),
+        );
+    final picked = await showDateRangePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
+      initialDateRange: initial,
       firstDate: DateTime(2023),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -190,14 +203,14 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       },
     );
     if (picked != null && mounted) {
-      setState(() => _selectedDate = _calendarDay(picked));
-      if (_dayScrollController.hasClients && _dayCellWidth > 0) {
-        _dayScrollController.animateTo(
-          dayIndexForDate(DateTime.now(), picked) * _dayCellWidth,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
+      setState(() {
+        // Range and single-day selection are mutually exclusive.
+        _selectedRange = DateTimeRange(
+          start: _calendarDay(picked.start),
+          end: _calendarDay(picked.end),
         );
-      }
+        _selectedDate = null;
+      });
     }
   }
 
@@ -249,6 +262,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       });
     }
 
+    // Select today's calendar day on first open. Orders are grouped by their
+    // stored calendar date, so the selection, the strip highlight and the list
+    // grouping all agree on the same "today". A one-shot flag keeps this from
+    // re-selecting after the user clears the day filter.
+    if (!_selectedDateInitialized) {
+      _selectedDateInitialized = true;
+      _selectedDate = _calendarDay(DateTime.now());
+    }
+
     final orders = ref.watch(ordersProvider);
     final ordersLoaded = ref.watch(ordersLoadedProvider);
     final routes = ref.watch(routesProvider);
@@ -265,6 +287,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         .whereType<String>()
         .toSet()
         .toList();
+
+    // Calendar days that contain orders (respecting only the route filter, so
+    // the strip's dots match what tapping a day shows). Used for the day-strip
+    // markers and the empty-state "nearest day with orders" hint.
+    final daysWithOrders = <DateTime>{
+      for (final o in orders)
+        if (_selectedRouteId == null || routeIdForOrder(o) == _selectedRouteId)
+          _calendarDay(o.orderDate),
+    };
 
     if (routesLoaded &&
         _selectedRouteId != null &&
@@ -299,13 +330,25 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           ? true
           : order.status == _selectedOrderStatus;
 
-      // Match by business day (kitchen day) so a tapped date shows that day's
-      // run, consistent with the dashboard and the 7 PM rollover. Orders store
-      // orderDate at the rollover hour, so this lines up with the day cells.
-      final matchesDay = _selectedDate == null
-          ? true
-          : businessDayKey(order.orderDate, rolloverHour: rolloverHour) ==
-              _selectedDate;
+      // Orders already store orderDate stamped at the business-day rollover
+      // hour, so the order's calendar date IS its business day. Match on that
+      // directly (matching the calendar-day strip); re-applying the rollover
+      // here would file the order a day early and hide it. A range filter, when
+      // active, takes priority over the single-day selection.
+      // While a search is active, ignore the day/range filter so search spans
+      // every date (find a customer's order regardless of when it was placed).
+      final orderDay = _calendarDay(order.orderDate);
+      final bool matchesDay;
+      if (q.isNotEmpty) {
+        matchesDay = true;
+      } else if (_selectedRange != null) {
+        matchesDay = !orderDay.isBefore(_selectedRange!.start) &&
+            !orderDay.isAfter(_selectedRange!.end);
+      } else if (_selectedDate != null) {
+        matchesDay = orderDay == _selectedDate;
+      } else {
+        matchesDay = true;
+      }
 
       return matchesSearch &&
           matchesRoute &&
@@ -315,6 +358,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     }).toList();
 
     sortOrdersByDate(filteredOrders);
+
+    // Tell the shell whether this view is empty so it can hide the "+" FAB
+    // (the empty states carry their own actions).
+    final viewIsEmpty = filteredOrders.isEmpty;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(ordersViewIsEmptyProvider.notifier).set(viewIsEmpty);
+      }
+    });
 
     return PopScope(
       canPop: !_isSelecting,
@@ -431,7 +483,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   routes,
                   availableRouteIds,
                   routesLoaded: routesLoaded,
-                  rolloverHour: rolloverHour,
+                  daysWithOrders: daysWithOrders,
                 ),
               ),
             if (!ordersLoaded && orders.isEmpty)
@@ -442,7 +494,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
             else if (filteredOrders.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: _buildEmptyState(hasAnyOrders: !noOrdersYet),
+                child: _buildEmptyState(
+                  hasAnyOrders: !noOrdersYet,
+                  daysWithOrders: daysWithOrders,
+                ),
               )
             else
               SliverPadding(
@@ -451,7 +506,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                   builder: (context) {
                     final widgets = _buildGroupedOrderWidgets(
                       filteredOrders,
-                      rolloverHour: rolloverHour,
                     );
                     return SliverList(
                       delegate: SliverChildBuilderDelegate(
@@ -470,17 +524,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }
 
   List<Widget> _buildGroupedOrderWidgets(
-    List<Order> filteredOrders, {
-    required int rolloverHour,
-  }) {
-    final todayKey = currentBusinessDayKey(rolloverHour: rolloverHour);
+    List<Order> filteredOrders,
+  ) {
+    final todayKey = _calendarDay(DateTime.now());
     final groups = <DateTime, List<Order>>{};
 
     for (final order in filteredOrders) {
-      final normalized = businessDayKey(
-        order.orderDate,
-        rolloverHour: rolloverHour,
-      );
+      final normalized = _calendarDay(order.orderDate);
       (groups[normalized] ??= []).add(order);
     }
 
@@ -488,6 +538,23 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       ..sort((a, b) => b.compareTo(a));
 
     final widgets = <Widget>[];
+
+    // When a range is active, lead with a summary of the whole span.
+    if (_selectedRange != null) {
+      final rangeTotal =
+          filteredOrders.fold(0.0, (sum, o) => sum + o.totalAmount);
+      widgets.add(
+        _RangeSummaryHeader(
+          label:
+              '${DateFormat('d MMM').format(_selectedRange!.start)}'
+              ' – '
+              '${DateFormat('d MMM').format(_selectedRange!.end)}',
+          count: filteredOrders.length,
+          total: rangeTotal,
+        ),
+      );
+    }
+
     for (final day in sortedDays) {
       final orders = groups[day]!..sort(
         (a, b) => compareOrdersByDate(a, b),
@@ -532,7 +599,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     List<DeliveryRoute> routes,
     List<String> availableRouteIds, {
     required bool routesLoaded,
-    required int rolloverHour,
+    required Set<DateTime> daysWithOrders,
   }) {
     final hasRouteFilter = availableRouteIds.length > 1;
     return Column(
@@ -543,7 +610,37 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           child: Row(
             children: [
               Expanded(
-                child: _selectedDate != null
+                child: _selectedRange != null
+                    ? GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setState(() {
+                          // Clearing a range returns to today's single day.
+                          _selectedRange = null;
+                          _selectedDate = _calendarDay(DateTime.now());
+                        }),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${DateFormat('d MMM').format(_selectedRange!.start)}'
+                              ' – '
+                              '${DateFormat('d MMM').format(_selectedRange!.end)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
+                      )
+                    : _selectedDate != null
                     ? GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => setState(() => _selectedDate = null),
@@ -579,11 +676,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       ),
               ),
               IconButton(
-                onPressed: _pickDate,
-                icon: const Icon(Icons.calendar_month_rounded),
+                onPressed: _pickRange,
+                icon: const Icon(Icons.date_range_rounded),
                 color: AppColors.primary,
                 visualDensity: VisualDensity.compact,
-                tooltip: 'Pick a date',
+                tooltip: 'Pick a date range',
               ),
             ],
           ),
@@ -593,9 +690,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final now = DateTime.now();
-              // "Today" on the strip is the current kitchen/business day so the
-              // highlight tracks the active run across the 7 PM rollover.
-              final todayKey = currentBusinessDayKey(rolloverHour: rolloverHour);
+              // "Today" on the strip is the calendar day, matching how orders
+              // are grouped and the default selection, so the highlighted cell
+              // always lines up with where today's orders appear.
+              final todayKey = _calendarDay(now);
               final cellWidth = constraints.maxWidth / 7;
               _dayCellWidth = cellWidth;
               // Frame the strip on the current week the first time we know the
@@ -636,9 +734,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             isToday: day == todayKey,
                             isSelected: isSelected,
                             isPast: day.isBefore(todayKey),
-                            onTap: () => setState(
-                              () => _selectedDate = isSelected ? null : day,
-                            ),
+                            hasOrders: daysWithOrders.contains(day),
+                            onTap: () => setState(() {
+                              // Tapping a single day exits range mode.
+                              _selectedRange = null;
+                              _selectedDate = isSelected ? null : day;
+                            }),
                           ),
                         );
                       },
@@ -1033,7 +1134,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     setState(() {
       _selectedPaymentStatus = res.clearAll ? null : res.payment;
       _selectedOrderStatus = res.clearAll ? null : res.status;
-      if (res.clearAll) _selectedDate = null;
+      if (res.clearAll) {
+        _selectedDate = null;
+        _selectedRange = null;
+      }
     });
   }
 
@@ -1056,17 +1160,228 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
   }
 
-  Widget _buildEmptyState({required bool hasAnyOrders}) {
+  /// Nearest day that has orders relative to [from]: prefer the most recent day
+  /// on or before [from], otherwise the soonest day after it.
+  DateTime? _nearestDayWithOrders(DateTime from, Set<DateTime> days) {
+    if (days.isEmpty) return null;
+    final sorted = days.toList()..sort();
+    DateTime? before;
+    DateTime? after;
+    for (final d in sorted) {
+      if (!d.isAfter(from)) {
+        before = d;
+      } else {
+        after ??= d;
+      }
+    }
+    return before ?? after;
+  }
+
+  Widget _buildEmptyState({
+    required bool hasAnyOrders,
+    required Set<DateTime> daysWithOrders,
+  }) {
+    // The account has no orders at all.
+    if (!hasAnyOrders) {
+      return DeliveroEmptyState(
+        title: 'No orders yet',
+        subtitle: 'Create your first order to see it here.',
+        icon: Icons.receipt_long_rounded,
+        actionLabel: 'Create order',
+        onActionPressed: () => context.push('/owner/orders/create'),
+      );
+    }
+
+    // A future day is selected and empty — offer to generate that day's daily
+    // orders (after resolving today's), or add one manually.
+    final today = _calendarDay(DateTime.now());
+    if (_selectedRange == null &&
+        _selectedDate != null &&
+        _selectedDate!.isAfter(today) &&
+        _searchQuery.trim().isEmpty) {
+      return _buildFutureDayEmptyState(_selectedDate!);
+    }
+
+    // A specific day/range is selected and empty, but orders exist on other
+    // days — point the owner to the nearest day that has orders.
+    final hasDateFilter = _selectedDate != null || _selectedRange != null;
+    if (hasDateFilter &&
+        _searchQuery.trim().isEmpty &&
+        daysWithOrders.isNotEmpty) {
+      final from = _selectedRange?.end ?? _selectedDate!;
+      final nearest = _nearestDayWithOrders(from, daysWithOrders);
+      if (nearest != null) {
+        final label = _selectedRange != null
+            ? '${DateFormat('d MMM').format(_selectedRange!.start)}'
+                  ' – ${DateFormat('d MMM').format(_selectedRange!.end)}'
+            : DateFormat('EEE, d MMM').format(_selectedDate!);
+        return DeliveroEmptyState(
+          title: 'No orders for $label',
+          subtitle:
+              'Your nearest orders are on ${DateFormat('EEE, d MMM').format(nearest)}.',
+          icon: Icons.event_busy_rounded,
+          actionLabel: 'View ${DateFormat('d MMM').format(nearest)}',
+          onActionPressed: () {
+            setState(() {
+              _selectedRange = null;
+              _selectedDate = nearest;
+            });
+            if (_dayScrollController.hasClients && _dayCellWidth > 0) {
+              _dayScrollController.animateTo(
+                dayIndexForDate(DateTime.now(), nearest) * _dayCellWidth,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            }
+          },
+        );
+      }
+    }
+
+    // Empty because of payment/status/search filters.
     return DeliveroEmptyState(
-      title: hasAnyOrders ? 'No transactions found' : 'No orders yet',
-      subtitle: hasAnyOrders
-          ? 'Try adjusting your filters or search terms'
-          : 'Create your first order to see it here.',
+      title: 'No transactions found',
+      subtitle: 'Try adjusting your filters or search terms',
       icon: Icons.receipt_long_rounded,
-      actionLabel: hasAnyOrders ? null : 'Create order',
-      onActionPressed: hasAnyOrders
-          ? null
-          : () => context.push('/owner/orders/create'),
+    );
+  }
+
+  /// Empty state for a selected future day: generate that day's daily orders or
+  /// add one manually.
+  Widget _buildFutureDayEmptyState(DateTime day) {
+    final dateLabel = DateFormat('EEE, d MMM').format(day);
+    final shortLabel = DateFormat('d MMM').format(day);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.event_available_rounded,
+                size: 40,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'No orders for $dateLabel yet',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Generate this day's daily orders from your latest run, or add one manually.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _generateForSelectedDay(day),
+                icon: const Icon(Icons.auto_fix_high_rounded, size: 18),
+                label: Text('Generate orders for $shortLabel'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/owner/orders/create'),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add order'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Generate the selected day's daily orders. First prompts the owner to
+  /// resolve today's not-yet-delivered orders (so nothing carries forward by
+  /// mistake), then creates the day's run.
+  Future<void> _generateForSelectedDay(DateTime day) async {
+    final factoryId = ref.read(authProvider).user?.factoryId;
+    if (factoryId == null || factoryId.isEmpty) return;
+    final rolloverHour = ref.read(orderRolloverHourProvider);
+    final orders = ref.read(ordersProvider);
+    final today = _calendarDay(DateTime.now());
+    final dateLabel = DateFormat('d MMM').format(day);
+
+    // Resolve today's not-yet-delivered orders before creating the next day's.
+    final unresolved = findUnresolvedSourceOrders(
+      orders: orders,
+      sourceBusinessDay: today,
+      rolloverHour: rolloverHour,
+    );
+    if (unresolved.isNotEmpty) {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => UnresolvedOrdersSheet(
+          orderIds: unresolved.map((o) => o.id).toList(),
+          title: "Update today's orders first",
+          subtitle:
+              "Mark each as delivered or cancelled before generating $dateLabel's orders.",
+          doneLabel: 'Done — generate $dateLabel',
+        ),
+      );
+    }
+    if (!mounted) return;
+
+    final result = await ref
+        .read(ordersProvider.notifier)
+        .runDailyGenerationForDay(factoryId, day);
+    if (!mounted) return;
+
+    final msg = switch (result.createdCount) {
+      0 => 'No daily orders to generate for $dateLabel',
+      1 => '1 order generated for $dateLabel',
+      _ => '${result.createdCount} orders generated for $dateLabel',
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
     );
   }
 }
@@ -1178,6 +1493,7 @@ class _DayCell extends StatelessWidget {
   final bool isToday;
   final bool isSelected;
   final bool isPast;
+  final bool hasOrders;
   final VoidCallback onTap;
 
   const _DayCell({
@@ -1185,6 +1501,7 @@ class _DayCell extends StatelessWidget {
     required this.isToday,
     required this.isSelected,
     required this.isPast,
+    required this.hasOrders,
     required this.onTap,
   });
 
@@ -1247,12 +1564,17 @@ class _DayCell extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 5),
+          // Dot marks days that have orders, so the run is visible at a glance
+          // without scrolling into each day. Today stays distinct via its
+          // tinted cell above.
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            width: 4,
-            height: 4,
+            width: 5,
+            height: 5,
             decoration: BoxDecoration(
-              color: isToday ? AppColors.primary : Colors.transparent,
+              color: hasOrders
+                  ? (isSelected ? Colors.white : AppColors.primary)
+                  : Colors.transparent,
               shape: BoxShape.circle,
             ),
           ),
@@ -1304,6 +1626,62 @@ class _DateSectionHeader extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Summary card shown at the top of the list when a date range is active.
+class _RangeSummaryHeader extends StatelessWidget {
+  final String label;
+  final int count;
+  final double total;
+  const _RangeSummaryHeader({
+    required this.label,
+    required this.count,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(2, 4, 2, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.date_range_rounded,
+            size: 18,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            '${formatRupee(total)} · $count ${count == 1 ? 'Order' : 'Orders'}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
       ),
     );
   }

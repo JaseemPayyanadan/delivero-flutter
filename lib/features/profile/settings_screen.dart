@@ -26,9 +26,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _vibrateOnStatus = false;
   String? _prefsKey;
   bool _prefsLoaded = false;
-  String? _orderSettingsSyncedFactory;
   bool _availabilitySynced = false;
-  bool _isGeneratingDailyOrders = false;
 
   @override
   void initState() {
@@ -61,11 +59,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final rolloverHour = ref.watch(orderRolloverHourProvider);
-    final autoRecreateDaily = ref.watch(autoRecreateDailyOrdersProvider);
     final drivers = ref.watch(driversProvider);
     final driversLoaded = ref.watch(driversLoadedProvider);
     final isDelivery = user?.role == UserRole.delivery;
+    final factory = ref.watch(factoryProvider).asData?.value;
+    final companyName = factory?.name;
+    final companyAddress = factory?.address;
     final subtitle = user == null
         ? 'Your account and settings'
         : (isDelivery
@@ -91,21 +90,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           }
         }
       }
-    }
-
-    final factoryId = user?.factoryId;
-    if (!isDelivery &&
-        factoryId != null &&
-        factoryId.isNotEmpty &&
-        _orderSettingsSyncedFactory != factoryId) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() => _orderSettingsSyncedFactory = factoryId);
-        ref.read(orderRolloverHourProvider.notifier).syncForFactory(factoryId);
-        ref
-            .read(autoRecreateDailyOrdersProvider.notifier)
-            .syncForFactory(factoryId);
-      });
     }
 
     if (isDelivery && !_availabilitySynced && driver != null) {
@@ -145,6 +129,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     subtitle: subtitle,
                     driver: driver,
                     isDelivery: isDelivery,
+                    companyName: companyName,
+                    companyAddress: companyAddress,
                   ),
                   const SizedBox(height: 20),
                   _SettingsGroupCard(
@@ -221,37 +207,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       title: 'Orders',
                       child: Column(
                         children: [
-                          _ProfileSwitchRow(
-                            title: 'Auto-recreate daily orders',
+                          _ProfileNavRow(
+                            title: 'Order settings',
                             description:
-                                'When on, daily orders (even if not delivered) are recreated automatically at the time below. Edits sync into the next day\'s pending order.',
-                            value: autoRecreateDaily,
-                            onChanged: (val) async {
-                              await ref
-                                  .read(
-                                    autoRecreateDailyOrdersProvider.notifier,
-                                  )
-                                  .setEnabled(val);
-                            },
-                            icon: Icons.autorenew_rounded,
+                                'Daily order recreation, day-reset time, and manual generation',
+                            icon: Icons.tune_rounded,
                             iconColor: AppColors.success,
-                          ),
-                          const Divider(height: 1, color: AppColors.divider),
-                          _ProfileTimeRow(
-                            title: 'New order day starts at',
-                            description:
-                                'Before this time, orders count as the previous day. After this time, daily orders are recreated and earlier orders are locked.',
-                            timeLabel: formatOrderRolloverLabel(rolloverHour),
-                            icon: Icons.schedule_rounded,
-                            iconColor: AppColors.secondary,
-                            onTap: () => _pickOrderResetTime(rolloverHour),
-                          ),
-                          const Divider(height: 1, color: AppColors.divider),
-                          _ProfileGenerateOrdersRow(
-                            isLoading: _isGeneratingDailyOrders,
-                            onPressed: _isGeneratingDailyOrders
-                                ? null
-                                : () => _generateDailyOrdersNow(),
+                            onTap: () => context.push('/owner/order-settings'),
                           ),
                         ],
                       ),
@@ -268,14 +230,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           icon: Icons.help_center_rounded,
                           iconColor: AppColors.primary,
                           onTap: () => context.go('/onboarding'),
-                        ),
-                        const Divider(height: 1, color: AppColors.divider),
-                        _ProfileNavRow(
-                          title: 'Licenses & privacy',
-                          description: 'Open-source notices and legal',
-                          icon: Icons.gavel_rounded,
-                          iconColor: AppColors.textSecondary,
-                          onTap: () => showLicensePage(context: context),
                         ),
                       ],
                     ),
@@ -333,7 +287,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (!mounted) return;
 
       final message = switch (result.createdCount) {
-        0 => 'No new daily orders needed — today\'s orders are already in place',
+        0 =>
+          'No new daily orders needed — today\'s orders are already in place',
         1 => '1 daily order generated for today',
         _ => '${result.createdCount} daily orders generated for today',
       };
@@ -365,16 +320,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: AppColors.primary,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppColors.primary),
           ),
           child: child!,
         );
       },
     );
     if (picked == null || !mounted) return;
-    await ref.read(orderRolloverHourProvider.notifier).setRolloverHour(picked.hour);
+    await ref
+        .read(orderRolloverHourProvider.notifier)
+        .setRolloverHour(picked.hour);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -481,12 +438,16 @@ class _ProfileHeroCard extends StatelessWidget {
   final String subtitle;
   final Driver? driver;
   final bool isDelivery;
+  final String? companyName;
+  final String? companyAddress;
 
   const _ProfileHeroCard({
     required this.user,
     required this.subtitle,
     required this.driver,
     required this.isDelivery,
+    this.companyName,
+    this.companyAddress,
   });
 
   String _vehicleTypeLabel(VehicleType type) {
@@ -511,320 +472,350 @@ class _ProfileHeroCard extends StatelessWidget {
 
   String _planDescription(SubscriptionPlan plan, bool isDelivery) {
     return switch (plan) {
-      SubscriptionPlan.free => isDelivery
-          ? 'Using the workspace free plan'
-          : 'Basic workspace features are active',
-      SubscriptionPlan.pro => isDelivery
-          ? 'Using the workspace pro plan'
-          : 'Advanced workspace features are active',
+      SubscriptionPlan.free =>
+        isDelivery
+            ? 'Using the workspace free plan'
+            : 'Basic workspace features are active',
+      SubscriptionPlan.pro =>
+        isDelivery
+            ? 'Using the workspace pro plan'
+            : 'Advanced workspace features are active',
     };
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 22,
-            offset: Offset(0, 8),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border),
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadow,
+                blurRadius: 22,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 108,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.primaryLighter.withValues(alpha: 0.85),
-                    AppColors.surface.withValues(alpha: 0),
-                  ],
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                height: 108,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.primaryLighter.withValues(alpha: 0.85),
+                        AppColors.surface.withValues(alpha: 0),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
-            child: user == null
-                ? _ProfileHeroSkeleton()
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+                child: user == null
+                    ? _ProfileHeroSkeleton()
+                    : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.surface,
-                              border: Border.all(
-                                color: AppColors.border,
-                                width: 2,
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: AppColors.shadow,
-                                  blurRadius: 14,
-                                  offset: Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.primaryLighter,
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                _initials(user!.name),
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.4,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Account',
-                                  style: context.appTextStyles.caption
-                                      .copyWith(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.15,
-                                    color: AppColors.textLight,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  user!.name.trim().isEmpty
-                                      ? '—'
-                                      : user!.name.trim(),
-                                  style: context.appTextStyles.sliverTitle
-                                      .copyWith(
-                                    fontSize: 21,
-                                    height: 1.12,
-                                  ),
-                                ),
-                                if (user!.role == UserRole.delivery) ...[
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.info,
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: const Text(
-                                      'Driver',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 11,
-                                        height: 1.1,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 1),
-                            child: Icon(
-                              Icons.person_pin_circle_outlined,
-                              size: 18,
-                              color: AppColors.textLight,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              subtitle,
-                              style: context.appTextStyles.caption.copyWith(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _ProfileInfoTile(
-                        icon: Icons.workspace_premium_rounded,
-                        label: 'Plan',
-                        title: _planName(user!.plan),
-                        subtitle: _planDescription(user!.plan, isDelivery),
-                        accentColor: user!.plan == SubscriptionPlan.pro
-                            ? AppColors.warning
-                            : AppColors.primary,
-                      ),
-                      if (isDelivery && driver != null) ...[
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.border),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: AppColors.shadow,
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
-                                width: 44,
-                                height: 44,
+                                width: 52,
+                                height: 52,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryLighter,
-                                  borderRadius: BorderRadius.circular(14),
+                                  shape: BoxShape.circle,
+                                  color: AppColors.surface,
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                    width: 2,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: AppColors.shadow,
+                                      blurRadius: 14,
+                                      offset: Offset(0, 5),
+                                    ),
+                                  ],
                                 ),
-                                child: const Icon(
-                                  Icons.local_shipping_rounded,
-                                  color: AppColors.primary,
-                                  size: 22,
+                                alignment: Alignment.center,
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppColors.primaryLighter,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    _initials(user!.name),
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.4,
+                                    ),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Vehicle',
-                                      style: context.appTextStyles.caption
-                                          .copyWith(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.4,
-                                        color: AppColors.textLight,
-                                      ),
+                                      user!.name.trim().isEmpty
+                                          ? '—'
+                                          : user!.name.trim(),
+                                      style: context.appTextStyles.sliverTitle
+                                          .copyWith(fontSize: 21, height: 1.12),
                                     ),
-                                    const SizedBox(height: 2),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      '${_vehicleTypeLabel(driver!.vehicleType)} · On file',
-                                      style: context.appTextStyles.sectionHeader
+                                      user!.phone.trim().isEmpty
+                                          ? '—'
+                                          : user!.phone.trim(),
+                                      style: context.appTextStyles.body
                                           .copyWith(
-                                        fontSize: 14,
-                                        letterSpacing: -0.2,
-                                      ),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.textSecondary,
+                                          ),
                                     ),
+                                    if (user!.role == UserRole.delivery) ...[
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.info,
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Driver',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 11,
+                                            height: 1.1,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: driver!.isActive
-                                      ? AppColors.successLighter
-                                      : AppColors.backgroundTertiary,
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: driver!.isActive
-                                        ? AppColors.success
-                                            .withValues(alpha: 0.22)
-                                        : AppColors.border,
-                                  ),
-                                ),
-                                child: Text(
-                                  driver!.isActive ? 'Available' : 'Off duty',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.35,
-                                    color: driver!.isActive
-                                        ? AppColors.success
-                                        : AppColors.textSecondary,
-                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                      const SizedBox(height: 18),
-                      Text(
-                        'Contact',
-                        style: context.appTextStyles.caption.copyWith(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.15,
-                          color: AppColors.textLight,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppColors.border),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: AppColors.shadow,
-                              blurRadius: 10,
-                              offset: Offset(0, 4),
+                          if (companyName != null &&
+                              companyName!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              'Company',
+                              style: context.appTextStyles.caption.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.15,
+                                color: AppColors.textLight,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 1),
+                                  child: Icon(
+                                    Icons.storefront_rounded,
+                                    size: 18,
+                                    color: AppColors.textLight,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        companyName!.trim(),
+                                        style: context.appTextStyles.body
+                                            .copyWith(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.textPrimary,
+                                              height: 1.3,
+                                            ),
+                                      ),
+                                      if (companyAddress != null &&
+                                          companyAddress!
+                                              .trim()
+                                              .isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          companyAddress!.trim(),
+                                          style: context.appTextStyles.caption
+                                              .copyWith(
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.textSecondary,
+                                                height: 1.35,
+                                              ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                        ),
-                        child: Column(
-                          children: [
-                            _ProfileContactLine(
-                              icon: Icons.phone_iphone_rounded,
-                              label: 'Phone',
-                              text: user!.phone.trim().isEmpty
-                                  ? '—'
-                                  : user!.phone.trim(),
+                          if (isDelivery && driver != null) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: AppColors.border),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: AppColors.shadow,
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryLighter,
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: const Icon(
+                                      Icons.local_shipping_rounded,
+                                      color: AppColors.primary,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Vehicle',
+                                          style: context.appTextStyles.caption
+                                              .copyWith(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 0.4,
+                                                color: AppColors.textLight,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${_vehicleTypeLabel(driver!.vehicleType)} · On file',
+                                          style: context
+                                              .appTextStyles
+                                              .sectionHeader
+                                              .copyWith(
+                                                fontSize: 14,
+                                                letterSpacing: -0.2,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: driver!.isActive
+                                          ? AppColors.successLighter
+                                          : AppColors.backgroundTertiary,
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: driver!.isActive
+                                            ? AppColors.success.withValues(
+                                                alpha: 0.22,
+                                              )
+                                            : AppColors.border,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      driver!.isActive
+                                          ? 'Available'
+                                          : 'Off duty',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.35,
+                                        color: driver!.isActive
+                                            ? AppColors.success
+                                            : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+              ),
+            ],
+          ),
+        ),
+        if (user != null) ...[
+          const SizedBox(height: 20),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 22,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(16),
+            child: _ProfileInfoTile(
+              icon: Icons.workspace_premium_rounded,
+              label: 'Plan',
+              title: _planName(user!.plan),
+              subtitle: _planDescription(user!.plan, isDelivery),
+              accentColor: user!.plan == SubscriptionPlan.pro
+                  ? AppColors.warning
+                  : AppColors.primary,
+            ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -921,128 +912,53 @@ class _ProfileInfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 10,
-            offset: Offset(0, 4),
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: accentColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(14),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: accentColor, size: 22),
+          child: Icon(icon, color: accentColor, size: 22),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: context.appTextStyles.caption.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                  color: AppColors.textLight,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                title,
+                style: context.appTextStyles.sectionHeader.copyWith(
+                  fontSize: 14,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: context.appTextStyles.caption.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                  height: 1.3,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: context.appTextStyles.caption.copyWith(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.4,
-                    color: AppColors.textLight,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  title,
-                  style: context.appTextStyles.sectionHeader.copyWith(
-                    fontSize: 14,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: context.appTextStyles.caption.copyWith(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileContactLine extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String text;
-
-  const _ProfileContactLine({
-    required this.icon,
-    required this.label,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLighter,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, size: 20, color: AppColors.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: context.appTextStyles.caption.copyWith(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
-                    color: AppColors.textLight,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  text,
-                  style: context.appTextStyles.body.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1167,7 +1083,7 @@ class _ProfileGenerateOrdersRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Create today\'s missing daily orders now from yesterday\'s orders — without waiting for the scheduled time.',
+                      'Fill any missing daily orders up to today from your most recent run — without waiting for the scheduled time.',
                       style: context.appTextStyles.caption.copyWith(
                         fontSize: 12,
                         color: AppColors.textSecondary,

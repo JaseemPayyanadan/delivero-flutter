@@ -9,11 +9,24 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/order.dart';
 
 class UnresolvedOrdersSheet extends ConsumerWidget {
-  /// IDs of yesterday's unresolved orders to track. The sheet watches live
-  /// provider state so rows disappear as the owner resolves each one.
+  /// IDs of the unresolved orders to track. The sheet watches live provider
+  /// state so rows disappear as the owner resolves each one.
   final List<String> orderIds;
 
-  const UnresolvedOrdersSheet({super.key, required this.orderIds});
+  /// Copy is configurable so the same sheet works both for the yesterday→today
+  /// rollover and for the "resolve today before generating the next day" flow.
+  final String title;
+  final String subtitle;
+  final String doneLabel;
+
+  const UnresolvedOrdersSheet({
+    super.key,
+    required this.orderIds,
+    this.title = 'Unresolved orders from yesterday',
+    this.subtitle =
+        "Review and update each order before today's orders are created.",
+    this.doneLabel = "Done — create today's orders",
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -77,10 +90,10 @@ class UnresolvedOrdersSheet extends ConsumerWidget {
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Unresolved orders from yesterday',
-                    style: TextStyle(
+                    title,
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
                       color: AppColors.textPrimary,
@@ -90,9 +103,9 @@ class UnresolvedOrdersSheet extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 4),
-            const Text(
-              "Review and update each order before today's orders are created.",
-              style: TextStyle(
+            Text(
+              subtitle,
+              style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
@@ -139,7 +152,7 @@ class UnresolvedOrdersSheet extends ConsumerWidget {
                     fontSize: 15,
                   ),
                 ),
-                child: const Text("Done — create today's orders"),
+                child: Text(doneLabel),
               ),
             ),
           ],
