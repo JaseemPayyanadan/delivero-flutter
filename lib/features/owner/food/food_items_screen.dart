@@ -233,7 +233,9 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                     border: Border.all(color: AppColors.border),
                   ),
                   child: Text(
-                    '₹${NumberFormat.decimalPattern().format(item.price)}',
+                    item.unit == ProductUnit.quantity
+                        ? '₹${NumberFormat.decimalPattern().format(item.price)}'
+                        : '₹${NumberFormat.decimalPattern().format(item.price)} ${item.unit.priceSuffix}',
                     style: const TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w900,
