@@ -5,6 +5,10 @@ const int kDayStripBaseIndex = 10000;
 
 DateTime _dayKey(DateTime d) => DateTime(d.year, d.month, d.day);
 
+/// Normalizes [value] to a date-only key (midnight local).
+DateTime calendarDayKey(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
+
 /// Date-only Sunday of the calendar week containing [now].
 DateTime currentWeekSunday(DateTime now) {
   final today = _dayKey(now);
@@ -26,4 +30,20 @@ int dayIndexForDate(DateTime now, DateTime date) {
 /// week, so the strip is framed on this week with today in view.
 int initialDayStripIndex(DateTime now) {
   return dayIndexForDate(now, currentWeekSunday(now));
+}
+
+/// Nearest calendar day in [days] to [from], preferring the same day or earlier.
+DateTime? nearestDayWithOrders(DateTime from, Set<DateTime> days) {
+  if (days.isEmpty) return null;
+  final sorted = days.toList()..sort();
+  DateTime? before;
+  DateTime? after;
+  for (final d in sorted) {
+    if (!d.isAfter(from)) {
+      before = d;
+    } else {
+      after ??= d;
+    }
+  }
+  return before ?? after;
 }

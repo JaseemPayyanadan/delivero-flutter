@@ -13,6 +13,7 @@ import '../../../data/models/order.dart';
 import '../driver_order_scope.dart';
 import '../../owner/orders/order_details/order_detail_formatting.dart';
 import '../../owner/orders/order_details/resolved_order_detail.dart';
+import '../../owner/orders/order_details/widgets/confirm_mark_delivered.dart';
 import '../../owner/orders/order_details/widgets/order_detail_bottom_actions.dart';
 import '../../owner/orders/order_details/widgets/order_detail_item_row.dart';
 import '../../owner/orders/order_details/widgets/order_detail_payment_section.dart';
@@ -266,8 +267,17 @@ class _DriverOrderDetailsScreenState
               const SizedBox(height: 20),
               OrderDetailBottomActions(
                 isDelivered: order.status == OrderStatus.delivered,
-                onMarkDelivered: () =>
-                    _confirmMarkDelivered(context, ref, order),
+                onMarkDelivered: () => showConfirmMarkDeliveredDialog(
+                  context: context,
+                  ref: ref,
+                  order: order,
+                  paymentDraft: ConfirmMarkDeliveredPaymentDraft(
+                    status: _draftPaymentStatus ?? PaymentStatus.unpaid,
+                    method: _draftPaymentMethod ?? PaymentMethod.cash,
+                    amountPaid: _draftAmountPaid,
+                    partialAmountText: _partialAmountController.text,
+                  ),
+                ),
                 onOpenMaps: hasAddress
                     ? () => _openMaps(context, order.customerAddress)
                     : null,
@@ -335,89 +345,6 @@ class _DriverOrderDetailsScreenState
         ),
       );
     }
-  }
-
-  void _confirmMarkDelivered(BuildContext context, WidgetRef ref, Order order) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          'Mark as delivered?',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        content: Text(
-          'Confirm that the order for ${order.customerName.trim().isEmpty ? 'this customer' : order.customerName.trim()} has been delivered.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Not yet',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.textLight,
-              ),
-            ),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                HapticFeedback.mediumImpact();
-              } catch (_) {}
-              final now = DateTime.now();
-              final updated = order.copyWith(
-                status: OrderStatus.delivered,
-                deliveryTime: order.deliveryTime ?? now,
-                deliveryDate: order.deliveryDate ?? now,
-              );
-              try {
-                await ref.read(ordersProvider.notifier).updateOrder(updated);
-                ref
-                    .read(lastTouchedOrderProvider.notifier)
-                    .set(id: updated.id, wasCreated: false);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text(
-                        'Order marked as delivered',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: AppColors.success,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                  try {
-                    HapticFeedback.heavyImpact();
-                  } catch (_) {}
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Failed to update order. Check your connection.',
-                      ),
-                      backgroundColor: Color(0xFFD32F2F),
-                    ),
-                  );
-                }
-              }
-            },
-            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
-            child: const Text(
-              'Confirm',
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

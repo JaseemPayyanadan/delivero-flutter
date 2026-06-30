@@ -6,11 +6,13 @@ import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/orders/day_strip_math.dart';
 import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/widgets/order_week_day_strip.dart';
 import '../../../data/models/order.dart';
 import 'driver_order_scope.dart';
 
@@ -26,11 +28,60 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
   String _selectedStatus = 'all';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  DateTime? _selectedDate;
+  bool _selectedDateInitialized = false;
+  final ScrollController _dayScrollController = ScrollController();
+  double _dayCellWidth = 0;
+  DateTime? _visibleLeadDate;
+
+  DateTime _calendarDay(DateTime value) => calendarDayKey(value);
 
   @override
   void dispose() {
     _searchController.dispose();
+    _dayScrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      final day = _calendarDay(picked);
+      setState(() => _selectedDate = day);
+      if (_dayScrollController.hasClients && _dayCellWidth > 0) {
+        _dayScrollController.animateTo(
+          dayIndexForDate(DateTime.now(), day) * _dayCellWidth,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
+  }
+
+  void _jumpToDay(DateTime day) {
+    setState(() => _selectedDate = day);
+    if (_dayScrollController.hasClients && _dayCellWidth > 0) {
+      _dayScrollController.animateTo(
+        dayIndexForDate(DateTime.now(), day) * _dayCellWidth,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   Future<void> _openSearchSheet(BuildContext context) async {
@@ -53,6 +104,11 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_selectedDateInitialized) {
+      _selectedDateInitialized = true;
+      _selectedDate = _calendarDay(DateTime.now());
+    }
+
     final user = ref.watch(authProvider).user;
     final allOrders = ref.watch(ordersProvider);
     final ordersLoaded = ref.watch(ordersLoadedProvider);
@@ -68,6 +124,10 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
       routeId: myRouteId,
     );
     var myOrders = List<Order>.from(myAllOrders);
+
+    final daysWithOrders = <DateTime>{
+      for (final o in myAllOrders) _calendarDay(o.orderDate),
+    };
 
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
@@ -88,6 +148,12 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     } else if (_selectedStatus == 'delivered') {
       myOrders = myOrders
           .where((o) => o.status == OrderStatus.delivered)
+          .toList();
+    }
+
+    if (_searchQuery.isEmpty && _selectedDate != null) {
+      myOrders = myOrders
+          .where((o) => _calendarDay(o.orderDate) == _selectedDate)
           .toList();
     }
 
@@ -124,6 +190,9 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
             parent: BouncingScrollPhysics(),
           ),
           slivers: [
+            SliverToBoxAdapter(
+              child: _buildCalendarSection(daysWithOrders),
+            ),
             SliverToBoxAdapter(child: _buildFilters(myAllOrders)),
             if (isLoading)
               const SliverFillRemaining(
@@ -133,7 +202,10 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
             else if (myOrders.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: _buildEmptyState(hasAnyAssigned: myAllOrders.isNotEmpty),
+                child: _buildEmptyState(
+                  hasAnyAssigned: myAllOrders.isNotEmpty,
+                  daysWithOrders: daysWithOrders,
+                ),
               )
             else
               SliverPadding(
@@ -149,6 +221,78 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCalendarSection(Set<DateTime> daysWithOrders) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: _selectedDate != null
+                    ? GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setState(() => _selectedDate = null),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              DateFormat('EEE, d MMM').format(_selectedDate!),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
+                      )
+                    : Text(
+                        DateFormat('MMMM yyyy').format(
+                          _visibleLeadDate ?? DateTime.now(),
+                        ),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+              ),
+              IconButton(
+                onPressed: _pickDate,
+                icon: const Icon(Icons.calendar_today_rounded),
+                color: AppColors.primary,
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Pick a date',
+              ),
+            ],
+          ),
+        ),
+        OrderWeekDayStrip(
+          scrollController: _dayScrollController,
+          selectedDate: _selectedDate,
+          daysWithOrders: daysWithOrders,
+          onCellWidthChanged: (w) => _dayCellWidth = w,
+          onVisibleLeadDateChanged: (lead) {
+            if (lead != _visibleLeadDate) {
+              setState(() => _visibleLeadDate = lead);
+            }
+          },
+          onDayTap: (day, wasSelected) => setState(() {
+            _selectedDate = wasSelected ? null : day;
+          }),
+        ),
+      ],
     );
   }
 
@@ -592,11 +736,32 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
     );
   }
 
-  Widget _buildEmptyState({required bool hasAnyAssigned}) {
+  Widget _buildEmptyState({
+    required bool hasAnyAssigned,
+    required Set<DateTime> daysWithOrders,
+  }) {
+    if (hasAnyAssigned &&
+        _searchQuery.isEmpty &&
+        _selectedDate != null &&
+        daysWithOrders.isNotEmpty) {
+      final nearest = nearestDayWithOrders(_selectedDate!, daysWithOrders);
+      if (nearest != null && nearest != _selectedDate) {
+        final label = DateFormat('EEE, d MMM').format(_selectedDate!);
+        return DeliveroEmptyState(
+          title: 'No orders for $label',
+          subtitle:
+              'Your nearest orders are on ${DateFormat('EEE, d MMM').format(nearest)}.',
+          icon: Icons.event_busy_rounded,
+          actionLabel: 'View ${DateFormat('d MMM').format(nearest)}',
+          onActionPressed: () => _jumpToDay(nearest),
+        );
+      }
+    }
+
     return DeliveroEmptyState(
       title: hasAnyAssigned ? 'No matching orders' : 'No orders for you today',
       subtitle: hasAnyAssigned
-          ? 'Try switching Active / Delivered or changing your search.'
+          ? 'Try switching Active / Delivered, picking another day, or changing your search.'
           : 'Great job! You have no pending deliveries at the moment.',
       icon: Icons.local_shipping_outlined,
       actionLabel: hasAnyAssigned ? null : 'New order',

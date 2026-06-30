@@ -13,6 +13,7 @@ import '../../../../core/widgets/delivero_sliver_header.dart';
 import '../../../../data/models/order.dart';
 import 'order_detail_formatting.dart';
 import 'resolved_order_detail.dart';
+import 'widgets/confirm_mark_delivered.dart';
 import 'widgets/order_detail_bottom_actions.dart';
 import 'widgets/order_detail_item_row.dart';
 import 'widgets/order_detail_payment_section.dart';
@@ -286,11 +287,16 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
               const SizedBox(height: 20),
               OrderDetailBottomActions(
                 isDelivered: order.status == OrderStatus.delivered,
-                onMarkDelivered: () => _handleStatusChange(
-                  context,
-                  ref,
-                  order,
-                  OrderStatus.delivered,
+                onMarkDelivered: () => showConfirmMarkDeliveredDialog(
+                  context: context,
+                  ref: ref,
+                  order: order,
+                  paymentDraft: ConfirmMarkDeliveredPaymentDraft(
+                    status: _draftPaymentStatus ?? PaymentStatus.unpaid,
+                    method: _draftPaymentMethod ?? PaymentMethod.cash,
+                    amountPaid: _draftAmountPaid,
+                    partialAmountText: _partialAmountController.text,
+                  ),
                 ),
                 onOpenMaps: order.customerAddress.trim().isEmpty
                     ? null
