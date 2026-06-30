@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../data/models/order.dart';
+import '../../../../../data/models/product_unit.dart';
 
 class OrderDetailItemRow extends StatelessWidget {
   final OrderItem item;
@@ -29,7 +30,9 @@ class OrderDetailItemRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Text(
-              '${item.quantity}x',
+              item.unit == ProductUnit.quantity
+                  ? '${item.quantity}x'
+                  : item.unit.formatAmount(item.quantity),
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
                 color: AppColors.primary,
@@ -68,7 +71,9 @@ class OrderDetailItemRow extends StatelessWidget {
                 ],
                 const SizedBox(height: 3),
                 Text(
-                  '${money0.format(item.unitPrice)} × ${item.quantity}',
+                  item.unit == ProductUnit.quantity
+                      ? '${money0.format(item.unitPrice)} × ${item.quantity}'
+                      : '${money0.format(item.unitPrice)} × ${item.unit.formatAmount(item.quantity)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     color: AppColors.textSecondary,

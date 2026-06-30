@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../data/models/product_unit.dart';
 import 'production_summary.dart';
 
 Future<Uint8List> buildProductionSummaryPdfBytes({
@@ -77,7 +78,7 @@ Future<Uint8List> buildProductionSummaryPdfBytes({
                   return pw.TableRow(
                     children: [
                       _bodyCell(line.productName),
-                      _bodyCell('${line.totalUnits}'),
+                      _bodyCell(line.unit == ProductUnit.quantity ? '${line.totalUnits}' : '${line.totalUnits} ${line.unit.productionWord}'),
                       _splitCell(line),
                     ],
                   );
@@ -114,7 +115,7 @@ pw.Widget _bodyCell(String text) {
 }
 
 pw.Widget _splitCell(ProductionLineSummary line) {
-  final rows = formatPackBreakdownLines(line.packBreakdown);
+  final rows = formatPackBreakdownLines(line.packBreakdown, word: line.unit.productionWord);
   return pw.Padding(
     padding: const pw.EdgeInsets.all(10),
     child: rows.isEmpty

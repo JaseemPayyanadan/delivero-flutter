@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../core/utils/date_utils.dart' as app_utils;
+import 'product_unit.dart';
 
 enum OrderType { daily, oneTime, special }
 
@@ -40,6 +41,7 @@ class OrderItem {
   final int quantity;
   final double unitPrice;
   final double totalPrice;
+  final ProductUnit unit;
   /// Optional pack/box label when the same product appears on multiple lines.
   final String? packLabel;
 
@@ -50,6 +52,7 @@ class OrderItem {
     required this.quantity,
     required this.unitPrice,
     required this.totalPrice,
+    this.unit = ProductUnit.quantity,
     this.packLabel,
   });
 
@@ -61,6 +64,7 @@ class OrderItem {
       'quantity': quantity,
       'unitPrice': unitPrice,
       'totalPrice': totalPrice,
+      'unit': unit.storageValue,
       if (packLabel != null && packLabel!.trim().isNotEmpty)
         'packLabel': packLabel!.trim(),
     };
@@ -110,6 +114,7 @@ class OrderItem {
       quantity: quantity,
       unitPrice: unitPrice,
       totalPrice: totalPrice,
+      unit: ProductUnit.fromStorage(json['unit']),
       packLabel: packLabel == null || packLabel.isEmpty ? null : packLabel,
     );
   }

@@ -15,6 +15,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_skeleton.dart';
 import '../../../data/models/order.dart';
+import '../../../data/models/product_unit.dart';
 
 const List<_QuickAction> _ownerQuickActions = [
   _QuickAction(
@@ -2414,7 +2415,7 @@ class _ProductMixRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              '$pctLabel · ${item.quantity} qty',
+              '$pctLabel · ${item.quantity} ${item.unit == ProductUnit.quantity ? 'qty' : item.unit.productionWord}',
               style: context.appTextStyles.caption.copyWith(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,

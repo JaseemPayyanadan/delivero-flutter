@@ -1,5 +1,6 @@
 import '../../data/models/delivery_route.dart';
 import '../../data/models/order.dart';
+import '../../data/models/product_unit.dart';
 import '../orders/business_day.dart';
 import '../orders/order_line_key.dart';
 import '../utils/route_refs.dart';
@@ -8,6 +9,7 @@ import '../utils/route_refs.dart';
 class ProductionLineSummary {
   final String productName;
   final String? foodItemId;
+  final ProductUnit unit;
   final int totalUnits;
   final int orderLineCount;
   final Map<int, int> packBreakdown;
@@ -15,6 +17,7 @@ class ProductionLineSummary {
   const ProductionLineSummary({
     required this.productName,
     this.foodItemId,
+    this.unit = ProductUnit.quantity,
     required this.totalUnits,
     required this.orderLineCount,
     required this.packBreakdown,
@@ -114,6 +117,7 @@ ProductionSummary buildProductionSummary(
         () => _LineAccumulator(
           productName: displayNameWithPackLabel(baseName, item.packLabel),
           foodItemId: item.foodItemId.isNotEmpty ? item.foodItemId : null,
+          unit: item.unit,
         ),
       );
       acc.totalUnits += item.quantity;
@@ -128,6 +132,7 @@ ProductionSummary buildProductionSummary(
         (acc) => ProductionLineSummary(
           productName: acc.productName,
           foodItemId: acc.foodItemId,
+          unit: acc.unit,
           totalUnits: acc.totalUnits,
           orderLineCount: acc.orderLineCount,
           packBreakdown: Map.unmodifiable(acc.packBreakdown),
@@ -155,28 +160,33 @@ ProductionSummary buildProductionSummary(
 class _LineAccumulator {
   final String productName;
   final String? foodItemId;
+  final ProductUnit unit;
   int totalUnits = 0;
   int orderLineCount = 0;
   final Map<int, int> packBreakdown = {};
 
-  _LineAccumulator({required this.productName, this.foodItemId});
+  _LineAccumulator({required this.productName, this.foodItemId, this.unit = ProductUnit.quantity});
 }
 
 /// One row per pack size, largest quantity first (e.g. "5 × 20 units").
-List<String> formatPackBreakdownLines(Map<int, int> packBreakdown) {
+List<String> formatPackBreakdownLines(
+  Map<int, int> packBreakdown, {
+  String word = 'units',
+}) {
   if (packBreakdown.isEmpty) return const [];
   final entries = packBreakdown.entries.toList()
     ..sort((a, b) => b.key.compareTo(a.key));
   return [
-    for (final e in entries) '${e.value} × ${e.key} units',
+    for (final e in entries) '${e.value} × ${e.key} $word',
   ];
 }
 
 String formatProductionLine(ProductionLineSummary line) {
+  final word = line.unit.productionWord;
   final buffer = StringBuffer(
-    '${line.productName.toUpperCase()} — ${line.totalUnits} units total',
+    '${line.productName.toUpperCase()} — ${line.totalUnits} $word total',
   );
-  for (final row in formatPackBreakdownLines(line.packBreakdown)) {
+  for (final row in formatPackBreakdownLines(line.packBreakdown, word: word)) {
     buffer.writeln('  $row');
   }
   return buffer.toString().trim();
