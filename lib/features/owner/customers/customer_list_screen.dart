@@ -466,35 +466,53 @@ class _GroupHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 6, 2, 10),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                title.toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 11,
-                  color: AppColors.textLight,
-                  letterSpacing: 1.4,
-                ),
-              ),
+      padding: const EdgeInsets.fromLTRB(2, 10, 2, 6),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(9),
             ),
-            const SizedBox(width: 10),
-            Text(
-              '$count ${count == 1 ? 'Customer' : 'Customers'}',
+            child: const Icon(
+              Icons.alt_route_rounded,
+              size: 16,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
-                fontSize: 11,
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
                 color: AppColors.primary,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -542,6 +560,7 @@ class _CustomerListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasScheduleInfo = scheduleLabel != null;
     final accent = _pendingColor;
+    final avatarColor = hasPending ? accent : AppColors.primary;
 
     return Container(
       decoration: BoxDecoration(
@@ -580,14 +599,14 @@ class _CustomerListCard extends StatelessWidget {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.12),
+                              color: avatarColor.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: Center(
                               child: Text(
                                 _customerInitials(customer.name),
-                                style: const TextStyle(
-                                  color: AppColors.primary,
+                                style: TextStyle(
+                                  color: avatarColor,
                                   fontWeight: FontWeight.w900,
                                   fontSize: 14,
                                   letterSpacing: 0.5,
@@ -713,6 +732,12 @@ class _CustomerListCard extends StatelessWidget {
                                 ),
                               ],
                             ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: AppColors.textLight,
                           ),
                         ],
                       ),

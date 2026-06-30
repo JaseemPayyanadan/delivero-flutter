@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
 
 /// Summary KPIs for the routes & drivers hub.
 class RoutesHubOverviewCard extends StatelessWidget {
@@ -19,51 +18,89 @@ class RoutesHubOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasUnassigned = routesWithoutDriver > 0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.border),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.primaryGradientStart,
+              AppColors.primaryGradientEnd,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(28),
           boxShadow: const [
             BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 16,
-              offset: Offset(0, 8),
+              color: AppColors.shadowDeep,
+              blurRadius: 24,
+              offset: Offset(0, 14),
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: _HubStat(
-                icon: Icons.alt_route_rounded,
-                iconColor: AppColors.primary,
-                value: routesCount,
-                label: 'Routes',
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.hub_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'NETWORK OVERVIEW',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                      color: Colors.white.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ),
+                if (hasUnassigned)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$routesWithoutDriver need driver',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            _verticalRule(),
-            Expanded(
-              child: _HubStat(
-                icon: Icons.how_to_reg_rounded,
-                iconColor: AppColors.success,
-                value: driversOnDuty,
-                label: 'On duty',
-              ),
-            ),
-            _verticalRule(),
-            Expanded(
-              child: _HubStat(
-                icon: Icons.assignment_ind_rounded,
-                iconColor: routesWithoutDriver > 0
-                    ? AppColors.warning
-                    : AppColors.textLight,
-                value: routesWithoutDriver,
-                label: 'No driver',
-              ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                _HubStat(value: routesCount, label: 'Routes'),
+                _verticalRule(),
+                _HubStat(value: driversOnDuty, label: 'On duty'),
+                _verticalRule(),
+                _HubStat(value: routesWithoutDriver, label: 'No driver'),
+              ],
             ),
           ],
         ),
@@ -73,56 +110,48 @@ class RoutesHubOverviewCard extends StatelessWidget {
 
   Widget _verticalRule() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       width: 1,
-      height: 40,
-      color: AppColors.border,
+      height: 34,
+      color: Colors.white.withValues(alpha: 0.18),
     );
   }
 }
 
 class _HubStat extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
   final int value;
   final String label;
 
-  const _HubStat({
-    required this.icon,
-    required this.iconColor,
-    required this.value,
-    required this.label,
-  });
+  const _HubStat({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, size: 22, color: iconColor),
-        const SizedBox(height: 6),
-        Text(
-          '$value',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
-            letterSpacing: -0.6,
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$value',
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -0.8,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: context.appTextStyles.caption.copyWith(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textSecondary,
-            letterSpacing: 0.2,
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
