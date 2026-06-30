@@ -16,6 +16,7 @@ import '../../../core/utils/route_refs.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/food_item.dart';
 import '../../../data/models/order.dart';
+import '../../../data/models/product_unit.dart';
 import '../orders/order_details/order_detail_formatting.dart';
 
 double? _estimatePerDelivery(
@@ -214,6 +215,9 @@ class CustomerDetailsScreen extends ConsumerWidget {
 
     final Map<String, double> catalogPriceById = {
       for (final FoodItem item in foodItems) item.id: item.price,
+    };
+    final Map<String, ProductUnit> unitById = {
+      for (final FoodItem item in foodItems) item.id: item.unit,
     };
 
     final displayRoute = RouteRefs.routeLabelForRef(
@@ -572,6 +576,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
                             _RecurringItemRow(
                               name: item.name,
                               quantity: item.quantity,
+                              unit: unitById[item.id] ?? ProductUnit.quantity,
                             ),
                             const SizedBox(height: 10),
                           ],
@@ -659,6 +664,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
     String customerId,
     Customer customer,
     Map<String, double> catalogPriceById,
+    Map<String, ProductUnit> unitById,
   ) {
     final products = customer.products ?? [];
     if (products.isEmpty) {
@@ -795,7 +801,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '${p.quantity} units each order',
+                            '${p.quantity} ${(unitById[p.id] ?? ProductUnit.quantity).productionWord} each order',
                             style: const TextStyle(
                               color: AppColors.textLight,
                               fontWeight: FontWeight.w600,
@@ -1201,7 +1207,12 @@ class _ProfileCard extends StatelessWidget {
 class _RecurringItemRow extends StatelessWidget {
   final String name;
   final int quantity;
-  const _RecurringItemRow({required this.name, required this.quantity});
+  final ProductUnit unit;
+  const _RecurringItemRow({
+    required this.name,
+    required this.quantity,
+    this.unit = ProductUnit.quantity,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1236,7 +1247,7 @@ class _RecurringItemRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
-              'x$quantity',
+              unit.compactAmount(quantity),
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
                 color: AppColors.primary,
