@@ -11,6 +11,7 @@ import '../../../core/services/connectivity_provider.dart';
 import '../../../core/widgets/offline_banner.dart';
 import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/order.dart';
 import '../driver_order_scope.dart';
 import '../delivery_nav_provider.dart';
@@ -142,15 +143,15 @@ class _DeliveryDashboardScreenState
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.fromLTRB(20, 44, 20, 0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    const SizedBox(height: 24),
                     const _SectionHeader(
-                      eyebrow: 'GO TO',
+                      eyebrow: 'Shortcuts',
                       title: 'Quick actions',
+                      subtitle: 'Jump to the workflows you use most',
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     _QuickActionsGrid(
                       actions: [
                         _QuickAction(
@@ -185,36 +186,40 @@ class _DeliveryDashboardScreenState
                       ],
                     ),
                     if (myOrders.isEmpty) ...[
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 32),
                       const _NoDeliveriesEmpty(),
                     ] else ...[
-                      const SizedBox(height: 28),
-                      const _SectionHeader(
-                        eyebrow: 'TODAY',
+                      const SizedBox(height: 32),
+                      _SectionHeader(
+                        eyebrow: 'Today',
                         title: 'Deliveries',
                         subtitle: 'Focus on pending stops first',
+                        trailingLabel: 'View all',
+                        onTrailingTap: () => ref
+                            .read(deliveryNavIndexProvider.notifier)
+                            .setIndex(1),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       _TodayDeliveriesCard(orders: upcomingToday),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 32),
                       const _SectionHeader(
-                        eyebrow: 'TODAY',
+                        eyebrow: 'Today',
                         title: 'Collections',
                         subtitle: 'Cash, UPI and outstanding amounts',
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       _CollectionBreakdownCard(
                         cash: todayCash,
                         upi: todayUpi,
                         pending: todayPending,
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 32),
                       const _SectionHeader(
-                        eyebrow: 'OVERVIEW',
+                        eyebrow: 'Overview',
                         title: 'All-time performance',
                         subtitle: 'Your overall delivery summary',
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       _PerformanceCard(
                         total: myOrders.length,
                         completed: completedCount,
@@ -726,49 +731,124 @@ class _SectionHeader extends StatelessWidget {
   final String eyebrow;
   final String title;
   final String? subtitle;
+  final String? trailingLabel;
+  final VoidCallback? onTrailingTap;
 
   const _SectionHeader({
     required this.eyebrow,
     required this.title,
     this.subtitle,
+    this.trailingLabel,
+    this.onTrailingTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          eyebrow,
-          style: const TextStyle(
-            color: AppColors.primary,
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.4,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.5,
-          ),
-        ),
-        if (subtitle != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            subtitle!,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+    return Semantics(
+      header: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 3,
+            height: 38,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.primaryLight, AppColors.primary],
+              ),
             ),
           ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  eyebrow.toUpperCase(),
+                  style: context.appTextStyles.caption.copyWith(
+                    color: AppColors.primary.withValues(alpha: 0.9),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: context.appTextStyles.sliverTitle.copyWith(
+                    fontSize: 17,
+                    letterSpacing: -0.4,
+                    height: 1.1,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle!,
+                    style: context.appTextStyles.body.copyWith(
+                      color: AppColors.textSecondary.withValues(alpha: 0.92),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (trailingLabel != null) ...[
+            const SizedBox(width: 8),
+            Semantics(
+              button: true,
+              label: trailingLabel!,
+              child: TextButton(
+                onPressed: () {
+                  try {
+                    HapticFeedback.lightImpact();
+                  } catch (_) {}
+                  onTrailingTap?.call();
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  minimumSize: const Size(48, 44),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  backgroundColor: AppColors.primaryLighter.withValues(
+                    alpha: 0.45,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      trailingLabel!,
+                      style: context.appTextStyles.caption.copyWith(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.15,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_forward_rounded, size: 15),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -792,13 +872,18 @@ class _SurfaceCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.65)),
+        boxShadow: [
           BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+          const BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 18,
-            offset: Offset(0, 10),
+            blurRadius: 14,
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -832,7 +917,7 @@ class _QuickActionsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -844,8 +929,8 @@ class _QuickActionsGrid extends StatelessWidget {
                   width: 1,
                   thickness: 1,
                   color: AppColors.divider,
-                  indent: 8,
-                  endIndent: 8,
+                  indent: 6,
+                  endIndent: 6,
                 ),
             ],
           ],
@@ -861,48 +946,60 @@ class _QuickActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          try {
-            HapticFeedback.lightImpact();
-          } catch (_) {}
-          action.onTap();
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: action.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(action.icon, color: action.color, size: 20),
-              ),
-              const SizedBox(height: 8),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  action.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.1,
-                    height: 1.1,
+    return Tooltip(
+      message: action.label,
+      waitDuration: const Duration(milliseconds: 500),
+      child: Semantics(
+        button: true,
+        label: action.label,
+        hint: 'Opens this section',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              try {
+                HapticFeedback.lightImpact();
+              } catch (_) {}
+              action.onTap();
+            },
+            borderRadius: BorderRadius.circular(16),
+            splashColor: action.color.withValues(alpha: 0.08),
+            highlightColor: action.color.withValues(alpha: 0.04),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: action.color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Icon(action.icon, color: action.color, size: 18),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      action.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: context.appTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.05,
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -920,33 +1017,47 @@ class _TodayDeliveriesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (orders.isEmpty) {
+    final visible = orders.take(5).toList();
+
+    if (visible.isEmpty) {
       return _SurfaceCard(
-        padding: const EdgeInsets.all(20),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
+        child: Column(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 60,
+              height: 60,
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(13),
+                color: AppColors.success.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.success.withValues(alpha: 0.12),
+                ),
               ),
-              child: const Icon(
-                Icons.check_circle_rounded,
-                color: AppColors.success,
-                size: 22,
+              child: Icon(
+                Icons.check_circle_outline_rounded,
+                color: AppColors.success.withValues(alpha: 0.88),
+                size: 28,
               ),
             ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Text(
-                'No deliveries assigned for today.',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                ),
+            const SizedBox(height: 18),
+            Text(
+              'All caught up for today',
+              textAlign: TextAlign.center,
+              style: context.appTextStyles.sectionHeader.copyWith(
+                fontSize: 16,
+                letterSpacing: -0.25,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No pending deliveries assigned for today.',
+              textAlign: TextAlign.center,
+              style: context.appTextStyles.body.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                height: 1.45,
+                color: AppColors.textSecondary.withValues(alpha: 0.92),
               ),
             ),
           ],
@@ -954,21 +1065,17 @@ class _TodayDeliveriesCard extends StatelessWidget {
       );
     }
 
-    final visible = orders.take(6).toList();
-    return _SurfaceCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          for (var i = 0; i < visible.length; i++) ...[
-            _DeliveryTile(order: visible[i]),
-            if (i != visible.length - 1)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 18),
-                child: Divider(height: 1, color: AppColors.divider),
-              ),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < visible.length; i++) ...[
+          _SurfaceCard(
+            padding: EdgeInsets.zero,
+            child: _DeliveryTile(order: visible[i]),
+          ),
+          if (i != visible.length - 1) const SizedBox(height: 10),
         ],
-      ),
+      ],
     );
   }
 }
@@ -976,6 +1083,14 @@ class _TodayDeliveriesCard extends StatelessWidget {
 class _DeliveryTile extends StatelessWidget {
   final Order order;
   const _DeliveryTile({required this.order});
+
+  Color _chipTextColor(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    if (hsl.lightness > 0.6) {
+      return hsl.withLightness(0.35).toColor();
+    }
+    return base;
+  }
 
   Color _getStatusColor(OrderStatus status) {
     switch (status) {
@@ -1005,135 +1120,140 @@ class _DeliveryTile extends StatelessWidget {
       OrderStatus.pending => AppColors.warning,
       _ => statusColor,
     };
-    final amount = '₹${NumberFormat.compact().format(order.totalAmount)}';
-    final payLabel = order.paymentStatus?.name.toUpperCase() ?? 'UNKNOWN';
+    final statusChipFg = _chipTextColor(statusChipBg);
+    final amountLabel =
+        '₹${NumberFormat.decimalPattern('en_IN').format(order.totalAmount)}';
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      child: Row(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  _initials(order.customerName),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ),
-              Positioned(
-                right: -2,
-                bottom: -2,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: statusChipBg,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.surface, width: 2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Semantics(
+      button: true,
+      label: '${order.customerName}, $amountLabel, ${order.status.label}',
+      hint: 'Opens order details',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            try {
+              HapticFeedback.selectionClick();
+            } catch (_) {}
+            context.push('/delivery/orders/${order.id}');
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 15, 12, 15),
+            child: Row(
               children: [
-                Text(
-                  order.customerName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    _StatusChip(
-                      text: order.status.label,
-                      color: statusChipBg,
-                      solid: true,
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: AppColors.border.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _initials(order.customerName),
+                        style: context.appTextStyles.sectionHeader.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 6),
-                    _StatusChip(
-                      text: payLabel,
-                      color: AppColors.textSecondary,
-                      solid: false,
+                    Positioned(
+                      right: -1,
+                      bottom: -1,
+                      child: Container(
+                        width: 13,
+                        height: 13,
+                        decoration: BoxDecoration(
+                          color: statusChipBg,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.surface,
+                            width: 2,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.customerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.appTextStyles.sectionHeader.copyWith(
+                          fontSize: 15,
+                          letterSpacing: -0.25,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('MMM d · hh:mm a').format(order.orderDate),
+                        style: context.appTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary.withValues(
+                            alpha: 0.95,
+                          ),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      amountLabel,
+                      style: context.appTextStyles.sectionHeader.copyWith(
+                        fontSize: 15,
+                        letterSpacing: -0.35,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusChipBg.withValues(alpha: 0.32),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        order.status.label,
+                        style: context.appTextStyles.caption.copyWith(
+                          color: statusChipFg,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          height: 1.1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textLight.withValues(alpha: 0.85),
+                  size: 22,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          Text(
-            amount,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w900,
-              fontSize: 14,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final String text;
-  final Color color;
-  final bool solid;
-
-  const _StatusChip({
-    required this.text,
-    required this.color,
-    this.solid = false,
-  });
-
-  Color _chipTextColor(Color base) {
-    final hsl = HSLColor.fromColor(base);
-    if (hsl.lightness > 0.6) {
-      return hsl.withLightness(0.35).toColor();
-    }
-    return base;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final fg = _chipTextColor(color);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: solid ? 0.32 : 0.096),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: fg,
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          height: 1.1,
         ),
       ),
     );
@@ -1158,7 +1278,7 @@ class _CollectionBreakdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SurfaceCard(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: const EdgeInsets.all(18),
       child: Row(
         children: [
           Expanded(
@@ -1222,40 +1342,42 @@ class _BreakdownItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final amountLabel =
+        '₹${NumberFormat.decimalPattern('en_IN').format(amount)}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 32,
-          height: 32,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
             color: tone.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: tone.withValues(alpha: 0.18)),
           ),
           child: Icon(icon, color: tone, size: 18),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
-            '₹${NumberFormat.compact().format(amount)}',
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w900,
-              fontSize: 18,
-              letterSpacing: -0.5,
+            amountLabel,
+            style: context.appTextStyles.sectionHeader.copyWith(
+              fontSize: 16,
+              letterSpacing: -0.35,
             ),
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
-          label.toUpperCase(),
-          style: const TextStyle(
+          label,
+          style: context.appTextStyles.caption.copyWith(
             color: AppColors.textLight,
-            fontSize: 9,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.8,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.4,
+            height: 1.1,
           ),
         ),
       ],
@@ -1280,120 +1402,79 @@ class _PerformanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final completionRate = total == 0 ? 0.0 : completed / total;
+    final progress = total == 0 ? 0.0 : completed / total;
+
     return _SurfaceCard(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: const EdgeInsets.all(18),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _MiniStat(
-                  label: 'Total',
-                  value: total.toString(),
-                  color: AppColors.info,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MiniStat(
-                  label: 'Completed',
-                  value: completed.toString(),
-                  color: AppColors.success,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MiniStat(
-                  label: 'Active',
-                  value: active.toString(),
-                  color: AppColors.warning,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: completionRate.clamp(0.0, 1.0),
-              minHeight: 8,
-              backgroundColor: AppColors.backgroundSecondary,
-              color: AppColors.success,
+          Text(
+            total == 0
+                ? 'No deliveries yet'
+                : '$completed of $total delivered',
+            style: context.appTextStyles.sliverTitle.copyWith(
+              fontSize: 16,
+              letterSpacing: -0.3,
+              height: 1.1,
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Completion rate',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 7,
+              backgroundColor: AppColors.border.withValues(alpha: 0.6),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.success,
               ),
-              Text(
-                '${(completionRate * 100).round()}%',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
+            ),
           ),
+          if (total > 0) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _MetricChip(
+                  label: '$active active',
+                  color: AppColors.warning,
+                ),
+                const SizedBox(width: 8),
+                _MetricChip(
+                  label: '${(progress * 100).round()}% done',
+                  color: AppColors.success,
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _MiniStat extends StatelessWidget {
+class _MetricChip extends StatelessWidget {
   final String label;
-  final String value;
   final Color color;
 
-  const _MiniStat({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const _MetricChip({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              color: AppColors.textLight,
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.8,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: context.appTextStyles.caption.copyWith(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
       ),
     );
   }
@@ -1408,43 +1489,44 @@ class _NoDeliveriesEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
+    return _SurfaceCard(
+      padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
       child: Column(
         children: [
           Container(
-            width: 88,
-            height: 88,
+            width: 60,
+            height: 60,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.12),
+              ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.local_shipping_outlined,
-              color: AppColors.primary,
-              size: 40,
+              color: AppColors.primary.withValues(alpha: 0.88),
+              size: 28,
             ),
           ),
-          const SizedBox(height: 28),
-          const Text(
+          const SizedBox(height: 18),
+          Text(
             'No deliveries yet',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.5,
+            style: context.appTextStyles.sectionHeader.copyWith(
+              fontSize: 16,
+              letterSpacing: -0.25,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             'Create an order for a customer on your route and it will show up here.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textSecondary.withValues(alpha: 0.85),
+            style: context.appTextStyles.body.copyWith(
               fontSize: 14,
-              fontWeight: FontWeight.w500,
-              height: 1.5,
+              fontWeight: FontWeight.w600,
+              height: 1.45,
+              color: AppColors.textSecondary.withValues(alpha: 0.92),
             ),
           ),
           const SizedBox(height: 22),
@@ -1458,17 +1540,18 @@ class _NoDeliveriesEmpty extends StatelessWidget {
                 context.push('/delivery/new-order');
               },
               icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text(
+              label: Text(
                 'New order',
-                style: TextStyle(
+                style: context.appTextStyles.buttonLabel.copyWith(
                   fontSize: 14,
-                  fontWeight: FontWeight.w800,
                   letterSpacing: 0.2,
                 ),
               ),
               style: FilledButton.styleFrom(
                 foregroundColor: AppColors.primary,
-                backgroundColor: AppColors.primaryLighter.withValues(alpha: 0.65),
+                backgroundColor: AppColors.primaryLighter.withValues(
+                  alpha: 0.65,
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),

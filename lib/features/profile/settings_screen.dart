@@ -885,7 +885,7 @@ class _ProfileHeroCard extends StatelessWidget {
             ],
           ),
         ),
-        if (user != null) ...[
+        if (user != null && !isDelivery) ...[
           const SizedBox(height: 20),
           Container(
             decoration: BoxDecoration(

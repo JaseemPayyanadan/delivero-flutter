@@ -31,7 +31,7 @@ class AppTheme {
         surface: AppColors.surface,
         error: AppColors.error,
         onPrimary: AppColors.surface,
-        onSecondary: AppColors.surface,
+        onSecondary: AppColors.onSecondary,
         onSurface: AppColors.textPrimary,
         onError: AppColors.surface,
         outline: AppColors.border,
