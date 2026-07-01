@@ -129,6 +129,10 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                 'assets/images/delivro-logo.svg',
                 height: 52,
                 fit: BoxFit.contain,
+                colorFilter: const ColorFilter.mode(
+                  AppColors.primary,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
           ),

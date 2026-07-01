@@ -12,6 +12,7 @@ class DeliveroButton extends StatelessWidget {
   final Color? foregroundColor;
   final double borderRadius;
   final bool useHaptics;
+  final double? height;
 
   const DeliveroButton({
     super.key,
@@ -24,6 +25,7 @@ class DeliveroButton extends StatelessWidget {
     this.foregroundColor,
     this.borderRadius = 8,
     this.useHaptics = true,
+    this.height,
   });
 
   @override
@@ -58,14 +60,27 @@ class DeliveroButton extends StatelessWidget {
             ],
           );
 
+    final minWidth = isFullWidth ? double.infinity : 0.0;
+    final buttonHeight = height ?? 48;
+
     final buttonStyle = FilledButton.styleFrom(
       backgroundColor: backgroundColor ?? AppColors.primary,
       foregroundColor: foregroundColor ?? theme.colorScheme.onPrimary,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+      minimumSize: Size(minWidth, buttonHeight),
+      padding: EdgeInsets.symmetric(
+        vertical: 12,
+        horizontal: isFullWidth ? 20 : 28,
+      ),
+      tapTargetSize:
+          isFullWidth ? null : MaterialTapTargetSize.shrinkWrap,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       elevation: 0,
+    ).merge(
+      ButtonStyle(
+        minimumSize: WidgetStateProperty.all(Size(minWidth, buttonHeight)),
+      ),
     );
 
     Widget button = FilledButton(
@@ -86,6 +101,6 @@ class DeliveroButton extends StatelessWidget {
     if (isFullWidth) {
       return SizedBox(width: double.infinity, child: button);
     }
-    return button;
+    return IntrinsicWidth(child: button);
   }
 }

@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/delivero_button.dart';
+import 'widgets/login_illustration.dart';
 
 const String _kPrivacyPolicyUrl = 'https://delivero.app/privacy';
 const String _kTermsOfServiceUrl = 'https://delivero.app/terms';
@@ -22,7 +23,7 @@ class PhoneLoginScreen extends ConsumerStatefulWidget {
 }
 
 class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
-  static const _inputRadius = 14.0;
+  static const _inputRadius = 16.0;
   static const _defaultCountryCode = 'IN';
 
   final _phoneController = TextEditingController();
@@ -72,47 +73,54 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        const SizedBox(height: 18),
-        Center(
-          child: Hero(
-            tag: 'app_logo',
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: SvgPicture.asset(
-                'assets/images/delivro-logo.svg',
-                height: 56,
-                fit: BoxFit.contain,
+  Widget _buildLogo() {
+    return Center(
+      child: Hero(
+        tag: 'app_logo',
+        child: SvgPicture.asset(
+          'assets/images/delivro-logo.svg',
+          height: 36,
+          fit: BoxFit.contain,
+          colorFilter: const ColorFilter.mode(
+            AppColors.primary,
+            BlendMode.srcIn,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOtpInfoBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.secondary.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.secondary.withValues(alpha: 0.28),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.verified_user_outlined,
+            size: 18,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              "We'll send a 6-digit code to verify it's you.",
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary.withValues(alpha: 0.85),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 26),
-        const Text(
-          'Sign in with your phone',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
-            letterSpacing: -0.4,
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          "We'll send a 6-digit code to verify it's really you.",
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.45,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 28),
-      ],
+        ],
+      ),
     );
   }
 
@@ -159,34 +167,34 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       invalidNumberMessage: 'Please enter a valid mobile number',
       dropdownIconPosition: IconPosition.trailing,
-      flagsButtonPadding: const EdgeInsets.only(left: 12, right: 4),
+      flagsButtonPadding: const EdgeInsets.only(left: 14, right: 4),
       style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w800,
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
         letterSpacing: 0.2,
       ),
       dropdownTextStyle: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w800,
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
       ),
       dropdownIcon: const Icon(
         Icons.expand_more_rounded,
-        size: 18,
+        size: 20,
         color: AppColors.textSecondary,
       ),
       decoration: InputDecoration(
         hintText: '9876543210',
         hintStyle: const TextStyle(
           color: AppColors.textLight,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
         ),
         filled: true,
         fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 16,
+          horizontal: 14,
+          vertical: 18,
         ),
         border: _inputBorder(),
         enabledBorder: _inputBorder(),
@@ -202,58 +210,186 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final footerBottomInset = MediaQuery.paddingOf(context).bottom + 84;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final imageHeight = loginImageHeightFor(context);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(24, 16, 24, footerBottomInset),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: IntrinsicHeight(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildHeader(),
-                    if (authState.error case final String message) ...[
-                      _buildErrorBanner(message),
-                      const SizedBox(height: 20),
-                    ],
-                    const Text(
-                      'Mobile number',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildPhoneField(isLoading: authState.isLoading),
-                    const SizedBox(height: 22),
-                    DeliveroButton(
-                      label: 'Send OTP',
-                      onPressed: authState.isLoading ? null : _handleSendOtp,
-                      isLoading: authState.isLoading,
-                      icon: Icons.sms_outlined,
-                      borderRadius: 12,
-                    ),
-                    const Spacer(),
-                    Padding(
-                      padding: EdgeInsets.only(bottom: footerBottomInset),
-                      child: _LegalFooter(
-                        onPrivacyTap: () => _openExternal(_kPrivacyPolicyUrl),
-                        onTermsTap: () => _openExternal(_kTermsOfServiceUrl),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      resizeToAvoidBottomInset: true,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFFFFFFFF),
+              AppColors.primary50,
+            ],
+            stops: [0.0, 0.72, 1.0],
+          ),
+        ),
+        child: Stack(
+        fit: StackFit.expand,
+        alignment: Alignment.bottomCenter,
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: bottomInset,
+            child: const IgnorePointer(
+              child: LoginIllustration(),
             ),
           ),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      48,
+                      24,
+                      imageHeight + 12,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                          _buildLogo(),
+                          const SizedBox(height: 28),
+                          const Text(
+                            'Welcome back!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.5,
+                              height: 1.15,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Enter your phone number to sign in.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 15,
+                              height: 1.4,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          _buildOtpInfoBanner(),
+                          if (authState.error case final String message) ...[
+                            const SizedBox(height: 16),
+                            _buildErrorBanner(message),
+                          ],
+                          const SizedBox(height: 24),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Mobile number',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _buildPhoneField(
+                                isLoading: authState.isLoading,
+                              ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 1),
+                                    child: Icon(
+                                      Icons.phone_android_rounded,
+                                      size: 15,
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.75,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Enter the mobile number linked to your account.',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        height: 1.35,
+                                        color: AppColors.textSecondary
+                                            .withValues(alpha: 0.9),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          Align(
+                            alignment: Alignment.center,
+                            child: DeliveroButton(
+                              label: 'Send OTP',
+                              onPressed: authState.isLoading
+                                  ? null
+                                  : _handleSendOtp,
+                              isLoading: authState.isLoading,
+                              isFullWidth: false,
+                              icon: Icons.sms_outlined,
+                              borderRadius: 28,
+                              height: 52,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 14,
+                    color: AppColors.textLight,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Secure & private. Your number is safe with us.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
+              child: _LegalFooter(
+                onPrivacyTap: () => _openExternal(_kPrivacyPolicyUrl),
+                onTermsTap: () => _openExternal(_kTermsOfServiceUrl),
+              ),
+            ),
+            SizedBox(height: bottomInset),
+          ],
+        ),
+      ),
+        ],
         ),
       ),
     );
@@ -293,45 +429,37 @@ class _LegalFooter extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text(
+          'By continuing you agree to receive an SMS at the number above. '
+          'Standard messaging rates may apply.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.textLight,
+            fontSize: 11.5,
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              Icons.lock_outline_rounded,
-              size: 13,
-              color: AppColors.textLight,
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                'By continuing you agree to receive an SMS at the number above. '
-                'Standard messaging rates may apply.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 11.5,
-                  height: 1.4,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.1,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 4,
-          runSpacing: 4,
           children: [
             _LegalLink(
               label: 'Privacy policy',
               icon: Icons.shield_outlined,
               onTap: onPrivacyTap,
             ),
-            const _LegalLinkDivider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                '|',
+                style: TextStyle(
+                  color: AppColors.textLight.withValues(alpha: 0.7),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
             _LegalLink(
               label: 'Terms of service',
               icon: Icons.description_outlined,
@@ -361,40 +489,22 @@ class _LegalLink extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 13, color: AppColors.primary),
-            const SizedBox(width: 4),
+            Icon(icon, size: 14, color: AppColors.primary),
+            const SizedBox(width: 5),
             Text(
               label,
               style: const TextStyle(
                 color: AppColors.primary,
                 fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _LegalLinkDivider extends StatelessWidget {
-  const _LegalLinkDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 3,
-      height: 3,
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      decoration: const BoxDecoration(
-        color: AppColors.textLight,
-        shape: BoxShape.circle,
       ),
     );
   }
