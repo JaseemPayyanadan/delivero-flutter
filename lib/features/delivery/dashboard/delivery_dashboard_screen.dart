@@ -9,6 +9,7 @@ import '../../../app/providers.dart';
 import '../../../core/utils/debounced_refresh.dart';
 import '../../../core/services/connectivity_provider.dart';
 import '../../../core/widgets/offline_banner.dart';
+import '../../../core/widgets/dashboard_hero_banner_art.dart';
 import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -143,7 +144,7 @@ class _DeliveryDashboardScreenState
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 44, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, kDashboardHeroKpiStripContentTopPadding, 20, 0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     const _SectionHeader(
@@ -289,67 +290,55 @@ class _DriverHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
+    final textWidth = MediaQuery.sizeOf(context).width * 0.56;
 
-    return Container(
-      padding: EdgeInsets.fromLTRB(20, topInset + 18, 20, 56),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primaryGradientStart,
-            AppColors.primaryGradientEnd,
-          ],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
-      ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned(
-            top: -40,
-            right: -50,
-            child: _GlowBlob(
-              size: 200,
-              color: AppColors.primaryLight.withValues(alpha: 0.32),
-            ),
-          ),
-          Positioned(
-            bottom: -10,
-            left: -40,
-            child: _GlowBlob(
-              size: 160,
-              color: AppColors.info.withValues(alpha: 0.22),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _HeroTopRow(greeting: _greeting(), name: displayName),
-              const SizedBox(height: 16),
-              Text(
-                dateStr,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.78),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.1,
+          const Positioned.fill(child: DashboardHeroBackground()),
+          dashboardHeroBannerPositioned(context),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, topInset + 18, 20, kDashboardHeroKpiStripBottomPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: textWidth,
+                  child: _HeroTopRow(greeting: _greeting(), name: displayName),
                 ),
-              ),
-              const SizedBox(height: 22),
-              _HeroCollected(
-                isLoading: isLoading,
-                todayTotal: todayTotal,
-                todayPending: todayPending,
-              ),
-              const SizedBox(height: 22),
-              _KpiStrip(
-                isLoading: isLoading,
-                todayTaskCount: todayTaskCount,
-                todayActiveCount: todayActiveCount,
-                todayDeliveredCount: todayDeliveredCount,
-              ),
-            ],
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: textWidth,
+                  child: Text(
+                    dateStr,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.82),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: textWidth,
+                  child: _HeroCollected(
+                    isLoading: isLoading,
+                    todayTotal: todayTotal,
+                    todayPending: todayPending,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                _KpiStrip(
+                  isLoading: isLoading,
+                  todayTaskCount: todayTaskCount,
+                  todayActiveCount: todayActiveCount,
+                  todayDeliveredCount: todayDeliveredCount,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -577,7 +566,7 @@ class _KpiStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Transform.translate(
-      offset: const Offset(0, 36),
+      offset: const Offset(0, kDashboardHeroKpiStripOffset),
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(

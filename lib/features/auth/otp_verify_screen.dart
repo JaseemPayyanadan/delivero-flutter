@@ -10,6 +10,7 @@ import 'package:pin_code_fields/pin_code_fields.dart';
 import '../../app/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/delivero_button.dart';
+import 'widgets/otp_illustration.dart';
 
 class OtpVerifyScreen extends ConsumerStatefulWidget {
   const OtpVerifyScreen({super.key});
@@ -123,16 +124,13 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
         Center(
           child: Hero(
             tag: 'app_logo',
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: SvgPicture.asset(
-                'assets/images/delivro-logo.svg',
-                height: 52,
-                fit: BoxFit.contain,
-                colorFilter: const ColorFilter.mode(
-                  AppColors.primary,
-                  BlendMode.srcIn,
-                ),
+            child: SvgPicture.asset(
+              'assets/images/delivro-logo.svg',
+              height: 28,
+              fit: BoxFit.contain,
+              colorFilter: const ColorFilter.mode(
+                AppColors.primary,
+                BlendMode.srcIn,
               ),
             ),
           ),
@@ -335,69 +333,107 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
     final authState = ref.watch(authProvider);
     final phone = authState.pendingPhone ?? '';
     final hasError = authState.error != null;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final imageHeight = otpImageHeightFor(context);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildHeader(phone: phone, isLoading: authState.isLoading),
-              Form(
-                key: _formKey,
-                child: AutofillGroup(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (authState.error case final String message) ...[
-                        _buildErrorBanner(message),
-                        const SizedBox(height: 18),
-                      ],
-                      _buildPinField(
-                        isLoading: authState.isLoading,
-                        hasError: hasError,
-                      ),
-                      const SizedBox(height: 22),
-                      if (_failedAttempts >= _maxAttempts)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFEBEE),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Too many wrong attempts — tap "Resend" to get a new code.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Color(0xFFD32F2F),
-                              fontWeight: FontWeight.w600,
+      resizeToAvoidBottomInset: false,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFFFFFFFF),
+              AppColors.primary50,
+            ],
+            stops: [0.0, 0.72, 1.0],
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          alignment: Alignment.bottomCenter,
+          children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: bottomInset,
+              child: const IgnorePointer(
+                child: OtpIllustration(),
+              ),
+            ),
+            SafeArea(
+              bottom: false,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  16,
+                  24,
+                  imageHeight + 12 + keyboardInset,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildHeader(phone: phone, isLoading: authState.isLoading),
+                    Form(
+                      key: _formKey,
+                      child: AutofillGroup(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (authState.error case final String message) ...[
+                              _buildErrorBanner(message),
+                              const SizedBox(height: 18),
+                            ],
+                            _buildPinField(
+                              isLoading: authState.isLoading,
+                              hasError: hasError,
                             ),
-                          ),
-                        )
-                      else
-                        DeliveroButton(
-                          label: 'Verify & continue',
-                          onPressed:
-                              authState.isLoading ? null : _handleVerify,
-                          isLoading: authState.isLoading,
-                          icon: Icons.verified_outlined,
-                          borderRadius: 12,
+                            const SizedBox(height: 22),
+                            if (_failedAttempts >= _maxAttempts)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFEBEE),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'Too many wrong attempts — tap "Resend" to get a new code.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Color(0xFFD32F2F),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            else
+                              DeliveroButton(
+                                label: 'Verify & continue',
+                                onPressed:
+                                    authState.isLoading ? null : _handleVerify,
+                                isLoading: authState.isLoading,
+                                icon: Icons.verified_outlined,
+                                borderRadius: 12,
+                              ),
+                            const SizedBox(height: 20),
+                            _buildResendRow(isLoading: authState.isLoading),
+                            const SizedBox(height: 6),
+                            const _AutofillHint(),
+                          ],
                         ),
-                      const SizedBox(height: 20),
-                      _buildResendRow(isLoading: authState.isLoading),
-                      const SizedBox(height: 6),
-                      const _AutofillHint(),
-                    ],
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
