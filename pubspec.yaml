@@ -58,6 +58,7 @@ dependencies:
   flutter_timezone: ^5.0.2
   connectivity_plus: ^7.1.1
   share_plus: ^12.0.2
+  video_player: ^2.10.0
 
 dev_dependencies:
   flutter_test:
@@ -81,6 +82,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/icons/
+    - assets/videos/delivero-launcher.mp4
 
 flutter_launcher_icons:
   android: true
@@ -101,11 +103,9 @@ flutter_launcher_icons:
     image_path: "app-icon.png"
 
 flutter_native_splash:
-  color: "#FF4C3E"
-  image: "ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png"
+  color: "#F5F5F5"
   android_12:
-    color: "#FF4C3E"
-    image: "ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png"
+    color: "#F5F5F5"
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a
