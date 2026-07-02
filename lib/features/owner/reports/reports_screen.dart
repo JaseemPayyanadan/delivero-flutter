@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -328,47 +329,87 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final topStaff = _computeTopStaff(inRange, drivers);
 
     if (noOrdersYet) {
-      return Scaffold(
-        backgroundColor: AppColors.backgroundPrimary,
-        body: DeliveroEmptyState(
-          title: 'No insights yet',
-          subtitle:
-              'Create an order to see sales, products, and customer rankings here.',
-          icon: Icons.analytics_rounded,
-          actionLabel: 'Create order',
-          onActionPressed: () => context.push('/owner/orders/create'),
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light.copyWith(
+          statusBarColor: Colors.transparent,
+        ),
+        child: Scaffold(
+          backgroundColor: AppColors.success,
+          body: Column(
+            children: [
+              const ColoredBox(
+                color: AppColors.success,
+                child: SafeArea(
+                  bottom: false,
+                  child: _ReportsScreenHeader(),
+                ),
+              ),
+              Expanded(
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: AppColors.backgroundPrimary,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  ),
+                  child: DeliveroEmptyState(
+                    title: 'No insights yet',
+                    subtitle:
+                        'Create an order to see sales, products, and customer rankings here.',
+                    icon: Icons.analytics_rounded,
+                    actionLabel: 'Create order',
+                    onActionPressed: () => context.push('/owner/orders/create'),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          displacement: 48,
-          onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
+      child: Scaffold(
+      backgroundColor: AppColors.success,
+      body: Column(
+        children: [
+          ColoredBox(
+            color: AppColors.success,
+            child: SafeArea(
+              bottom: false,
+              child: _ReportsScreenHeader(
+                onDateRange: _selectDateRange,
+                onExportCsv: _exporting ? null : () => _exportCsv(reports),
+                onExportPdf: _exporting ? null : () => _exportPdf(reports),
+              ),
             ),
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    Text(
-                      'Insights',
-                      style: context.appTextStyles.sliverTitle,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Revenue, fulfillment, and team performance for any date range.',
-                      style: context.appTextStyles.sliverSubtitle,
-                    ),
-                    const SizedBox(height: 18),
-                    Container(
+          ),
+          Expanded(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                color: AppColors.backgroundPrimary,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                displacement: 48,
+                onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          Text(
+                            'Revenue, fulfillment, and team performance for any date range.',
+                            style: context.appTextStyles.sliverSubtitle,
+                          ),
+                          const SizedBox(height: 18),
+                          Container(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
@@ -418,58 +459,25 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Flexible(
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: TextButton.icon(
-                                    onPressed: _selectDateRange,
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: AppColors.primary,
-                                      visualDensity: VisualDensity.compact,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.date_range_rounded,
-                                      size: 18,
-                                    ),
-                                    label: Text(
-                                      rangeLabel,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                          TextButton.icon(
+                            onPressed: _selectDateRange,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                            ),
+                            icon: const Icon(
+                              Icons.date_range_rounded,
+                              size: 18,
+                            ),
+                            label: Text(
+                              rangeLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 12,
                               ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _ExportChip(
-                                    label: 'CSV',
-                                    icon: Icons.table_chart_rounded,
-                                    onTap: _exporting
-                                        ? () {}
-                                        : () => _exportCsv(reports),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _ExportChip(
-                                    label: 'PDF',
-                                    icon: Icons.picture_as_pdf_rounded,
-                                    onTap: _exporting
-                                        ? () {}
-                                        : () => _exportPdf(reports),
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
                         ],
                       ),
@@ -658,10 +666,101 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         color: AppColors.info,
                       ),
                     ),
-                  ]),
+                        ]),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
+          ),
+        ],
+      ),
+    ),
+    );
+  }
+}
+
+class _ReportsScreenHeader extends StatelessWidget {
+  final VoidCallback? onDateRange;
+  final VoidCallback? onExportCsv;
+  final VoidCallback? onExportPdf;
+
+  const _ReportsScreenHeader({
+    this.onDateRange,
+    this.onExportCsv,
+    this.onExportPdf,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 12, 20),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Reports',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.8,
+              ),
+            ),
+          ),
+          if (onDateRange != null)
+            _ReportsHeaderActionButton(
+              icon: Icons.calendar_month_rounded,
+              tooltip: 'Date range',
+              onPressed: onDateRange!,
+            ),
+          if (onExportCsv != null)
+            _ReportsHeaderActionButton(
+              icon: Icons.table_chart_rounded,
+              tooltip: 'Export CSV',
+              onPressed: onExportCsv!,
+            ),
+          if (onExportPdf != null)
+            _ReportsHeaderActionButton(
+              icon: Icons.picture_as_pdf_rounded,
+              tooltip: 'Export PDF',
+              onPressed: onExportPdf!,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportsHeaderActionButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _ReportsHeaderActionButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.white.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
           ),
         ),
       ),
@@ -688,10 +787,12 @@ class _PresetPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.backgroundSecondary,
+          color: selected ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? Colors.transparent : AppColors.border,
+            color: selected
+                ? AppColors.primary
+                : AppColors.primary.withValues(alpha: 0.35),
           ),
         ),
         child: Center(
@@ -700,52 +801,11 @@ class _PresetPill extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: selected ? onPrimary : AppColors.textSecondary,
-              fontWeight: FontWeight.w900,
+              color: selected ? onPrimary : AppColors.primary,
+              fontWeight: FontWeight.w800,
               fontSize: 11,
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ExportChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  const _ExportChip({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: AppColors.textSecondary),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
         ),
       ),
     );

@@ -14,6 +14,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../core/widgets/delivero_skeleton.dart';
+import '../../../core/widgets/dashboard_hero_banner_art.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/product_unit.dart';
 
@@ -201,7 +202,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 44, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, kDashboardHeroKpiStripContentTopPadding, 20, 0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     if (showOnboardingBanner) ...[
@@ -355,59 +356,44 @@ class _DashboardHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
+    final textWidth = MediaQuery.sizeOf(context).width * 0.56;
 
-    return Container(
-      padding: EdgeInsets.fromLTRB(20, topInset + 18, 20, 56),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primaryGradientStart,
-            AppColors.primaryGradientEnd,
-          ],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
-      ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned(
-            top: -40,
-            right: -50,
-            child: _GlowBlob(
-              size: 200,
-              color: AppColors.primaryLight.withValues(alpha: 0.32),
+          const Positioned.fill(child: DashboardHeroBackground()),
+          dashboardHeroBannerPositioned(context),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, topInset + 18, 20, kDashboardHeroKpiStripBottomPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: textWidth,
+                  child: _HeroTopRow(greeting: _greeting(), name: displayName),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: textWidth,
+                  child: _HeroRevenue(
+                    isLoading: isLoading,
+                    totalRevenue: totalRevenue,
+                    collectedRevenue: collectedRevenue,
+                    pendingRevenue: pendingRevenue,
+                    todayOrdersCount: todayOrdersCount,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                _KpiStrip(
+                  isLoading: isLoading,
+                  deliveredToday: todayDeliveredCount,
+                  pendingToday: todayPendingOrderCount,
+                  pendingRevenue: pendingRevenue,
+                ),
+              ],
             ),
-          ),
-          Positioned(
-            bottom: -10,
-            left: -40,
-            child: _GlowBlob(
-              size: 160,
-              color: AppColors.info.withValues(alpha: 0.22),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _HeroTopRow(greeting: _greeting(), name: displayName),
-              const SizedBox(height: 22),
-              _HeroRevenue(
-                isLoading: isLoading,
-                totalRevenue: totalRevenue,
-                collectedRevenue: collectedRevenue,
-                pendingRevenue: pendingRevenue,
-                todayOrdersCount: todayOrdersCount,
-              ),
-              const SizedBox(height: 22),
-              _KpiStrip(
-                isLoading: isLoading,
-                deliveredToday: todayDeliveredCount,
-                pendingToday: todayPendingOrderCount,
-                pendingRevenue: pendingRevenue,
-              ),
-            ],
           ),
         ],
       ),
@@ -714,7 +700,7 @@ class _KpiStrip extends StatelessWidget {
     );
 
     return Transform.translate(
-      offset: const Offset(0, 36),
+      offset: const Offset(0, kDashboardHeroKpiStripOffset),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
