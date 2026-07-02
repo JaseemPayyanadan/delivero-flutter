@@ -39,12 +39,6 @@ class UnresolvedOrdersSheet extends ConsumerWidget {
         )
         .toList();
 
-    if (unresolved.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) Navigator.of(context).pop();
-      });
-    }
-
     final money0 = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹',

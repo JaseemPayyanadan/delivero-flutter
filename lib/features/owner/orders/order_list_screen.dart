@@ -44,6 +44,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   bool _selectedDateInitialized = false;
   Timer? _highlightClearTimer;
   final ScrollController _dayScrollController = ScrollController();
+  double _dayCellWidth = 0;
   DateTime? _visibleLeadDate;
 
   Set<String> _selectedIds = {};
@@ -133,6 +134,23 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
   DateTime _calendarDay(DateTime value) => calendarDayKey(value);
 
+  DateTime get _todayKey => _calendarDay(DateTime.now());
+
+  void _scrollDayStripTo(DateTime day) {
+    if (!_dayScrollController.hasClients || _dayCellWidth <= 0) return;
+    _dayScrollController.animateTo(
+      dayIndexForDate(DateTime.now(), day) * _dayCellWidth,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  bool get _hasSecondaryFilters =>
+      _searchQuery.trim().isNotEmpty ||
+      _selectedPaymentStatus != null ||
+      _selectedOrderStatus != null ||
+      _selectedRouteId != null;
+
   String? _routeLabelForId(String? routeId, List<DeliveryRoute> routes) {
     if (routeId == null) return null;
     return routes.firstWhereOrNull((r) => r.id == routeId)?.name;
@@ -157,6 +175,34 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
     if (picked != null && mounted) {
       setState(() => _productionDay = _calendarDay(picked));
+    }
+  }
+
+  Future<void> _pickSingleDay() async {
+    final initial = _selectedDate ?? _calendarDay(DateTime.now());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      final day = _calendarDay(picked);
+      setState(() {
+        _selectedRange = null;
+        _selectedDate = day;
+      });
+      _scrollDayStripTo(day);
     }
   }
 
@@ -341,9 +387,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
 
     sortOrdersByDate(filteredOrders);
 
-    // Tell the shell whether this view is empty so it can hide the "+" FAB
-    // (the empty states carry their own actions).
-    final viewIsEmpty = filteredOrders.isEmpty;
+    // Hide FAB only on true empty states (no orders yet, or a date filter
+    // with no matches). Keep FAB visible when payment/status/route/search
+    // filters zero out results but other orders still exist.
+    final viewIsEmpty =
+        filteredOrders.isEmpty && (noOrdersYet || !_hasSecondaryFilters);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(ordersViewIsEmptyProvider.notifier).set(viewIsEmpty);
@@ -355,7 +403,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         statusBarColor: Colors.transparent,
       ),
       child: PopScope(
-      canPop: !_isSelecting,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop && _isSelecting) {
           setState(() => _selectedIds = {});
@@ -414,59 +462,18 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                       ),
                     ),
                   ),
+                  if (_isSelecting) _BulkSelectionBar(
+                    selectedIds: _selectedIds,
+                    onMarkDelivered: () =>
+                        _bulkMarkDelivered(ref.read(ordersProvider)),
+                    onMarkPaid: () =>
+                        _bulkMarkPaid(ref.read(ordersProvider)),
+                  ),
                 ],
               ),
             ),
           ),
         ],
-      ),
-      bottomNavigationBar: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        child: _isSelecting
-            ? SafeArea(
-                key: const ValueKey('bulk-bar'),
-                child: Consumer(
-                  builder: (context, ref, _) {
-                    final allOrders = ref.watch(ordersProvider);
-                    final selectedOrders =
-                        allOrders.where((o) => _selectedIds.contains(o.id)).toList();
-                    final allDelivered = selectedOrders.isEmpty ||
-                        selectedOrders.every((o) => o.status == OrderStatus.delivered);
-                    final allPaid = selectedOrders.isEmpty ||
-                        selectedOrders.every((o) => o.paymentStatus == PaymentStatus.paid);
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: allDelivered
-                                  ? null
-                                  : () => _bulkMarkDelivered(allOrders),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.success,
-                              ),
-                              child: const Text('Mark delivered'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed:
-                                  allPaid ? null : () => _bulkMarkPaid(allOrders),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                              ),
-                              child: const Text('Mark paid'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              )
-            : const SizedBox.shrink(),
       ),
       ),
     ),
@@ -628,7 +635,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         behavior: HitTestBehavior.opaque,
                         onTap: () => setState(() {
                           _selectedRange = null;
-                          _selectedDate = _calendarDay(DateTime.now());
+                          _selectedDate = _todayKey;
                         }),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -659,7 +666,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                     : _selectedDate != null
                         ? GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: () => setState(() => _selectedDate = null),
+                            onTap: _pickSingleDay,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -713,17 +720,21 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         ),
         OrderWeekDayStrip(
           scrollController: _dayScrollController,
-          selectedDate: _selectedDate,
+          selectedDate: _searchQuery.trim().isEmpty ? _selectedDate : null,
           daysWithOrders: daysWithOrders,
+          onCellWidthChanged: (w) => _dayCellWidth = w,
           onVisibleLeadDateChanged: (lead) {
             if (lead != _visibleLeadDate) {
               setState(() => _visibleLeadDate = lead);
             }
           },
-          onDayTap: (day, wasSelected) => setState(() {
-            _selectedRange = null;
-            _selectedDate = wasSelected ? null : day;
-          }),
+          onDayTap: (day, wasSelected) {
+            if (wasSelected) return;
+            setState(() {
+              _selectedRange = null;
+              _selectedDate = day;
+            });
+          },
         ),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 180),
@@ -756,7 +767,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
-                                _searchQuery.trim(),
+                                '${_searchQuery.trim()} · all dates',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -1111,10 +1122,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       _selectedPaymentStatus = res.clearAll ? null : res.payment;
       _selectedOrderStatus = res.clearAll ? null : res.status;
       if (res.clearAll) {
-        _selectedDate = null;
         _selectedRange = null;
+        _selectedDate = _todayKey;
       }
     });
+    if (res.clearAll) {
+      _scrollDayStripTo(_todayKey);
+    }
   }
 
   Future<void> _openSearchSheet(BuildContext context) async {
@@ -1163,15 +1177,12 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       return _buildFutureDayEmptyState(_selectedDate!);
     }
 
-    // A specific day/range is selected and empty — offer to generate today's orders.
-    final hasDateFilter = _selectedDate != null || _selectedRange != null;
-    if (hasDateFilter && _searchQuery.trim().isEmpty) {
-      final label = _selectedRange != null
-          ? '${DateFormat('d MMM').format(_selectedRange!.start)}'
-                ' – ${DateFormat('d MMM').format(_selectedRange!.end)}'
-          : DateFormat('EEE, d MMM').format(_selectedDate!);
+    // Today is selected and empty — offer to generate today's daily orders.
+    if (_selectedRange == null &&
+        _selectedDate == today &&
+        _searchQuery.trim().isEmpty) {
       return DeliveroEmptyState(
-        title: 'No orders for $label',
+        title: 'No orders for today',
         subtitle:
             "Generate today's daily orders from your recurring customers.",
         icon: Icons.event_busy_rounded,
@@ -1180,7 +1191,44 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       );
     }
 
-    // Empty because of payment/status/search filters.
+    // A date range or other single day is selected and empty.
+    final hasDateFilter = _selectedDate != null || _selectedRange != null;
+    if (hasDateFilter && _searchQuery.trim().isEmpty) {
+      final label = _selectedRange != null
+          ? '${DateFormat('d MMM').format(_selectedRange!.start)}'
+                ' – ${DateFormat('d MMM').format(_selectedRange!.end)}'
+          : DateFormat('EEE, d MMM').format(_selectedDate!);
+      return DeliveroEmptyState(
+        title: 'No orders for $label',
+        subtitle: 'Try another date or create an order manually.',
+        icon: Icons.event_busy_rounded,
+        actionLabel: 'Create order',
+        onActionPressed: () => context.push('/owner/orders/create'),
+      );
+    }
+
+    // Empty because of payment/status/route/search filters.
+    if (_hasSecondaryFilters) {
+      return DeliveroEmptyState(
+        title: 'No matching orders',
+        subtitle: 'Try adjusting your filters or search terms.',
+        icon: Icons.receipt_long_rounded,
+        actionLabel: 'Clear filters',
+        onActionPressed: () {
+          setState(() {
+            _searchQuery = '';
+            _searchController.clear();
+            _selectedPaymentStatus = null;
+            _selectedOrderStatus = null;
+            _selectedRouteId = null;
+            _selectedRange = null;
+            _selectedDate = _todayKey;
+          });
+          _scrollDayStripTo(_todayKey);
+        },
+      );
+    }
+
     return DeliveroEmptyState(
       title: 'No transactions found',
       subtitle: 'Try adjusting your filters or search terms',
@@ -1301,7 +1349,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => UnresolvedOrdersSheet(
+        builder: (sheetContext) => UnresolvedOrdersSheet(
           orderIds: unresolved.map((o) => o.id).toList(),
           title: "Update today's orders first",
           subtitle:
@@ -1309,8 +1357,15 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           doneLabel: 'Done — generate $dateLabel',
         ),
       );
+      if (!mounted) return;
+
+      final stillUnresolved = findUnresolvedSourceOrders(
+        orders: ref.read(ordersProvider),
+        sourceBusinessDay: today,
+        rolloverHour: rolloverHour,
+      );
+      if (stillUnresolved.isNotEmpty) return;
     }
-    if (!mounted) return;
 
     final result = await ref
         .read(ordersProvider.notifier)
@@ -1322,8 +1377,79 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       1 => '1 order generated for $dateLabel',
       _ => '${result.createdCount} orders generated for $dateLabel',
     };
+    if (result.createdCount > 0) {
+      setState(() {
+        _selectedRange = null;
+        _selectedDate = _calendarDay(day);
+      });
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+    );
+  }
+}
+
+class _BulkSelectionBar extends ConsumerWidget {
+  final Set<String> selectedIds;
+  final VoidCallback onMarkDelivered;
+  final VoidCallback onMarkPaid;
+
+  const _BulkSelectionBar({
+    required this.selectedIds,
+    required this.onMarkDelivered,
+    required this.onMarkPaid,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allOrders = ref.watch(ordersProvider);
+    final selectedOrders =
+        allOrders.where((o) => selectedIds.contains(o.id)).toList();
+    final allDelivered = selectedOrders.isEmpty ||
+        selectedOrders.every((o) => o.status == OrderStatus.delivered);
+    final allPaid = selectedOrders.isEmpty ||
+        selectedOrders.every((o) => o.paymentStatus == PaymentStatus.paid);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: FilledButton(
+                onPressed: allDelivered ? null : onMarkDelivered,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                ),
+                child: const Text('Mark delivered'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton(
+                onPressed: allPaid ? null : onMarkPaid,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
+                child: const Text('Mark paid'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
