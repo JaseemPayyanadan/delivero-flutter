@@ -9,6 +9,9 @@ const double kDashboardHeroBannerTop = 170;
 const double kDashboardHeroBannerHeight = 156;
 const double kDashboardHeroBannerWidthFactor = 0.58;
 
+/// Hero illustration opacity (0–1).
+const double kDashboardHeroBannerOpacity = 0.30;
+
 /// How far the white KPI card overlaps downward past the hero content.
 const double kDashboardHeroKpiStripOffset = 56;
 
@@ -19,6 +22,18 @@ const double kDashboardHeroKpiStripBottomPadding = 76;
 const double kDashboardHeroKpiStripContentTopPadding = 64;
 
 /// Green vertical gradient matching the dashboard hero mockup.
+const LinearGradient kDashboardHeroGradient = LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [
+    AppColors.dashboardHeroGradientStart,
+    AppColors.dashboardHeroGradientMid,
+    AppColors.dashboardHeroGradientEnd,
+  ],
+  stops: [0.0, 0.45, 1.0],
+);
+
+/// Green vertical gradient matching the dashboard hero mockup.
 class DashboardHeroBackground extends StatelessWidget {
   const DashboardHeroBackground({super.key});
 
@@ -26,16 +41,7 @@ class DashboardHeroBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return const DecoratedBox(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppColors.dashboardHeroGradientStart,
-            AppColors.dashboardHeroGradientMid,
-            AppColors.dashboardHeroGradientEnd,
-          ],
-          stops: [0.0, 0.45, 1.0],
-        ),
+        gradient: kDashboardHeroGradient,
       ),
     );
   }
@@ -47,15 +53,18 @@ class DashboardHeroBannerBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      kDashboardHeroBannerAsset,
-      fit: BoxFit.contain,
-      alignment: Alignment.center,
-      gaplessPlayback: true,
-      filterQuality: FilterQuality.medium,
-      errorBuilder: (context, error, stackTrace) {
-        return const SizedBox.shrink();
-      },
+    return Opacity(
+      opacity: kDashboardHeroBannerOpacity,
+      child: Image.asset(
+        kDashboardHeroBannerAsset,
+        fit: BoxFit.contain,
+        alignment: Alignment.center,
+        gaplessPlayback: true,
+        filterQuality: FilterQuality.medium,
+        errorBuilder: (context, error, stackTrace) {
+          return const SizedBox.shrink();
+        },
+      ),
     );
   }
 }

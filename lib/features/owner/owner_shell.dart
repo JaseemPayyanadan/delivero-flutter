@@ -66,8 +66,11 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
               onPressed: () => context.push('/owner/orders/create'),
               backgroundColor: AppColors.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              elevation: 10,
-              child: const Icon(Icons.add_rounded, size: 26),
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.add_rounded, size: 28),
             ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: PillBottomNavBar(

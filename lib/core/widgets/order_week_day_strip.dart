@@ -181,15 +181,15 @@ class OrderDayStripCell extends StatelessWidget {
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: isSelected
                   ? AppColors.primary
                   : isToday
                       ? AppColors.primaryLighter
                       : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+              shape: BoxShape.circle,
             ),
             child: Center(
               child: Text(
