@@ -23,6 +23,7 @@ import '../features/owner/search/global_search_screen.dart';
 import '../features/profile/settings_screen.dart';
 import '../features/startup/app_intro_screen.dart';
 import '../features/startup/app_launcher_screen.dart';
+import 'launcher_animation.dart';
 import 'providers.dart';
 
 class RouterNotifier extends ChangeNotifier {
@@ -31,11 +32,13 @@ class RouterNotifier extends ChangeNotifier {
   RouterNotifier(this._ref) {
     _ref.listen(authProvider, (_, _) => notifyListeners());
     _ref.listen(appStartupProvider, (_, _) => notifyListeners());
+    _ref.listen(launcherAnimationCompleteProvider, (_, _) => notifyListeners());
   }
 
   String? redirect(BuildContext context, GoRouterState state) {
     final authState = _ref.read(authProvider);
     final startupState = _ref.read(appStartupProvider);
+    final animationComplete = _ref.read(launcherAnimationCompleteProvider);
 
     final loc = state.uri.toString();
     final isAtSplash = loc == '/splash';
@@ -46,7 +49,9 @@ class RouterNotifier extends ChangeNotifier {
     final isAtOwner = loc.startsWith('/owner');
     final isAtDelivery = loc.startsWith('/delivery');
 
-    if (!startupState.isInitialized || !authState.isInitialized) {
+    if (!startupState.isInitialized ||
+        !authState.isInitialized ||
+        !animationComplete) {
       return isAtSplash ? null : '/splash';
     }
 
