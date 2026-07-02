@@ -16,7 +16,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/order_week_day_strip.dart';
 import '../../../core/utils/route_refs.dart';
 import '../../../core/utils/currency_format.dart';
-import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/order.dart';
 import '../../../data/models/delivery_route.dart';
@@ -45,7 +44,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   bool _selectedDateInitialized = false;
   Timer? _highlightClearTimer;
   final ScrollController _dayScrollController = ScrollController();
-  double _dayCellWidth = 0;
   DateTime? _visibleLeadDate;
 
   Set<String> _selectedIds = {};
@@ -352,7 +350,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       }
     });
 
-    return PopScope(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
+      child: PopScope(
       canPop: !_isSelecting,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop && _isSelecting) {
@@ -360,51 +362,63 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         }
       },
       child: Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: DeliveroAppBar(
-        title: _isSelecting ? '${_selectedIds.length} selected' : 'Orders',
-        leading: _isSelecting
-            ? IconButton(
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () => setState(() => _selectedIds = {}),
-              )
-            : Navigator.of(context).canPop()
-                ? IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    onPressed: () => context.pop(),
-                  )
-                : null,
-        actions: _isSelecting
-            ? []
-            : [
-                if (!noOrdersYet)
-                  IconButton(
-                    tooltip: 'Production list',
-                    onPressed: () => _openProductionSummary(
-                      orders: orders,
-                      routes: routes,
-                      productionDay: productionDay,
-                      rolloverHour: rolloverHour,
+      backgroundColor: AppColors.success,
+      body: Column(
+        children: [
+          ColoredBox(
+            color: AppColors.success,
+            child: SafeArea(
+              bottom: false,
+              child: _OrdersPurpleHeader(
+              isSelecting: _isSelecting,
+              selectedCount: _selectedIds.length,
+              onCloseSelection: () => setState(() => _selectedIds = {}),
+              showProductionAction: !noOrdersYet,
+              onProduction: () => _openProductionSummary(
+                orders: orders,
+                routes: routes,
+                productionDay: productionDay,
+                rolloverHour: rolloverHour,
+              ),
+              onSearch: () => _openSearchSheet(context),
+              onFilter: () => _showFiltersSheet(context),
+            ),
+            ),
+          ),
+          Expanded(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                color: AppColors.backgroundPrimary,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                children: [
+                  if (!noOrdersYet)
+                    _buildFilters(
+                      routes,
+                      availableRouteIds,
+                      routesLoaded: routesLoaded,
+                      daysWithOrders: daysWithOrders,
                     ),
-                    icon: const Icon(
-                      Icons.inventory_2_rounded,
-                      color: AppColors.textPrimary,
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: () =>
+                          ref.read(ordersProvider.notifier).refresh(),
+                      child: _buildOrdersBody(
+                        ordersLoaded: ordersLoaded,
+                        orders: orders,
+                        noOrdersYet: noOrdersYet,
+                        filteredOrders: filteredOrders,
+                        daysWithOrders: daysWithOrders,
+                      ),
                     ),
                   ),
-                IconButton(
-                  tooltip: 'Search',
-                  onPressed: () => _openSearchSheet(context),
-                  icon: const Icon(
-                    Icons.search_rounded,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Filter',
-                  onPressed: () => _showFiltersSheet(context),
-                  icon: const Icon(Icons.tune_rounded, color: AppColors.textPrimary),
-                ),
-              ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
@@ -454,56 +468,65 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
               )
             : const SizedBox.shrink(),
       ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          slivers: [
-            if (!noOrdersYet)
-              SliverToBoxAdapter(
-                child: _buildFilters(
-                  routes,
-                  availableRouteIds,
-                  routesLoaded: routesLoaded,
-                  daysWithOrders: daysWithOrders,
-                ),
-              ),
-            if (!ordersLoaded && orders.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (filteredOrders.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: _buildEmptyState(
-                  hasAnyOrders: !noOrdersYet,
-                  daysWithOrders: daysWithOrders,
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
-                sliver: Builder(
-                  builder: (context) {
-                    final widgets = _buildGroupedOrderWidgets(
-                      filteredOrders,
-                    );
-                    return SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => widgets[index],
-                        childCount: widgets.length,
-                      ),
-                    );
-                  },
-                ),
-              ),
-          ],
+      ),
+    ),
+    );
+  }
+
+  Widget _buildOrdersBody({
+    required bool ordersLoaded,
+    required List<Order> orders,
+    required bool noOrdersYet,
+    required List<Order> filteredOrders,
+    required Set<DateTime> daysWithOrders,
+  }) {
+    if (!ordersLoaded && orders.isEmpty) {
+      return const CustomScrollView(
+        physics: AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
         ),
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ],
+      );
+    }
+
+    if (filteredOrders.isEmpty) {
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _buildEmptyState(
+              hasAnyOrders: !noOrdersYet,
+              daysWithOrders: daysWithOrders,
+            ),
+          ),
+        ],
+      );
+    }
+
+    final widgets = _buildGroupedOrderWidgets(filteredOrders);
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
       ),
-      ),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => widgets[index],
+              childCount: widgets.length,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -585,86 +608,105 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     required bool routesLoaded,
     required Set<DateTime> daysWithOrders,
   }) {
-    final hasRouteFilter = availableRouteIds.length > 1;
+    final showRouteFilters = availableRouteIds.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+          padding: const EdgeInsets.fromLTRB(16, 18, 8, 0),
           child: Row(
             children: [
+              const Icon(
+                Icons.calendar_today_rounded,
+                size: 18,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: _selectedRange != null
                     ? GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => setState(() {
-                          // Clearing a range returns to today's single day.
                           _selectedRange = null;
                           _selectedDate = _calendarDay(DateTime.now());
                         }),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              '${DateFormat('d MMM').format(_selectedRange!.start)}'
-                              ' – '
-                              '${DateFormat('d MMM').format(_selectedRange!.end)}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
+                            Flexible(
+                              child: Text(
+                                '${DateFormat('EEE, d MMM').format(_selectedRange!.start)}'
+                                ' – '
+                                '${DateFormat('EEE, d MMM').format(_selectedRange!.end)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 4),
                             const Icon(
-                              Icons.close_rounded,
-                              size: 16,
-                              color: AppColors.primary,
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 20,
+                              color: AppColors.textSecondary,
                             ),
                           ],
                         ),
                       )
                     : _selectedDate != null
-                    ? GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => setState(() => _selectedDate = null),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              DateFormat('EEE, d MMM').format(_selectedDate!),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                              ),
+                        ? GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => setState(() => _selectedDate = null),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  DateFormat('EEE, d MMM').format(_selectedDate!),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                const Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  size: 20,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.close_rounded,
-                              size: 16,
-                              color: AppColors.primary,
+                          )
+                        : Text(
+                            DateFormat('MMMM yyyy').format(
+                              _visibleLeadDate ?? DateTime.now(),
                             ),
-                          ],
-                        ),
-                      )
-                    : Text(
-                        DateFormat('MMMM yyyy').format(
-                          _visibleLeadDate ?? DateTime.now(),
-                        ),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
               ),
-              IconButton(
-                onPressed: _pickRange,
-                icon: const Icon(Icons.date_range_rounded),
-                color: AppColors.primary,
-                visualDensity: VisualDensity.compact,
-                tooltip: 'Pick a date range',
+              Material(
+                color: AppColors.primaryLighter,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  onTap: _pickRange,
+                  borderRadius: BorderRadius.circular(12),
+                  child: const SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Icon(
+                      Icons.calendar_month_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -673,7 +715,6 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           scrollController: _dayScrollController,
           selectedDate: _selectedDate,
           daysWithOrders: daysWithOrders,
-          onCellWidthChanged: (w) => _dayCellWidth = w,
           onVisibleLeadDateChanged: (lead) {
             if (lead != _visibleLeadDate) {
               setState(() => _visibleLeadDate = lead);
@@ -747,9 +788,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 )
               : const SizedBox.shrink(),
         ),
-        if (hasRouteFilter) ...[
+        if (showRouteFilters) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -760,7 +801,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                     'All Routes',
                     routesLoaded: routesLoaded,
                   ),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: 8),
                   if (!routesLoaded && routes.isEmpty)
                     _buildRouteChip(
                       'loading',
@@ -777,10 +818,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         final route = routes.firstWhereOrNull(
                           (r) => r.id == routeId,
                         );
-                        return _buildRouteChip(
-                          routeId,
-                          route?.name ?? routeId,
-                          routesLoaded: routesLoaded,
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _buildRouteChip(
+                            routeId,
+                            route?.name ?? routeId,
+                            routesLoaded: routesLoaded,
+                          ),
                         );
                       }),
                 ],
@@ -799,39 +843,57 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }) {
     final isLoading = routeId == 'loading';
     final isSelected = !isLoading && _selectedRouteId == routeId;
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: InkWell(
-        onTap: (isLoading || (!routesLoaded && routeId != null))
-            ? null
-            : () {
-                setState(() {
-                  _selectedRouteId = isSelected ? null : routeId;
-                });
-              },
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          decoration: BoxDecoration(
+    final isAllRoutes = routeId == null;
+    return InkWell(
+      onTap: (isLoading || (!routesLoaded && routeId != null))
+          ? null
+          : () {
+              setState(() {
+                _selectedRouteId = isSelected ? null : routeId;
+              });
+            },
+      borderRadius: BorderRadius.circular(999),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
             color: isSelected
                 ? AppColors.primary
-                : AppColors.backgroundSecondary,
-            borderRadius: BorderRadius.circular(18),
+                : AppColors.primary.withValues(alpha: 0.35),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isAllRoutes
+                  ? Icons.map_outlined
+                  : Icons.location_on_outlined,
+              size: 16,
               color: isSelected
-                  ? Theme.of(context).colorScheme.onPrimary
+                  ? Colors.white
                   : isLoading || (!routesLoaded && routeId != null)
-                  ? AppColors.textDisabled
-                  : AppColors.textPrimary,
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
-              letterSpacing: -0.1,
+                      ? AppColors.textDisabled
+                      : AppColors.primary,
             ),
-          ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? Colors.white
+                    : isLoading || (!routesLoaded && routeId != null)
+                        ? AppColors.textDisabled
+                        : AppColors.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.1,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1101,40 +1163,21 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       return _buildFutureDayEmptyState(_selectedDate!);
     }
 
-    // A specific day/range is selected and empty, but orders exist on other
-    // days — point the owner to the nearest day that has orders.
+    // A specific day/range is selected and empty — offer to generate today's orders.
     final hasDateFilter = _selectedDate != null || _selectedRange != null;
-    if (hasDateFilter &&
-        _searchQuery.trim().isEmpty &&
-        daysWithOrders.isNotEmpty) {
-      final from = _selectedRange?.end ?? _selectedDate!;
-      final nearest = nearestDayWithOrders(from, daysWithOrders);
-      if (nearest != null) {
-        final label = _selectedRange != null
-            ? '${DateFormat('d MMM').format(_selectedRange!.start)}'
-                  ' – ${DateFormat('d MMM').format(_selectedRange!.end)}'
-            : DateFormat('EEE, d MMM').format(_selectedDate!);
-        return DeliveroEmptyState(
-          title: 'No orders for $label',
-          subtitle:
-              'Your nearest orders are on ${DateFormat('EEE, d MMM').format(nearest)}.',
-          icon: Icons.event_busy_rounded,
-          actionLabel: 'View ${DateFormat('d MMM').format(nearest)}',
-          onActionPressed: () {
-            setState(() {
-              _selectedRange = null;
-              _selectedDate = nearest;
-            });
-            if (_dayScrollController.hasClients && _dayCellWidth > 0) {
-              _dayScrollController.animateTo(
-                dayIndexForDate(DateTime.now(), nearest) * _dayCellWidth,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            }
-          },
-        );
-      }
+    if (hasDateFilter && _searchQuery.trim().isEmpty) {
+      final label = _selectedRange != null
+          ? '${DateFormat('d MMM').format(_selectedRange!.start)}'
+                ' – ${DateFormat('d MMM').format(_selectedRange!.end)}'
+          : DateFormat('EEE, d MMM').format(_selectedDate!);
+      return DeliveroEmptyState(
+        title: 'No orders for $label',
+        subtitle:
+            "Generate today's daily orders from your recurring customers.",
+        icon: Icons.event_busy_rounded,
+        actionLabel: "Generate today's orders",
+        onActionPressed: () => _generateForSelectedDay(today),
+      );
     }
 
     // Empty because of payment/status/search filters.
@@ -1281,6 +1324,106 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     };
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+    );
+  }
+}
+
+class _OrdersPurpleHeader extends StatelessWidget {
+  final bool isSelecting;
+  final int selectedCount;
+  final VoidCallback onCloseSelection;
+  final bool showProductionAction;
+  final VoidCallback onProduction;
+  final VoidCallback onSearch;
+  final VoidCallback onFilter;
+
+  const _OrdersPurpleHeader({
+    required this.isSelecting,
+    required this.selectedCount,
+    required this.onCloseSelection,
+    required this.showProductionAction,
+    required this.onProduction,
+    required this.onSearch,
+    required this.onFilter,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 12, 20),
+      child: Row(
+        children: [
+          if (isSelecting)
+            IconButton(
+              onPressed: onCloseSelection,
+              icon: const Icon(Icons.close_rounded, color: Colors.white),
+            ),
+          Expanded(
+            child: Text(
+              isSelecting ? '$selectedCount selected' : 'Orders',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.8,
+              ),
+            ),
+          ),
+          if (!isSelecting) ...[
+            if (showProductionAction)
+              _HeaderActionButton(
+                icon: Icons.inventory_2_outlined,
+                tooltip: 'Production list',
+                onPressed: onProduction,
+              ),
+            _HeaderActionButton(
+              icon: Icons.search_rounded,
+              tooltip: 'Search',
+              onPressed: onSearch,
+            ),
+            _HeaderActionButton(
+              icon: Icons.tune_rounded,
+              tooltip: 'Filter',
+              onPressed: onFilter,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderActionButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _HeaderActionButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.white.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

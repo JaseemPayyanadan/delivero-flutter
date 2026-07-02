@@ -79,7 +79,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
         tag: 'app_logo',
         child: SvgPicture.asset(
           'assets/images/delivro-logo.svg',
-          height: 36,
+          height: 28,
           fit: BoxFit.contain,
           colorFilter: const ColorFilter.mode(
             AppColors.primary,
@@ -91,35 +91,46 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
   }
 
   Widget _buildOtpInfoBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.secondary.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.secondary.withValues(alpha: 0.28),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.verified_user_outlined,
-            size: 18,
-            color: AppColors.primary,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              "We'll send a 6-digit code to verify it's you.",
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.35,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary.withValues(alpha: 0.85),
-              ),
+    const message = "We'll send a 6-digit code to verify it's you.";
+    final maxWidth = MediaQuery.sizeOf(context).width - 48;
+
+    return Align(
+      alignment: Alignment.center,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.secondary.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.secondary.withValues(alpha: 0.28),
             ),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.verified_user_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary.withValues(alpha: 0.85),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -211,11 +222,12 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final imageHeight = loginImageHeightFor(context);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -252,7 +264,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                       24,
                       48,
                       24,
-                      imageHeight + 12,
+                      imageHeight + 12 + keyboardInset,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

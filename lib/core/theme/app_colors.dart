@@ -40,6 +40,23 @@ class AppColors {
   static const primaryGradientStart = primary500;
   static const primaryGradientEnd = primary700;
 
+  static const success = Color(0xFF059669);
+  static const successDark = Color(0xFF047857);
+  static const successDarker = Color(0xFF065F46);
+  static const successLight = Color(0xFF34D399);
+  static const successLighter = Color(0xFFD1FAE5);
+  static const error = Color(0xFFDC2626);
+  static const errorLighter = Color(0xFFFEE2E2);
+  static const warning = Color(0xFFD97706);
+  static const warningLighter = Color(0xFFFEF3C7);
+  static const info = Color(0xFF0284C7);
+  static const infoLighter = Color(0xFFE0F2FE);
+
+  /// Dashboard hero gradient — dark/mid/light derived from [success] green.
+  static const dashboardHeroGradientStart = successDarker;
+  static const dashboardHeroGradientMid = success;
+  static const dashboardHeroGradientEnd = successLighter;
+
   static const backgroundPrimary = neutral25;
   static const backgroundSecondary = neutral50;
   static const backgroundTertiary = neutral100;
@@ -48,15 +65,6 @@ class AppColors {
   static const surfaceElevated = neutral25;
   static const border = neutral200;
   static const divider = neutral100;
-
-  static const success = Color(0xFF059669);
-  static const successLighter = Color(0xFFD1FAE5);
-  static const error = Color(0xFFDC2626);
-  static const errorLighter = Color(0xFFFEE2E2);
-  static const warning = Color(0xFFD97706);
-  static const warningLighter = Color(0xFFFEF3C7);
-  static const info = Color(0xFF0284C7);
-  static const infoLighter = Color(0xFFE0F2FE);
 
   static const textPrimary = neutral900;
   static const textSecondary = neutral600;

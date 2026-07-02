@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/pill_bottom_nav_bar.dart';
 import '../../app/order_settings_provider.dart';
 import '../../app/providers.dart';
 import 'dashboard/owner_dashboard_screen.dart';
@@ -66,100 +66,43 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
               onPressed: () => context.push('/owner/orders/create'),
               backgroundColor: AppColors.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              elevation: 10,
-              child: const Icon(Icons.add_rounded, size: 26),
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 18),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: const Border(top: BorderSide(color: AppColors.border)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadow,
-                blurRadius: 10,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          child: NavigationBarTheme(
-            data: NavigationBarThemeData(
-              height: 52,
-              backgroundColor: AppColors.surface,
-              surfaceTintColor: Colors.transparent,
-              indicatorColor: AppColors.primaryLighter,
-              indicatorShape: RoundedRectangleBorder(
+              elevation: 8,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              overlayColor: WidgetStateProperty.all(Colors.transparent),
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                final selected = states.contains(WidgetState.selected);
-                return TextStyle(
-                  color: selected ? AppColors.primary : AppColors.textLight,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-                  fontSize: 10,
-                );
-              }),
-              iconTheme: WidgetStateProperty.resolveWith((states) {
-                final selected = states.contains(WidgetState.selected);
-                return IconThemeData(
-                  color: selected ? AppColors.primary : AppColors.textLight,
-                  size: 20,
-                );
-              }),
+              child: const Icon(Icons.add_rounded, size: 28),
             ),
-            child: Theme(
-              data: Theme.of(context).copyWith(
-                hoverColor: Colors.transparent,
-                highlightColor: Colors.transparent,
-                splashColor: Colors.transparent,
-                splashFactory: NoSplash.splashFactory,
-              ),
-              child: NavigationBar(
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: (index) {
-                  if (_selectedIndex != index) {
-                    try {
-                      HapticFeedback.selectionClick();
-                    } catch (_) {}
-                    setState(() => _selectedIndex = index);
-                  }
-                },
-                destinations: const [
-                  NavigationDestination(
-                    icon: Icon(CupertinoIcons.house),
-                    selectedIcon: Icon(CupertinoIcons.house_fill),
-                    label: 'Home',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(CupertinoIcons.bag),
-                    selectedIcon: Icon(CupertinoIcons.bag_fill),
-                    label: 'Order',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(CupertinoIcons.person_2),
-                    selectedIcon: Icon(CupertinoIcons.person_2_fill),
-                    label: 'Customer',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(CupertinoIcons.chart_bar),
-                    selectedIcon: Icon(CupertinoIcons.chart_bar_fill),
-                    label: 'Report',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(CupertinoIcons.person),
-                    selectedIcon: Icon(CupertinoIcons.person_fill),
-                    label: 'Profile',
-                  ),
-                ],
-              ),
-            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      bottomNavigationBar: PillBottomNavBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        destinations: const [
+          PillNavDestination(
+            icon: CupertinoIcons.house,
+            selectedIcon: CupertinoIcons.house_fill,
+            label: 'Home',
           ),
-        ),
+          PillNavDestination(
+            icon: CupertinoIcons.bag,
+            selectedIcon: CupertinoIcons.bag_fill,
+            label: 'Orders',
+          ),
+          PillNavDestination(
+            icon: CupertinoIcons.person_2,
+            selectedIcon: CupertinoIcons.person_2_fill,
+            label: 'Customers',
+          ),
+          PillNavDestination(
+            icon: CupertinoIcons.chart_bar,
+            selectedIcon: CupertinoIcons.chart_bar_fill,
+            label: 'Reports',
+          ),
+          PillNavDestination(
+            icon: CupertinoIcons.person,
+            selectedIcon: CupertinoIcons.person_fill,
+            label: 'Profile',
+          ),
+        ],
       ),
     );
   }

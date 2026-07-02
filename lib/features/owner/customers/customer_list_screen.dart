@@ -6,7 +6,6 @@ import 'package:collection/collection.dart';
 import '../../../app/providers.dart';
 import '../../../app/reports_provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
@@ -87,7 +86,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
             final bn = routesById[b]?.name ?? '';
             return an.compareTo(bn);
           });
-    final showRouteFilterButton = availableRouteIds.length > 1;
+    final showRouteFilterButton = availableRouteIds.isNotEmpty;
 
     final filteredCustomers = customers.where((customer) {
       final q = _searchQuery.toLowerCase().trim();
@@ -121,115 +120,127 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
       }
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: DeliveroAppBar(
-        title: 'Customers',
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => context.pop(),
-              )
-            : null,
-        actions: [
-          IconButton(
-            tooltip: 'Search',
-            onPressed: () => _openSearchSheet(context),
-            icon: const Icon(
-              Icons.search_rounded,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          if (showRouteFilterButton)
-            IconButton(
-              tooltip: 'Filter',
-              onPressed: () => _openRouteFilterSheet(
-                context,
-                availableRouteIds: availableRouteIds,
-                routesById: routesById,
-                routesLoaded: routesLoaded,
-                routes: routes,
-              ),
-              icon: const Icon(
-                Icons.tune_rounded,
-                color: AppColors.textPrimary,
-              ),
-            ),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          try {
-            HapticFeedback.lightImpact();
-          } catch (_) {}
-          context.push('/owner/customers/add');
-        },
-        backgroundColor: AppColors.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        elevation: 10,
-        child: const Icon(Icons.add_rounded),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(customersProvider.notifier).refresh(),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          slivers: [
-            if (!noCustomersYet && availableRouteIds.length > 1)
-              SliverToBoxAdapter(
-                child: _RouteChipsRow(
-                  selectedRouteId: _selectedRouteId,
-                  availableRouteIds: availableRouteIds,
-                  routesById: routesById,
-                  routesLoaded: routesLoaded,
-                  routes: routes,
-                  onChipTapped: _onRouteChipTapped,
+      child: Scaffold(
+        backgroundColor: AppColors.success,
+        body: Column(
+          children: [
+            ColoredBox(
+              color: AppColors.success,
+              child: SafeArea(
+                bottom: false,
+                child: _CustomersScreenHeader(
+                  onSearch: () => _openSearchSheet(context),
+                  onFilter: showRouteFilterButton
+                      ? () => _openRouteFilterSheet(
+                          context,
+                          availableRouteIds: availableRouteIds,
+                          routesById: routesById,
+                          routesLoaded: routesLoaded,
+                          routes: routes,
+                        )
+                      : null,
                 ),
               ),
-            if (!customersLoaded && customers.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (filteredCustomers.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: _buildEmptyState(
-                  title: customers.isEmpty
-                      ? 'No customers yet'
-                      : 'No matching customers',
-                  subtitle: customers.isEmpty
-                      ? 'Add a customer to start taking orders and assigning routes.'
-                      : 'Try adjusting your filters or search terms.',
-                  icon: customers.isEmpty
-                      ? Icons.business_center_outlined
-                      : Icons.search_off_outlined,
-                  actionLabel: customers.isEmpty
-                      ? 'Add Customer'
-                      : 'Clear search',
-                  onAction: customers.isEmpty
-                      ? () => context.push('/owner/customers/add')
-                      : () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                            _selectedRouteId = null;
-                          });
-                        },
+            ),
+            Expanded(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AppColors.backgroundPrimary,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                 ),
-              )
-            else
-              ..._buildGroupedCustomerSlivers(
-                context,
-                filteredCustomers: filteredCustomers,
-                routeNameForCustomer: routeNameForCustomer,
-                routeIdForCustomer: routeIdForCustomer,
-                ordersByCustomer: ordersByCustomer,
-                reports: reports,
+                child: Column(
+                  children: [
+                    if (!noCustomersYet && availableRouteIds.isNotEmpty)
+                      _RouteChipsRow(
+                        selectedRouteId: _selectedRouteId,
+                        availableRouteIds: availableRouteIds,
+                        routesById: routesById,
+                        routesLoaded: routesLoaded,
+                        routes: routes,
+                        onChipTapped: _onRouteChipTapped,
+                      ),
+                    Expanded(
+                      child: RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: () =>
+                            ref.read(customersProvider.notifier).refresh(),
+                        child: CustomScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
+                          slivers: [
+                            if (!customersLoaded && customers.isEmpty)
+                              const SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                            else if (filteredCustomers.isEmpty)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: _buildEmptyState(
+                                  title: customers.isEmpty
+                                      ? 'No customers yet'
+                                      : 'No matching customers',
+                                  subtitle: customers.isEmpty
+                                      ? 'Add a customer to start taking orders and assigning routes.'
+                                      : 'Try adjusting your filters or search terms.',
+                                  icon: customers.isEmpty
+                                      ? Icons.business_center_outlined
+                                      : Icons.search_off_outlined,
+                                  actionLabel: customers.isEmpty
+                                      ? 'Add Customer'
+                                      : 'Clear search',
+                                  onAction: customers.isEmpty
+                                      ? () => context.push('/owner/customers/add')
+                                      : () {
+                                          _searchController.clear();
+                                          setState(() {
+                                            _searchQuery = '';
+                                            _selectedRouteId = null;
+                                          });
+                                        },
+                                ),
+                              )
+                            else
+                              ..._buildGroupedCustomerSlivers(
+                                context,
+                                filteredCustomers: filteredCustomers,
+                                routeNameForCustomer: routeNameForCustomer,
+                                routeIdForCustomer: routeIdForCustomer,
+                                ordersByCustomer: ordersByCustomer,
+                                reports: reports,
+                              ),
+                            const SliverToBoxAdapter(child: SizedBox(height: 110)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            const SliverToBoxAdapter(child: SizedBox(height: 110)),
+            ),
           ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            try {
+              HapticFeedback.lightImpact();
+            } catch (_) {}
+            context.push('/owner/customers/add');
+          },
+          backgroundColor: AppColors.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          elevation: 8,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(Icons.add_rounded, size: 28),
         ),
       ),
     );
@@ -458,6 +469,84 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
   }
 }
 
+class _CustomersScreenHeader extends StatelessWidget {
+  final VoidCallback onSearch;
+  final VoidCallback? onFilter;
+
+  const _CustomersScreenHeader({
+    required this.onSearch,
+    this.onFilter,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 12, 20),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Customers',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.8,
+              ),
+            ),
+          ),
+          _CustomersHeaderActionButton(
+            icon: Icons.search_rounded,
+            tooltip: 'Search',
+            onPressed: onSearch,
+          ),
+          if (onFilter != null)
+            _CustomersHeaderActionButton(
+              icon: Icons.tune_rounded,
+              tooltip: 'Filter',
+              onPressed: onFilter!,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomersHeaderActionButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _CustomersHeaderActionButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.white.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GroupHeader extends StatelessWidget {
   final String title;
   final int count;
@@ -469,20 +558,6 @@ class _GroupHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(2, 10, 2, 6),
       child: Row(
         children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Icon(
-              Icons.alt_route_rounded,
-              size: 16,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 10),
           Expanded(
             child: Text(
               title.toUpperCase(),
@@ -490,26 +565,19 @@ class _GroupHeader extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                letterSpacing: 1.0,
+                fontSize: 11,
+                color: AppColors.textLight,
+                letterSpacing: 1.4,
               ),
             ),
           ),
           const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              '$count',
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 12,
-                color: AppColors.primary,
-              ),
+          Text(
+            '$count ${count == 1 ? 'Customer' : 'Customers'}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+              color: AppColors.primary,
             ),
           ),
         ],
@@ -565,18 +633,18 @@ class _CustomerListCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 10,
-            offset: Offset(0, 3),
+            blurRadius: 18,
+            offset: Offset(0, 6),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -812,8 +880,8 @@ class _RouteChipsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -826,6 +894,7 @@ class _RouteChipsRow extends StatelessWidget {
               routesLoaded: routesLoaded,
               onChipTapped: onChipTapped,
             ),
+            const SizedBox(width: 8),
             if (!routesLoaded && routes.isEmpty)
               _CustomerRouteChip(
                 label: 'Loading…',
@@ -837,12 +906,15 @@ class _RouteChipsRow extends StatelessWidget {
             else
               ...availableRouteIds.map((id) {
                 final name = routesById[id]?.name ?? 'Unknown';
-                return _CustomerRouteChip(
-                  label: name,
-                  routeId: id,
-                  selectedRouteId: selectedRouteId,
-                  routesLoaded: routesLoaded,
-                  onChipTapped: onChipTapped,
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _CustomerRouteChip(
+                    label: name,
+                    routeId: id,
+                    selectedRouteId: selectedRouteId,
+                    routesLoaded: routesLoaded,
+                    onChipTapped: onChipTapped,
+                  ),
                 );
               }),
           ],
@@ -871,36 +943,54 @@ class _CustomerRouteChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isLoading = routeId == 'loading';
     final isSelected = !isLoading && selectedRouteId == routeId;
+    final isAllRoutes = routeId == null;
     final tapLocked = isLoading || (!routesLoaded && routeId != null);
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: InkWell(
-        onTap: tapLocked ? null : () => onChipTapped(routeId),
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          decoration: BoxDecoration(
+    return InkWell(
+      onTap: tapLocked ? null : () => onChipTapped(routeId),
+      borderRadius: BorderRadius.circular(999),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
             color: isSelected
                 ? AppColors.primary
-                : AppColors.backgroundSecondary,
-            borderRadius: BorderRadius.circular(18),
+                : AppColors.primary.withValues(alpha: 0.35),
           ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isAllRoutes
+                  ? Icons.map_outlined
+                  : Icons.location_on_outlined,
+              size: 16,
               color: isSelected
-                  ? Theme.of(context).colorScheme.onPrimary
+                  ? Colors.white
                   : tapLocked
-                  ? AppColors.textDisabled
-                  : AppColors.textPrimary,
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
-              letterSpacing: -0.1,
+                      ? AppColors.textDisabled
+                      : AppColors.primary,
             ),
-          ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isSelected
+                    ? Colors.white
+                    : tapLocked
+                        ? AppColors.textDisabled
+                        : AppColors.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.1,
+              ),
+            ),
+          ],
         ),
       ),
     );
