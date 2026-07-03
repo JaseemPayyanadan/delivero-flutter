@@ -32,10 +32,8 @@ class ProductionSummarySheet extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => ProductionSummarySheet(
-        summary: summary,
-        onChangeDate: onChangeDate,
-      ),
+      builder: (context) =>
+          ProductionSummarySheet(summary: summary, onChangeDate: onChangeDate),
     );
   }
 
@@ -59,16 +57,12 @@ class ProductionSummarySheet extends StatelessWidget {
     }
 
     try {
-      await openWhatsAppShare(
-        message: formatProductionSummaryText(summary),
-      );
+      await openWhatsAppShare(message: formatProductionSummaryText(summary));
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            kIsWeb
-                ? 'Opening WhatsApp Web…'
-                : 'Opening WhatsApp…',
+            kIsWeb ? 'Opening WhatsApp Web…' : 'Opening WhatsApp…',
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           behavior: SnackBarBehavior.floating,
@@ -330,17 +324,11 @@ class _SummaryStatsRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: _StatChip(
-            label: 'Orders',
-            value: '${summary.activeOrders}',
-          ),
+          child: _StatChip(label: 'Orders', value: '${summary.activeOrders}'),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _StatChip(
-            label: 'Products',
-            value: '${summary.lines.length}',
-          ),
+          child: _StatChip(label: 'Products', value: '${summary.lines.length}'),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -439,7 +427,10 @@ class _ProductionLineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final splitRows = formatPackBreakdownLines(line.packBreakdown, word: line.unit.productionWord);
+    final splitRows = formatPackBreakdownLines(
+      line.packBreakdown,
+      word: line.unit.productionWord,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

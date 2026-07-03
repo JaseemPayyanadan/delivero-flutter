@@ -121,8 +121,7 @@ class _DeliveryDashboardScreenState
             parent: BouncingScrollPhysics(),
           ),
           slivers: [
-            if (!isOnline)
-              const SliverToBoxAdapter(child: OfflineBanner()),
+            if (!isOnline) const SliverToBoxAdapter(child: OfflineBanner()),
             SliverToBoxAdapter(
               child: _DriverHero(
                 displayName: user?.name ?? 'Driver',
@@ -144,7 +143,12 @@ class _DeliveryDashboardScreenState
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, kDashboardHeroKpiStripContentTopPadding, 20, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  20,
+                  kDashboardHeroKpiStripContentTopPadding,
+                  20,
+                  0,
+                ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     const _SectionHeader(
@@ -300,7 +304,12 @@ class _DriverHero extends StatelessWidget {
           const Positioned.fill(child: DashboardHeroBackground()),
           dashboardHeroBannerPositioned(context),
           Padding(
-            padding: EdgeInsets.fromLTRB(20, topInset + 18, 20, kDashboardHeroKpiStripBottomPadding),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              topInset + 18,
+              20,
+              kDashboardHeroKpiStripBottomPadding,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -519,29 +528,6 @@ class _HeroCollected extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _GlowBlob extends StatelessWidget {
-  final double size;
-  final Color color;
-  const _GlowBlob({required this.size, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color, color.withValues(alpha: 0.0)],
-            stops: const [0.0, 1.0],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1399,9 +1385,7 @@ class _PerformanceCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            total == 0
-                ? 'No deliveries yet'
-                : '$completed of $total delivered',
+            total == 0 ? 'No deliveries yet' : '$completed of $total delivered',
             style: context.appTextStyles.sliverTitle.copyWith(
               fontSize: 16,
               letterSpacing: -0.3,
@@ -1424,10 +1408,7 @@ class _PerformanceCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                _MetricChip(
-                  label: '$active active',
-                  color: AppColors.warning,
-                ),
+                _MetricChip(label: '$active active', color: AppColors.warning),
                 const SizedBox(width: 8),
                 _MetricChip(
                   label: '${(progress * 100).round()}% done',

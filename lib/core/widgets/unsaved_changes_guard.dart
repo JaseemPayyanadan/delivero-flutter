@@ -6,9 +6,7 @@ Future<bool> confirmDiscardUnsavedChanges(BuildContext context) async {
     context: context,
     builder: (ctx) => AlertDialog(
       title: const Text('Discard changes?'),
-      content: const Text(
-        'You have unsaved changes. Leave without saving?',
-      ),
+      content: const Text('You have unsaved changes. Leave without saving?'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),

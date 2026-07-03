@@ -12,17 +12,19 @@ String? splitBoxSubtitle(
   if (order.status == OrderStatus.cancelled) return null;
 
   final dayKey = businessDayKey(order.orderDate, rolloverHour: rolloverHour);
-  final siblings = allOrders
-      .where(
-        (o) =>
-            o.customerId == order.customerId &&
-            o.deliveryRun == order.deliveryRun &&
-            o.orderType == order.orderType &&
-            o.status != OrderStatus.cancelled &&
-            businessDayKey(o.orderDate, rolloverHour: rolloverHour) == dayKey,
-      )
-      .toList()
-    ..sort((a, b) => compareOrdersByDate(a, b, newestFirst: false));
+  final siblings =
+      allOrders
+          .where(
+            (o) =>
+                o.customerId == order.customerId &&
+                o.deliveryRun == order.deliveryRun &&
+                o.orderType == order.orderType &&
+                o.status != OrderStatus.cancelled &&
+                businessDayKey(o.orderDate, rolloverHour: rolloverHour) ==
+                    dayKey,
+          )
+          .toList()
+        ..sort((a, b) => compareOrdersByDate(a, b, newestFirst: false));
 
   if (siblings.length < 2) return null;
   final idx = siblings.indexWhere((o) => o.id == order.id);

@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// [RouterNotifier] keeps the user on `/splash` until this is true.
 final launcherAnimationCompleteProvider =
     NotifierProvider<LauncherAnimationNotifier, bool>(
-  LauncherAnimationNotifier.new,
-);
+      LauncherAnimationNotifier.new,
+    );
 
 class LauncherAnimationNotifier extends Notifier<bool> {
   @override

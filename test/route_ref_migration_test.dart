@@ -77,21 +77,18 @@ void main() {
         ],
       );
 
-      expect(
-        targets,
-        [
-          const RouteRefMigrationTarget(
-            collection: 'customers',
-            id: 'cust-1',
-            routeId: 'route-1',
-          ),
-          const RouteRefMigrationTarget(
-            collection: 'orders',
-            id: 'order-1',
-            routeId: 'route-2',
-          ),
-        ],
-      );
+      expect(targets, [
+        const RouteRefMigrationTarget(
+          collection: 'customers',
+          id: 'cust-1',
+          routeId: 'route-1',
+        ),
+        const RouteRefMigrationTarget(
+          collection: 'orders',
+          id: 'order-1',
+          routeId: 'route-2',
+        ),
+      ]);
     });
 
     test('skips records with unknown route refs', () {

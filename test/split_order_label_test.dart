@@ -37,7 +37,11 @@ void main() {
     test('returns box index when multiple orders share customer and run', () {
       final orders = [
         _testOrder(id: 'o1', customerId: 'c1', orderDate: day),
-        _testOrder(id: 'o2', customerId: 'c1', orderDate: day.add(const Duration(hours: 1))),
+        _testOrder(
+          id: 'o2',
+          customerId: 'c1',
+          orderDate: day.add(const Duration(hours: 1)),
+        ),
       ];
 
       expect(splitBoxSubtitle(orders[0], orders), 'Box 1 of 2');
@@ -45,9 +49,7 @@ void main() {
     });
 
     test('returns null for a single order', () {
-      final orders = [
-        _testOrder(id: 'o1', customerId: 'c1', orderDate: day),
-      ];
+      final orders = [_testOrder(id: 'o1', customerId: 'c1', orderDate: day)];
       expect(splitBoxSubtitle(orders.first, orders), isNull);
     });
   });

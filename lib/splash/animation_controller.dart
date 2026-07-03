@@ -38,7 +38,7 @@ abstract final class SplashTimeline {
 /// All splash [Animation]s derived from a single master [AnimationController].
 class SplashAnimations {
   SplashAnimations({required AnimationController controller})
-      : _controller = controller {
+    : _controller = controller {
     backgroundGreen = _interval(
       SplashTimeline.backgroundGreenStart,
       SplashTimeline.backgroundGreenEnd,

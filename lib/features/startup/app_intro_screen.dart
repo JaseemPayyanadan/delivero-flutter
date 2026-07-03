@@ -12,21 +12,21 @@ const List<_IntroSlide> _kIntroSlides = [
     titleRest: 'with ease',
     subtitle:
         'Add customers, manage orders, assign routes and keep everything organized.',
-    imageAsset: 'assets/images/slide-1.jpg',
+    imageAsset: 'assets/images/slide-1.webp',
   ),
   _IntroSlide(
     title: 'Track',
     titleRest: 'with confidence',
     subtitle:
         'Real-time status, verified drop-offs and clear proof of delivery on every order.',
-    imageAsset: 'assets/images/slide-2.jpg',
+    imageAsset: 'assets/images/slide-2.webp',
   ),
   _IntroSlide(
     title: 'Deliver',
     titleRest: 'smiles',
     subtitle:
         'Hassle-free deliveries, happy customers and growing your business.',
-    imageAsset: 'assets/images/slide-3.jpg',
+    imageAsset: 'assets/images/slide-3.webp',
   ),
 ];
 
@@ -107,11 +107,7 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFFFFFF),
-              Color(0xFFFFFFFF),
-              AppColors.primary50,
-            ],
+            colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF), AppColors.primary50],
             stops: [0.0, 0.72, 1.0],
           ),
         ),
@@ -119,10 +115,7 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _IntroTopBar(
-                showSkip: !_isLastPage,
-                onSkip: _complete,
-              ),
+              _IntroTopBar(showSkip: !_isLastPage, onSkip: _complete),
               const SizedBox(height: 12),
               _OnboardingStepper(
                 labels: _kIntroSlides.map((s) => s.title).toList(),
@@ -184,30 +177,27 @@ class _IntroTopBar extends StatelessWidget {
       child: Align(
         alignment: Alignment.centerRight,
         child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 200),
-            opacity: showSkip ? 1 : 0,
-            child: IgnorePointer(
-              ignoring: !showSkip,
-              child: TextButton(
-                onPressed: onSkip,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
+          duration: const Duration(milliseconds: 200),
+          opacity: showSkip ? 1 : 0,
+          child: IgnorePointer(
+            ignoring: !showSkip,
+            child: TextButton(
+              onPressed: onSkip,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
                 ),
-                child: const Text(
-                  'Skip',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+              ),
+              child: const Text(
+                'Skip',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
             ),
           ),
         ),
+      ),
     );
   }
 }
@@ -262,13 +252,12 @@ class _OnboardingStepper extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight:
-                        isActive ? FontWeight.w800 : FontWeight.w600,
+                    fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                     color: isActive
                         ? AppColors.primary
                         : isDone
-                            ? AppColors.textSecondary
-                            : AppColors.textLight,
+                        ? AppColors.textSecondary
+                        : AppColors.textLight,
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -321,11 +310,7 @@ class _StepDot extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: isDone
-                ? const Icon(
-                    Icons.check_rounded,
-                    size: 17,
-                    color: Colors.white,
-                  )
+                ? const Icon(Icons.check_rounded, size: 17, color: Colors.white)
                 : Text(
                     '${index + 1}',
                     style: TextStyle(
@@ -481,9 +466,7 @@ class _IntroFooter extends StatelessWidget {
                   width: isActive ? 18 : 7,
                   height: 7,
                   decoration: BoxDecoration(
-                    color: isActive
-                        ? AppColors.primary
-                        : AppColors.neutral300,
+                    color: isActive ? AppColors.primary : AppColors.neutral300,
                     borderRadius: BorderRadius.circular(8),
                   ),
                 );

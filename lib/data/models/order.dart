@@ -42,6 +42,7 @@ class OrderItem {
   final double unitPrice;
   final double totalPrice;
   final ProductUnit unit;
+
   /// Optional pack/box label when the same product appears on multiple lines.
   final String? packLabel;
 
@@ -102,7 +103,8 @@ class OrderItem {
         ? unitPrice * quantity
         : readDouble(totalPriceRaw);
 
-    final packLabelRaw = json['packLabel'] ?? json['pack_label'] ?? json['boxLabel'];
+    final packLabelRaw =
+        json['packLabel'] ?? json['pack_label'] ?? json['boxLabel'];
     final packLabel = packLabelRaw == null
         ? null
         : readString(packLabelRaw).trim();
@@ -138,6 +140,7 @@ class Order {
   final PaymentMethod? paymentMethod;
   final double? amountPaid;
   final OrderStatus status;
+
   /// Canonical [DeliveryRoute.id] for fulfillment routing.
   final String? assignedRoute;
   final String? assignedDriver;
@@ -146,6 +149,7 @@ class Order {
   final DateTime? paymentTime;
   final DateTime? deliveryTime;
   final String? notes;
+
   /// When set, this order was auto-created from the referenced delivered daily order.
   final String? recreatedFromOrderId;
   final DateTime createdAt;
@@ -250,7 +254,9 @@ class Order {
       id: readString(json['id']),
       factoryId: readString(json['factoryId'] ?? json['factory_id']),
       orderType: _parseOrderType(json['orderType']),
-      deliveryRun: _parseDeliveryRun(json['deliveryRun'] ?? json['delivery_run']),
+      deliveryRun: _parseDeliveryRun(
+        json['deliveryRun'] ?? json['delivery_run'],
+      ),
       customerId: readString(
         json['customerId'] ?? json['customer_id'] ?? customerMap?['id'],
       ),
@@ -307,8 +313,7 @@ class Order {
               json['assignedDriver'] ?? json['driverId'] ?? json['driver_id'],
             ),
       orderDate: () {
-        final raw =
-            json['orderDate'] ?? json['order_date'];
+        final raw = json['orderDate'] ?? json['order_date'];
         if (raw == null) {
           debugPrint(
             '[Order] orderDate missing for id=${json['id']} — falling back to createdAt',
@@ -438,8 +443,7 @@ class Order {
       paymentTime: paymentTime ?? this.paymentTime,
       deliveryTime: deliveryTime ?? this.deliveryTime,
       notes: notes ?? this.notes,
-      recreatedFromOrderId:
-          recreatedFromOrderId ?? this.recreatedFromOrderId,
+      recreatedFromOrderId: recreatedFromOrderId ?? this.recreatedFromOrderId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

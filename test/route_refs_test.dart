@@ -45,21 +45,14 @@ void main() {
 
     test('returns loading label when routes not loaded yet', () {
       expect(
-        RouteRefs.routeLabelForRef(
-          'route-1',
-          const [],
-          routesLoaded: false,
-        ),
+        RouteRefs.routeLabelForRef('route-1', const [], routesLoaded: false),
         'Loading route…',
       );
     });
 
     test('returns raw ref or fallback when unresolved', () {
       final routes = sampleRoutes;
-      expect(
-        RouteRefs.routeLabelForRef('Orphan Ref', routes),
-        'Orphan Ref',
-      );
+      expect(RouteRefs.routeLabelForRef('Orphan Ref', routes), 'Orphan Ref');
       expect(RouteRefs.routeLabelForRef(null, routes), 'No route');
     });
   });

@@ -54,7 +54,8 @@ class AppTextStyles extends ThemeExtension<AppTextStyles> {
         color: AppColors.textPrimary,
         letterSpacing: -0.2,
       ),
-      body: base.bodyMedium?.copyWith(color: AppColors.textSecondary) ??
+      body:
+          base.bodyMedium?.copyWith(color: AppColors.textSecondary) ??
           TextStyle(color: AppColors.textSecondary, fontFamily: ff),
       caption: TextStyle(
         fontFamily: ff,

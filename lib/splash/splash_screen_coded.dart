@@ -13,10 +13,7 @@ import 'widgets/truck.dart';
 
 /// Coded SVG fallback when the launcher video asset is unavailable.
 class SplashScreenCoded extends StatefulWidget {
-  const SplashScreenCoded({
-    super.key,
-    required this.onAnimationComplete,
-  });
+  const SplashScreenCoded({super.key, required this.onAnimationComplete});
 
   final VoidCallback onAnimationComplete;
 
@@ -79,8 +76,9 @@ class _SplashScreenCodedState extends State<SplashScreenCoded>
                   roadProgress: a.roadProgress.value,
                   truckProgress: a.truckProgress.value,
                   wheelRotation: a.wheelRotationFor(a.truckProgress.value),
-                  suspensionOffset:
-                      a.truckSuspensionOffset(a.truckProgress.value),
+                  suspensionOffset: a.truckSuspensionOffset(
+                    a.truckProgress.value,
+                  ),
                 ),
                 Positioned(
                   left: layout.shieldPosition.dx,
@@ -157,10 +155,7 @@ class _LandscapeLayer extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.topCenter,
-            child: SplashCity(
-              opacity: cityOpacity,
-              slideOffset: citySlide,
-            ),
+            child: SplashCity(opacity: cityOpacity, slideOffset: citySlide),
           ),
           Positioned(
             left: 0,

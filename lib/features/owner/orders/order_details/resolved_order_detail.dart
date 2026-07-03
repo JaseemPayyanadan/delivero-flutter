@@ -72,9 +72,9 @@ class ResolvedOrderDetail {
 
     final deliveryFee =
         (order.totalAmount - order.subtotal + order.discountAmount).clamp(
-      0.0,
-      double.infinity,
-    );
+          0.0,
+          double.infinity,
+        );
 
     final effectivePaid = switch (paymentStatus) {
       PaymentStatus.paid => order.totalAmount,

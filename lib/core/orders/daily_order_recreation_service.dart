@@ -117,13 +117,8 @@ List<Order> findUnresolvedSourceOrders({
   }).toList();
 }
 
-bool isCustomerActiveForRecreation(
-  Order source,
-  List<Customer> customers,
-) {
-  final customer = customers.firstWhereOrNull(
-    (c) => c.id == source.customerId,
-  );
+bool isCustomerActiveForRecreation(Order source, List<Customer> customers) {
+  final customer = customers.firstWhereOrNull((c) => c.id == source.customerId);
   if (customer == null) return false;
   return customer.isActive;
 }
@@ -157,11 +152,7 @@ bool _orderOnBusinessDay(
 }) {
   final key = businessDayKey(order.orderDate, rolloverHour: rolloverHour);
   final normalized = DateTime(key.year, key.month, key.day);
-  final target = DateTime(
-    businessDay.year,
-    businessDay.month,
-    businessDay.day,
-  );
+  final target = DateTime(businessDay.year, businessDay.month, businessDay.day);
   return normalized == target;
 }
 
@@ -176,11 +167,7 @@ Order? findNextDayPendingOrder({
     (o) =>
         o.recreatedFromOrderId == source.id &&
         o.status == OrderStatus.pending &&
-        _orderOnBusinessDay(
-          o,
-          targetBusinessDay,
-          rolloverHour: rolloverHour,
-        ),
+        _orderOnBusinessDay(o, targetBusinessDay, rolloverHour: rolloverHour),
   );
 }
 
@@ -330,7 +317,10 @@ DailyOrderRecreationResult? syncNextDayFromSource({
   if (source.items.isEmpty) return null;
   if (!isCustomerActiveForRecreation(source, customers)) return null;
 
-  final sourceDay = businessDayKey(source.orderDate, rolloverHour: rolloverHour);
+  final sourceDay = businessDayKey(
+    source.orderDate,
+    rolloverHour: rolloverHour,
+  );
   final targetDay = DateTime(
     sourceDay.year,
     sourceDay.month,
@@ -420,11 +410,7 @@ Future<DailyOrderRecreationResult> runBatchForTargetDay({
         );
 
   final sources = orders.where(
-    (o) => isEligibleRecreationSource(
-      o,
-      sourceDay,
-      rolloverHour: rolloverHour,
-    ),
+    (o) => isEligibleRecreationSource(o, sourceDay, rolloverHour: rolloverHour),
   );
 
   final createdIds = <String>[];
@@ -505,11 +491,13 @@ Future<DailyOrderRecreationResult> runGapBackfill({
   while (!day.isAfter(today) && processed < maxDays) {
     final sourceDay = day.subtract(const Duration(days: 1));
     final sources = mutableOrders
-        .where((o) => isEligibleRecreationSource(
-              o,
-              sourceDay,
-              rolloverHour: rolloverHour,
-            ))
+        .where(
+          (o) => isEligibleRecreationSource(
+            o,
+            sourceDay,
+            rolloverHour: rolloverHour,
+          ),
+        )
         .toList();
 
     final createdIds = <String>[];
@@ -591,7 +579,8 @@ Future<DailyOrderRecreationResult> runRolloverBatch({
   var daysProcessed = 0;
   final mutableOrders = [...orders];
 
-  while (!day.isAfter(normalizedCurrent) && daysProcessed < kMaxBackfillBusinessDays) {
+  while (!day.isAfter(normalizedCurrent) &&
+      daysProcessed < kMaxBackfillBusinessDays) {
     final dayResult = await runBatchForTargetDay(
       targetBusinessDay: day,
       orders: mutableOrders,

@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final connectivityProvider =
-    NotifierProvider<ConnectivityNotifier, bool>(ConnectivityNotifier.new);
+final connectivityProvider = NotifierProvider<ConnectivityNotifier, bool>(
+  ConnectivityNotifier.new,
+);
 
 /// `true` when the device has a usable network connection.
 class ConnectivityNotifier extends Notifier<bool> {

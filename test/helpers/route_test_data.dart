@@ -24,10 +24,7 @@ DeliveryRoute testRoute({
   );
 }
 
-Customer testCustomer({
-  String id = 'cust-1',
-  String? assignedRoute,
-}) {
+Customer testCustomer({String id = 'cust-1', String? assignedRoute}) {
   return Customer(
     id: id,
     factoryId: 'FAC_001',
@@ -43,10 +40,7 @@ Customer testCustomer({
   );
 }
 
-Order testOrder({
-  String id = 'order-1',
-  String? assignedRoute,
-}) {
+Order testOrder({String id = 'order-1', String? assignedRoute}) {
   return Order(
     id: id,
     factoryId: 'FAC_001',
@@ -69,6 +63,6 @@ Order testOrder({
 }
 
 List<DeliveryRoute> get sampleRoutes => [
-      testRoute(),
-      testRoute(id: 'route-2', name: 'South Bay', area: 'South'),
-    ];
+  testRoute(),
+  testRoute(id: 'route-2', name: 'South Bay', area: 'South'),
+];

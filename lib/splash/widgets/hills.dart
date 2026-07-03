@@ -5,10 +5,7 @@ import '../splash_constants.dart';
 
 /// Rolling green hills SVG at the bottom of the landscape.
 class SplashHills extends StatelessWidget {
-  const SplashHills({
-    super.key,
-    required this.opacity,
-  });
+  const SplashHills({super.key, required this.opacity});
 
   final double opacity;
 

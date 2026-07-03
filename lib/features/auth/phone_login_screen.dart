@@ -233,42 +233,36 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFFFFFF),
-              Color(0xFFFFFFFF),
-              AppColors.primary50,
-            ],
+            colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF), AppColors.primary50],
             stops: [0.0, 0.72, 1.0],
           ),
         ),
         child: Stack(
-        fit: StackFit.expand,
-        alignment: Alignment.bottomCenter,
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: bottomInset,
-            child: const IgnorePointer(
-              child: LoginIllustration(),
+          fit: StackFit.expand,
+          alignment: Alignment.bottomCenter,
+          children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: bottomInset,
+              child: const IgnorePointer(child: LoginIllustration()),
             ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      24,
-                      48,
-                      24,
-                      imageHeight + 12 + keyboardInset,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
+            SafeArea(
+              bottom: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        24,
+                        48,
+                        24,
+                        imageHeight + 12 + keyboardInset,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                           _buildLogo(),
                           const SizedBox(height: 28),
                           const Text(
@@ -313,9 +307,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                                 ),
                               ),
                               const SizedBox(height: 10),
-                              _buildPhoneField(
-                                isLoading: authState.isLoading,
-                              ),
+                              _buildPhoneField(isLoading: authState.isLoading),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -364,44 +356,44 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                         ],
                       ),
                     ),
-                ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.lock_outline_rounded,
-                    size: 14,
-                    color: AppColors.textLight,
                   ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'Secure & private. Your number is safe with us.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.lock_outline_rounded,
+                          size: 14,
+                          color: AppColors.textLight,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Secure & private. Your number is safe with us.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.textLight,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
+                    child: _LegalFooter(
+                      onPrivacyTap: () => _openExternal(_kPrivacyPolicyUrl),
+                      onTermsTap: () => _openExternal(_kTermsOfServiceUrl),
+                    ),
+                  ),
+                  SizedBox(height: bottomInset),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
-              child: _LegalFooter(
-                onPrivacyTap: () => _openExternal(_kPrivacyPolicyUrl),
-                onTermsTap: () => _openExternal(_kTermsOfServiceUrl),
-              ),
-            ),
-            SizedBox(height: bottomInset),
           ],
-        ),
-      ),
-        ],
         ),
       ),
     );
@@ -431,10 +423,7 @@ class _LegalFooter extends StatelessWidget {
   final VoidCallback onPrivacyTap;
   final VoidCallback onTermsTap;
 
-  const _LegalFooter({
-    required this.onPrivacyTap,
-    required this.onTermsTap,
-  });
+  const _LegalFooter({required this.onPrivacyTap, required this.onTermsTap});
 
   @override
   Widget build(BuildContext context) {

@@ -111,7 +111,8 @@ class OrderCard extends ConsumerWidget {
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap:
-                  onToggleSelect ?? () => context.push('/owner/orders/${order.id}'),
+                  onToggleSelect ??
+                  () => context.push('/owner/orders/${order.id}'),
               onLongPress: onEnterSelectMode,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -299,8 +300,9 @@ class OrderCard extends ConsumerWidget {
                                           color: paymentColor.withValues(
                                             alpha: 0.12,
                                           ),
-                                          borderRadius:
-                                              BorderRadius.circular(999),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
                                           border: Border.all(
                                             color: paymentColor.withValues(
                                               alpha: 0.35,

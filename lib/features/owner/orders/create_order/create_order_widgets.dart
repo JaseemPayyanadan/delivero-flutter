@@ -203,7 +203,9 @@ class _OrderReviewReport extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isMerge ? 'Final order · All amounts in INR' : 'All amounts in INR',
+                  isMerge
+                      ? 'Final order · All amounts in INR'
+                      : 'All amounts in INR',
                   style: context.appTextStyles.caption.copyWith(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.w600,
@@ -607,9 +609,7 @@ class _CustomerSuggestions extends StatelessWidget {
               const SizedBox(height: 12),
               TextButton(
                 onPressed: onClearSearch,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                ),
+                style: TextButton.styleFrom(foregroundColor: AppColors.primary),
                 child: const Text(
                   'Clear search',
                   style: TextStyle(fontWeight: FontWeight.w900),
@@ -640,7 +640,9 @@ class _CustomerSuggestions extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 20,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                      backgroundColor: AppColors.primary.withValues(
+                        alpha: 0.12,
+                      ),
                       child: const Icon(
                         Icons.storefront_rounded,
                         color: AppColors.primary,

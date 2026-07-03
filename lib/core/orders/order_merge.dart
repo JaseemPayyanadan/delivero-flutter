@@ -36,8 +36,7 @@ Order? findMergeTargetOrder({
     }
     if (o.status != OrderStatus.pending) return false;
     return true;
-  }).toList()
-    ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  }).toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
   return candidates.firstOrNull;
 }

@@ -9,9 +9,6 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'app/order_settings_provider.dart';
 import 'app/providers.dart';
 import 'app/router.dart';
-import 'core/orders/business_day.dart';
-import 'core/orders/daily_order_recreation_service.dart';
-import 'features/owner/orders/unresolved_orders_sheet.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/firebase_service.dart';
 import 'core/services/local_notifications_service.dart';
@@ -42,10 +39,7 @@ class DeliveroApp extends ConsumerStatefulWidget {
   ConsumerState<DeliveroApp> createState() => _DeliveroAppState();
 }
 
-Future<void> _syncOrderDayResetNotification(
-  WidgetRef ref,
-  User? user,
-) async {
+Future<void> _syncOrderDayResetNotification(WidgetRef ref, User? user) async {
   if (user?.role != UserRole.owner || user?.factoryId == null) {
     await OrderDayResetNotificationService.instance.syncForOwner(
       user: user,
@@ -100,10 +94,7 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
       _ => '${result.createdCount} daily orders auto-created for today',
     };
     messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 

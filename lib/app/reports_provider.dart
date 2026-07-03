@@ -151,8 +151,9 @@ ReportsData computeReports(List<Order> orders) {
     }
 
     // Customer revenue — keyed by customerId to prevent name-mismatch duplicates
-    final custKey =
-        order.customerId.isNotEmpty ? order.customerId : order.customerName;
+    final custKey = order.customerId.isNotEmpty
+        ? order.customerId
+        : order.customerName;
     final custExisting = customerRevenueMap[custKey];
     if (custExisting != null) {
       customerRevenueMap[custKey] = CustomerRevenueData(

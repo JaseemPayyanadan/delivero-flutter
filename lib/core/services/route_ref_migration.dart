@@ -84,11 +84,7 @@ abstract final class RouteRefMigration {
         _inFlightFactoryIds.contains(factoryId)) {
       return;
     }
-    if (!needsSync(
-      routes: routes,
-      customers: customers,
-      orders: orders,
-    )) {
+    if (!needsSync(routes: routes, customers: customers, orders: orders)) {
       _syncedFactoryIds.add(factoryId);
       return;
     }

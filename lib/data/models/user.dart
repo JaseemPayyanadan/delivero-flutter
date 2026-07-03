@@ -1,10 +1,7 @@
 enum UserRole { owner, delivery }
 
 /// Workspace billing tier. New sign-ups start on [free].
-enum SubscriptionPlan {
-  free,
-  pro,
-}
+enum SubscriptionPlan { free, pro }
 
 class User {
   final String id;

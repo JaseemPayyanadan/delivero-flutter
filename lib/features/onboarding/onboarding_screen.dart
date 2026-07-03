@@ -181,8 +181,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final existing = ref.read(foodItemsProvider);
     final isDuplicate = existing.any(
       (f) =>
-          f.name.trim().toLowerCase() == name.toLowerCase() &&
-          f.price == price,
+          f.name.trim().toLowerCase() == name.toLowerCase() && f.price == price,
     );
     if (isDuplicate) return true;
 
@@ -244,9 +243,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     if (ownerNext.isEmpty) {
       ScaffoldMessenger.of(context).removeCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your name')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter your name')));
       return false;
     }
     if (businessNext.isEmpty) {
@@ -422,9 +421,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         }
 
         if (!hasExistingProducts) {
-          _showSnack(
-            'Enter a product name and price above, then tap Launch.',
-          );
+          _showSnack('Enter a product name and price above, then tap Launch.');
           return;
         }
 
@@ -472,8 +469,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final foodItems = ref.watch(foodItemsProvider);
     final customers = ref.watch(customersProvider);
 
-    final profileDone = _ownerName.trim().isNotEmpty &&
-        _businessName.trim().isNotEmpty;
+    final profileDone =
+        _ownerName.trim().isNotEmpty && _businessName.trim().isNotEmpty;
     final routesDone = routes.isNotEmpty;
     final customersDone = customers.isNotEmpty;
     final productsDone = foodItems.isNotEmpty;
@@ -584,12 +581,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             _BottomNav(
               currentStep: _currentStep,
               isLastStep: _currentStep == _kStepCount - 1,
-              allRequiredDone: allRequiredDone ||
+              allRequiredDone:
+                  allRequiredDone ||
                   (profileDone &&
                       routesDone &&
                       _productNameController.text.trim().isNotEmpty &&
                       _productPriceController.text.trim().isNotEmpty),
-              saving: _savingProfile ||
+              saving:
+                  _savingProfile ||
                   _savingRoute ||
                   _savingCustomer ||
                   _savingProduct,
@@ -605,7 +604,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ),
     );
   }
-
 }
 
 // =====================  Stepper header  =====================
@@ -648,9 +646,7 @@ class _StepperHeader extends StatelessWidget {
                       margin: const EdgeInsets.symmetric(horizontal: 2),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(2),
-                        color: reached
-                            ? AppColors.success
-                            : AppColors.border,
+                        color: reached ? AppColors.success : AppColors.border,
                       ),
                     ),
                   );
@@ -682,9 +678,7 @@ class _StepperHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11.5,
-                    fontWeight: isActive
-                        ? FontWeight.w900
-                        : FontWeight.w700,
+                    fontWeight: isActive ? FontWeight.w900 : FontWeight.w700,
                     color: isActive
                         ? AppColors.primary
                         : (isCompleted
@@ -763,11 +757,7 @@ class _StepDot extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: isCompleted
-                ? const Icon(
-                    Icons.check_rounded,
-                    size: 14,
-                    color: Colors.white,
-                  )
+                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
                 : Text(
                     '${index + 1}',
                     style: TextStyle(
@@ -873,19 +863,13 @@ class _BusinessStepPage extends StatelessWidget {
     required this.saving,
   });
 
-  InputDecoration _decoration({
-    required String hint,
-    required IconData icon,
-  }) {
+  InputDecoration _decoration({required String hint, required IconData icon}) {
     return InputDecoration(
       hintText: hint,
       prefixIcon: Icon(icon, size: 20),
       filled: true,
       fillColor: AppColors.surface,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 14,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: AppColors.border),
@@ -896,10 +880,7 @@ class _BusinessStepPage extends StatelessWidget {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: AppColors.primary,
-          width: 1.6,
-        ),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
       ),
     );
   }
@@ -1066,10 +1047,7 @@ InputDecoration _formDecoration({
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(
-        color: AppColors.primary,
-        width: 1.6,
-      ),
+      borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
     ),
   );
 }
@@ -1193,8 +1171,7 @@ class _ProductsStepPage extends ConsumerWidget {
           TextField(
             controller: priceController,
             enabled: !saving,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.done,
             decoration: _formDecoration(
               hint: 'e.g. 25.00',
@@ -1327,9 +1304,7 @@ class _BottomNav extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.backgroundPrimary,
-        border: Border(
-          top: BorderSide(color: AppColors.divider, width: 1),
-        ),
+        border: Border(top: BorderSide(color: AppColors.divider, width: 1)),
       ),
       child: SafeArea(
         top: false,
@@ -1384,11 +1359,7 @@ class _CircleIconButton extends StatelessWidget {
           child: SizedBox(
             width: 52,
             height: 52,
-            child: Icon(
-              icon,
-              color: AppColors.textPrimary,
-              size: 20,
-            ),
+            child: Icon(icon, color: AppColors.textPrimary, size: 20),
           ),
         ),
       ),
@@ -1420,10 +1391,7 @@ class _PrimaryButton extends StatelessWidget {
               ? const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.success,
-                    Color(0xFF047857),
-                  ],
+                  colors: [AppColors.success, Color(0xFF047857)],
                 )
               : const LinearGradient(
                   begin: Alignment.topLeft,
@@ -1445,9 +1413,7 @@ class _PrimaryButton extends StatelessWidget {
           boxShadow: enabled
               ? [
                   BoxShadow(
-                    color: (isSuccess
-                            ? AppColors.success
-                            : AppColors.primary)
+                    color: (isSuccess ? AppColors.success : AppColors.primary)
                         .withValues(alpha: 0.28),
                     blurRadius: 14,
                     offset: const Offset(0, 6),
@@ -1475,18 +1441,14 @@ class _PrimaryButton extends StatelessWidget {
                 else
                   Icon(
                     icon,
-                    color: enabled
-                        ? Colors.white
-                        : AppColors.textSecondary,
+                    color: enabled ? Colors.white : AppColors.textSecondary,
                     size: 18,
                   ),
                 const SizedBox(width: 10),
                 Text(
                   label,
                   style: TextStyle(
-                    color: enabled
-                        ? Colors.white
-                        : AppColors.textSecondary,
+                    color: enabled ? Colors.white : AppColors.textSecondary,
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.2,
@@ -1615,7 +1577,9 @@ class _SetupCompleteDialogState extends State<_SetupCompleteDialog>
               ),
               const SizedBox(height: 20),
               Text(
-                hasName ? "You're all set, $ownerFirstName!" : "You're all set!",
+                hasName
+                    ? "You're all set, $ownerFirstName!"
+                    : "You're all set!",
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 22,

@@ -5,13 +5,10 @@ import 'package:video_player/video_player.dart';
 import 'splash_constants.dart';
 import 'splash_screen_coded.dart';
 
-/// Plays the reference launcher video (`delivero-launcher.mp4`) full-screen.
+/// Plays the reference launcher video (`delivero-new.mp4`) full-screen.
 /// Falls back to the coded SVG animation if the asset fails to load.
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({
-    super.key,
-    required this.onAnimationComplete,
-  });
+  const SplashScreen({super.key, required this.onAnimationComplete});
 
   final VoidCallback onAnimationComplete;
 
@@ -64,9 +61,11 @@ class _SplashScreenState extends State<SplashScreen> {
     final value = controller.value;
     if (!value.isInitialized) return;
 
-    final finished = value.isCompleted ||
+    final finished =
+        value.isCompleted ||
         (value.duration > Duration.zero &&
-            value.position >= value.duration - const Duration(milliseconds: 120));
+            value.position >=
+                value.duration - const Duration(milliseconds: 120));
 
     if (finished) {
       _notifyComplete();

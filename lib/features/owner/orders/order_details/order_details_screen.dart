@@ -83,8 +83,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     }
 
     final resolved = ResolvedOrderDetail.compute(order, routes, customers);
-    final paymentColor =
-        orderDetailPaymentColor(resolved.paymentStatus);
+    final paymentColor = orderDetailPaymentColor(resolved.paymentStatus);
     final statusBg = orderDetailStatusBg(order.status);
     final statusFg = orderDetailStatusFg(order.status);
 
@@ -107,8 +106,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       _lastServerPaymentStatus = serverStatus;
       _lastServerPaymentMethod = serverMethod;
       _lastServerAmountPaid = serverAmount;
-      _partialAmountController.text = serverStatus == PaymentStatus.partial &&
-              (serverAmount ?? 0) > 0
+      _partialAmountController.text =
+          serverStatus == PaymentStatus.partial && (serverAmount ?? 0) > 0
           ? serverAmount!.toStringAsFixed(0)
           : '';
     }
@@ -116,8 +115,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
             PaymentStatus.partial &&
         _partialAmountController.text.trim().isEmpty) {
       final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
-      _partialAmountController.text =
-          seed == 0 ? '' : seed.toStringAsFixed(0);
+      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
     }
 
     return Scaffold(
@@ -129,8 +127,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
             child: Padding(
               padding: const EdgeInsets.only(right: 4),
               child: OrderDetailPillBadge(
-                label: orderDetailHumanize(resolved.paymentStatus.name)
-                    .toUpperCase(),
+                label: orderDetailHumanize(
+                  resolved.paymentStatus.name,
+                ).toUpperCase(),
                 background: paymentColor == AppColors.error
                     ? AppColors.errorLighter.withValues(alpha: 0.68)
                     : paymentColor.withValues(alpha: 0.096),
@@ -155,7 +154,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
               }
             },
             itemBuilder: (context) {
-              final canEdit = order.status != OrderStatus.delivered &&
+              final canEdit =
+                  order.status != OrderStatus.delivered &&
                   order.status != OrderStatus.cancelled;
               return [
                 if (canEdit)
@@ -204,8 +204,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                       },
                 onViewCustomer: order.customerId.trim().isEmpty
                     ? null
-                    : () => context.push(
-                        '/owner/customers/${order.customerId}'),
+                    : () =>
+                          context.push('/owner/customers/${order.customerId}'),
               ),
               const SizedBox(height: 24),
               OrderDetailSectionHeader(
@@ -237,10 +237,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                 deliveryFee: resolved.deliveryFee,
                 effectivePaid: resolved.effectivePaid,
                 balanceDue: resolved.balanceDue,
-                draftPaymentStatus:
-                    _draftPaymentStatus ?? PaymentStatus.unpaid,
-                draftPaymentMethod:
-                    _draftPaymentMethod ?? PaymentMethod.cash,
+                draftPaymentStatus: _draftPaymentStatus ?? PaymentStatus.unpaid,
+                draftPaymentMethod: _draftPaymentMethod ?? PaymentMethod.cash,
                 partialAmountController: _partialAmountController,
                 draftAmountPaid: _draftAmountPaid,
                 onDraftPaymentStatusChanged: (v) => setState(() {
@@ -301,15 +299,16 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                 onOpenMaps: order.customerAddress.trim().isEmpty
                     ? null
                     : () => _openMaps(context, order.customerAddress),
-                onCancelOrder: (order.status == OrderStatus.cancelled ||
+                onCancelOrder:
+                    (order.status == OrderStatus.cancelled ||
                         order.status == OrderStatus.delivered)
                     ? null
                     : () => _confirmCancelOrder(context, ref, order),
               ),
               const SizedBox(height: 10),
               SizedBox(height: MediaQuery.paddingOf(context).bottom),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );
@@ -354,10 +353,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       return;
     }
     final uri = Uri(scheme: 'tel', path: digits);
-    final ok = await launchUrl(
-      uri,
-      mode: LaunchMode.externalApplication,
-    );
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -404,9 +400,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'Order is now ${orderDetailHumanize(newStatus.name)}',
-        ),
+        content: Text('Order is now ${orderDetailHumanize(newStatus.name)}'),
         behavior: SnackBarBehavior.floating,
         backgroundColor: orderDetailStatusAccent(newStatus),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -414,11 +408,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     );
   }
 
-  void _confirmCancelOrder(
-    BuildContext context,
-    WidgetRef ref,
-    Order order,
-  ) {
+  void _confirmCancelOrder(BuildContext context, WidgetRef ref, Order order) {
     if (order.status == OrderStatus.cancelled) return;
     showDialog<void>(
       context: context,
@@ -445,12 +435,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _handleStatusChange(
-                context,
-                ref,
-                order,
-                OrderStatus.cancelled,
-              );
+              _handleStatusChange(context, ref, order, OrderStatus.cancelled);
             },
             child: const Text(
               'Cancel order',

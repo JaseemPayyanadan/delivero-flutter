@@ -437,9 +437,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: AppColors.primary,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppColors.primary),
           ),
           child: child!,
         );
@@ -582,7 +582,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             .where((e) => e.value > 0)
             .map((e) {
               final foodItemId = foodItemIdFromLineKey(e.key);
-              final item = foodItems.firstWhereOrNull((f) => f.id == foodItemId);
+              final item = foodItems.firstWhereOrNull(
+                (f) => f.id == foodItemId,
+              );
               if (item == null) return null;
               return (
                 lineKey: e.key,
@@ -591,12 +593,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 packLabel: packLabelFromLineKey(e.key),
               );
             })
-            .whereType<({
-              String lineKey,
-              FoodItem item,
-              int qty,
-              String? packLabel,
-            })>()
+            .whereType<
+              ({String lineKey, FoodItem item, int qty, String? packLabel})
+            >()
             .toList()
           ..sort((a, b) => a.item.name.compareTo(b.item.name));
 
@@ -606,8 +605,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           name: line.item.name,
           quantity: line.qty,
           unitPrice: _effectiveUnitPriceForLine(line.lineKey, line.item),
-          lineTotal: _effectiveUnitPriceForLine(line.lineKey, line.item) *
-              line.qty,
+          lineTotal:
+              _effectiveUnitPriceForLine(line.lineKey, line.item) * line.qty,
           isCustomRate: _customUnitPrices.containsKey(line.lineKey),
           unit: line.item.unit,
         ),
@@ -624,8 +623,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         : newLines;
     final reportTotal = reportLines.fold(0.0, (s, l) => s + l.lineTotal);
     final reportLineCount = reportLines.length;
-    final reportUnitCount =
-        reportLines.fold(0, (s, l) => s + l.quantity);
+    final reportUnitCount = reportLines.fold(0, (s, l) => s + l.quantity);
 
     final orderTypeLabel = switch (_orderType) {
       OrderType.daily => 'Daily order',
@@ -703,7 +701,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             OutlinedButton.icon(
               onPressed: _isSubmitting
                   ? null
-                  : () => _submitOrder(popOnSuccess: false, splitAfterSave: true),
+                  : () =>
+                        _submitOrder(popOnSuccess: false, splitAfterSave: true),
               icon: const Icon(Icons.call_split_rounded, size: 18),
               label: const Text(
                 'Save & add another order',
@@ -1396,7 +1395,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             .where((e) => e.value > 0)
             .map((e) {
               final foodItemId = foodItemIdFromLineKey(e.key);
-              final item = foodItems.firstWhereOrNull((f) => f.id == foodItemId);
+              final item = foodItems.firstWhereOrNull(
+                (f) => f.id == foodItemId,
+              );
               if (item == null) return null;
               return (
                 lineKey: e.key,
@@ -1405,12 +1406,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 packLabel: packLabelFromLineKey(e.key),
               );
             })
-            .whereType<({
-              String lineKey,
-              FoodItem item,
-              int qty,
-              String? packLabel,
-            })>()
+            .whereType<
+              ({String lineKey, FoodItem item, int qty, String? packLabel})
+            >()
             .toList()
           ..sort((a, b) => a.item.name.compareTo(b.item.name));
 
@@ -1516,10 +1514,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   _selectedItems[line.lineKey] = safe;
                 }
               }),
-              onCustomPrice: () => _showCustomPriceDialog(
-                line.item,
-                lineKey: line.lineKey,
-              ),
+              onCustomPrice: () =>
+                  _showCustomPriceDialog(line.item, lineKey: line.lineKey),
               onDec: () {
                 if (line.qty <= 0) return;
                 setState(() {
@@ -1558,11 +1554,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           padding:
-              padding ?? const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding ??
+              const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
-            color: selected
-                ? AppColors.primary
-                : AppColors.backgroundSecondary,
+            color: selected ? AppColors.primary : AppColors.backgroundSecondary,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: selected ? Colors.transparent : AppColors.border,
@@ -1725,10 +1720,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
-  void _submitOrder({
-    bool popOnSuccess = true,
-    bool splitAfterSave = false,
-  }) {
+  void _submitOrder({bool popOnSuccess = true, bool splitAfterSave = false}) {
     if (_isSubmitting) return;
     if (splitAfterSave) {
       _createSeparateOrder = true;
@@ -1837,11 +1829,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final route = widget.forDriver
         ? RouteRefs.routeForRef(driverRouteId, routes)
         : RouteRefs.routeForRef(_selectedCustomer!.assignedRoute, routes);
-    final normalizedRouteId = route?.id ??
+    final normalizedRouteId =
+        route?.id ??
         RouteRefs.routeIdForRef(
-          widget.forDriver
-              ? driverRouteId
-              : _selectedCustomer!.assignedRoute,
+          widget.forDriver ? driverRouteId : _selectedCustomer!.assignedRoute,
           routes,
         );
     final assignedDriver = widget.forDriver ? driverId : route?.assignedDriver;

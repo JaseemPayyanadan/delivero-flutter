@@ -40,9 +40,7 @@ class DashboardHeroBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: kDashboardHeroGradient,
-      ),
+      decoration: BoxDecoration(gradient: kDashboardHeroGradient),
     );
   }
 }

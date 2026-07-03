@@ -118,8 +118,8 @@ class _DriverOrderDetailsScreenState
       _lastServerPaymentStatus = serverStatus;
       _lastServerPaymentMethod = serverMethod;
       _lastServerAmountPaid = serverAmount;
-      _partialAmountController.text = serverStatus == PaymentStatus.partial &&
-              (serverAmount ?? 0) > 0
+      _partialAmountController.text =
+          serverStatus == PaymentStatus.partial && (serverAmount ?? 0) > 0
           ? serverAmount!.toStringAsFixed(0)
           : '';
     }

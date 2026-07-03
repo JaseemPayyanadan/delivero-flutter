@@ -12,6 +12,7 @@ class SplashCity extends StatelessWidget {
   });
 
   final double opacity;
+
   /// 0 = resting position, 1 = fully slid up from below.
   final double slideOffset;
 

@@ -63,25 +63,25 @@ class DeliveroButton extends StatelessWidget {
     final minWidth = isFullWidth ? double.infinity : 0.0;
     final buttonHeight = height ?? 48;
 
-    final buttonStyle = FilledButton.styleFrom(
-      backgroundColor: backgroundColor ?? AppColors.primary,
-      foregroundColor: foregroundColor ?? theme.colorScheme.onPrimary,
-      minimumSize: Size(minWidth, buttonHeight),
-      padding: EdgeInsets.symmetric(
-        vertical: 12,
-        horizontal: isFullWidth ? 20 : 28,
-      ),
-      tapTargetSize:
-          isFullWidth ? null : MaterialTapTargetSize.shrinkWrap,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(borderRadius),
-      ),
-      elevation: 0,
-    ).merge(
-      ButtonStyle(
-        minimumSize: WidgetStateProperty.all(Size(minWidth, buttonHeight)),
-      ),
-    );
+    final buttonStyle =
+        FilledButton.styleFrom(
+          backgroundColor: backgroundColor ?? AppColors.primary,
+          foregroundColor: foregroundColor ?? theme.colorScheme.onPrimary,
+          minimumSize: Size(minWidth, buttonHeight),
+          padding: EdgeInsets.symmetric(
+            vertical: 12,
+            horizontal: isFullWidth ? 20 : 28,
+          ),
+          tapTargetSize: isFullWidth ? null : MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+          ),
+          elevation: 0,
+        ).merge(
+          ButtonStyle(
+            minimumSize: WidgetStateProperty.all(Size(minWidth, buttonHeight)),
+          ),
+        );
 
     Widget button = FilledButton(
       onPressed: isLoading || onPressed == null

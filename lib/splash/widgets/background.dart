@@ -4,10 +4,7 @@ import '../splash_constants.dart';
 
 /// White-to-soft-green gradient background driven by [greenFade] (0–1).
 class SplashBackground extends StatelessWidget {
-  const SplashBackground({
-    super.key,
-    required this.greenFade,
-  });
+  const SplashBackground({super.key, required this.greenFade});
 
   final double greenFade;
 

@@ -10,8 +10,7 @@ class DebouncedRefresh {
 
   Future<void> run(Future<void> Function() action) async {
     final now = DateTime.now();
-    if (_lastRefreshAt != null &&
-        now.difference(_lastRefreshAt!) < cooldown) {
+    if (_lastRefreshAt != null && now.difference(_lastRefreshAt!) < cooldown) {
       return _inFlight ?? Future.value();
     }
 

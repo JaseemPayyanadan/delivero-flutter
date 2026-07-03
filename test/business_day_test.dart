@@ -1,5 +1,4 @@
 import 'package:delivero/core/orders/business_day.dart';
-import 'package:delivero/data/models/order.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers/production_test_data.dart';
@@ -27,9 +26,7 @@ void main() {
 
   group('canModifyOrderItems', () {
     test('blocks editing pre-7 AM order after today\'s 7 AM', () {
-      final order = productionTestOrder(
-        orderDate: DateTime(2025, 6, 20, 6),
-      );
+      final order = productionTestOrder(orderDate: DateTime(2025, 6, 20, 6));
       expect(
         canModifyOrderItems(
           order,
@@ -41,9 +38,7 @@ void main() {
     });
 
     test('allows editing order placed after 7 AM same day', () {
-      final order = productionTestOrder(
-        orderDate: DateTime(2025, 6, 20, 8),
-      );
+      final order = productionTestOrder(orderDate: DateTime(2025, 6, 20, 8));
       expect(
         canModifyOrderItems(
           order,
