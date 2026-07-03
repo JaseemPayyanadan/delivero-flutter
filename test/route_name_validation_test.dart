@@ -34,7 +34,10 @@ void main() {
 
     test('rejects names over max length', () {
       expect(
-        validateRouteName('a' * (kRouteNameMaxLength + 1), existingRoutes: routes),
+        validateRouteName(
+          'a' * (kRouteNameMaxLength + 1),
+          existingRoutes: routes,
+        ),
         'Route name must be $kRouteNameMaxLength characters or fewer.',
       );
     });

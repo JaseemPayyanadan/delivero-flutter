@@ -41,11 +41,7 @@ String buildReportsCsv({
   row(['Daily sales']);
   row(['Date', 'Orders', 'Amount']);
   for (final day in reports.dailySales) {
-    row([
-      df.format(day.date),
-      '${day.count}',
-      money.format(day.amount),
-    ]);
+    row([df.format(day.date), '${day.count}', money.format(day.amount)]);
   }
   row([]);
 
@@ -54,11 +50,7 @@ String buildReportsCsv({
   final products = reports.productSales.values.toList()
     ..sort((a, b) => b.revenue.compareTo(a.revenue));
   for (final product in products) {
-    row([
-      product.name,
-      '${product.quantity}',
-      money.format(product.revenue),
-    ]);
+    row([product.name, '${product.quantity}', money.format(product.revenue)]);
   }
   row([]);
 
@@ -84,7 +76,11 @@ Future<Uint8List> buildReportsPdfBytes({
 }) async {
   final doc = pw.Document();
   final df = DateFormat('MMM d, yyyy');
-  final money = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+  final money = NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: '₹',
+    decimalDigits: 0,
+  );
   final products = reports.productSales.values.toList()
     ..sort((a, b) => b.revenue.compareTo(a.revenue));
   final customers = reports.customerRevenue.values.toList()
@@ -98,10 +94,7 @@ Future<Uint8List> buildReportsPdfBytes({
         return [
           pw.Text(
             'Insights report',
-            style: pw.TextStyle(
-              fontSize: 18,
-              fontWeight: pw.FontWeight.bold,
-            ),
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 6),
           pw.Text(
@@ -113,7 +106,7 @@ Future<Uint8List> buildReportsPdfBytes({
             style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
           ),
           pw.SizedBox(height: 16),
-          pw.Table.fromTextArray(
+          pw.TableHelper.fromTextArray(
             headers: ['Metric', 'Value'],
             data: [
               ['Paid sales', money.format(reports.totalRevenue)],
@@ -125,8 +118,7 @@ Future<Uint8List> buildReportsPdfBytes({
             ],
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
             cellStyle: const pw.TextStyle(fontSize: 10),
-            headerDecoration:
-                const pw.BoxDecoration(color: PdfColors.grey200),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
             cellHeight: 24,
           ),
           pw.SizedBox(height: 18),
@@ -138,16 +130,12 @@ Future<Uint8List> buildReportsPdfBytes({
           if (products.isEmpty)
             pw.Text('No product data in range.')
           else
-            pw.Table.fromTextArray(
+            pw.TableHelper.fromTextArray(
               headers: ['Product', 'Qty', 'Revenue'],
               data: products
                   .take(15)
                   .map(
-                    (p) => [
-                      p.name,
-                      '${p.quantity}',
-                      money.format(p.revenue),
-                    ],
+                    (p) => [p.name, '${p.quantity}', money.format(p.revenue)],
                   )
                   .toList(),
               cellStyle: const pw.TextStyle(fontSize: 10),
@@ -162,16 +150,12 @@ Future<Uint8List> buildReportsPdfBytes({
           if (customers.isEmpty)
             pw.Text('No customer data in range.')
           else
-            pw.Table.fromTextArray(
+            pw.TableHelper.fromTextArray(
               headers: ['Customer', 'Orders', 'Revenue'],
               data: customers
                   .take(15)
                   .map(
-                    (c) => [
-                      c.name,
-                      '${c.orderCount}',
-                      money.format(c.revenue),
-                    ],
+                    (c) => [c.name, '${c.orderCount}', money.format(c.revenue)],
                   )
                   .toList(),
               cellStyle: const pw.TextStyle(fontSize: 10),

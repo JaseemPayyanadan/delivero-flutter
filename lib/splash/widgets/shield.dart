@@ -33,8 +33,9 @@ class SplashShield extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: const Color(SplashConstants.shieldGreen)
-                    .withValues(alpha: 0.35 * glowStrength),
+                color: const Color(
+                  SplashConstants.shieldGreen,
+                ).withValues(alpha: 0.35 * glowStrength),
                 blurRadius: 24 * glowStrength,
                 spreadRadius: 4 * glowStrength,
               ),

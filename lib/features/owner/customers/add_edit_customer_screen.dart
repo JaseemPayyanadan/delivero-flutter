@@ -61,8 +61,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     _phoneController.text = customer.phone;
     _addressController.text = customer.address;
     final discount = customer.discountPercentage;
-    _discountController.text =
-        (discount != null && discount > 0) ? discount.toString() : '';
+    _discountController.text = (discount != null && discount > 0)
+        ? discount.toString()
+        : '';
 
     final routes = ref.read(routesProvider);
     final route = RouteRefs.routeForRef(customer.assignedRoute, routes);
@@ -312,192 +313,194 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     return UnsavedChangesGuard(
       hasUnsavedChanges: _hasUnsavedChanges,
       child: Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          DeliveroSliverHeader(
-            title: _isEditMode ? 'Edit customer' : 'Add customer',
-            expandedHeight: 120,
-            floating: true,
-            pinned: true,
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_isEditMode) ...[
-                      _buildCustomerDetailsCard(routes),
-                      const SizedBox(height: 28),
+        backgroundColor: AppColors.backgroundPrimary,
+        body: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            DeliveroSliverHeader(
+              title: _isEditMode ? 'Edit customer' : 'Add customer',
+              expandedHeight: 120,
+              floating: true,
+              pinned: true,
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_isEditMode) ...[
+                        _buildCustomerDetailsCard(routes),
+                        const SizedBox(height: 28),
+                      ],
+                      _buildSectionHeader('Basics'),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        'Business name',
+                        _nameController,
+                        Icons.business_rounded,
+                        hint: 'e.g. Grand Plaza Hotel',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        'Owner or manager',
+                        _ownerNameController,
+                        Icons.person_pin_rounded,
+                        hint: 'e.g. John Smith',
+                        requiredField: false,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        'Phone',
+                        _phoneController,
+                        Icons.phone_iphone_rounded,
+                        keyboardType: TextInputType.phone,
+                        hint: '+91 00000 00000',
+                        requiredField: false,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        'Delivery address',
+                        _addressController,
+                        Icons.location_on_rounded,
+                        hint: 'e.g. 12, MG Road, Bangalore',
+                        requiredField: false,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        'Discount (%)',
+                        _discountController,
+                        Icons.discount_rounded,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        hint: '0',
+                        requiredField: false,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return null;
+                          final d = double.tryParse(v.trim());
+                          if (d == null) return 'Enter a number';
+                          if (d < 0 || d > 100) return '0–100 only';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader('Delivery route'),
+                      const SizedBox(height: 16),
+                      _buildRouteDropdown(routes),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader('Products & prices'),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Select products, then set quantity and price if it differs from the list.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary.withValues(
+                            alpha: 0.95,
+                          ),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildProductList(foodItems),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader('Status'),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Active customer',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    _isActive
+                                        ? 'Daily orders will be recreated for this customer.'
+                                        : 'Inactive — daily orders will not be recreated.',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textSecondary,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Switch.adaptive(
+                              value: _isActive,
+                              onChanged: (v) => setState(() => _isActive = v),
+                              activeThumbColor: AppColors.primary,
+                              activeTrackColor: AppColors.primary.withValues(
+                                alpha: 0.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                    _buildSectionHeader('Basics'),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      'Business name',
-                      _nameController,
-                      Icons.business_rounded,
-                      hint: 'e.g. Grand Plaza Hotel',
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      'Owner or manager',
-                      _ownerNameController,
-                      Icons.person_pin_rounded,
-                      hint: 'e.g. John Smith',
-                      requiredField: false,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      'Phone',
-                      _phoneController,
-                      Icons.phone_iphone_rounded,
-                      keyboardType: TextInputType.phone,
-                      hint: '+91 00000 00000',
-                      requiredField: false,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      'Delivery address',
-                      _addressController,
-                      Icons.location_on_rounded,
-                      hint: 'e.g. 12, MG Road, Bangalore',
-                      requiredField: false,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      'Discount (%)',
-                      _discountController,
-                      Icons.discount_rounded,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      hint: '0',
-                      requiredField: false,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) return null;
-                        final d = double.tryParse(v.trim());
-                        if (d == null) return 'Enter a number';
-                        if (d < 0 || d > 100) return '0–100 only';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader('Delivery route'),
-                    const SizedBox(height: 16),
-                    _buildRouteDropdown(routes),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader('Products & prices'),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Select products, then set quantity and price if it differs from the list.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary.withValues(alpha: 0.95),
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildProductList(foodItems),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader('Status'),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Active customer',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  _isActive
-                                      ? 'Daily orders will be recreated for this customer.'
-                                      : 'Inactive — daily orders will not be recreated.',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textSecondary,
-                                    height: 1.35,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Switch.adaptive(
-                            value: _isActive,
-                            onChanged: (v) => setState(() => _isActive = v),
-                            activeThumbColor: AppColors.primary,
-                            activeTrackColor: AppColors.primary.withValues(
-                              alpha: 0.35,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: const Border(top: BorderSide(color: AppColors.border)),
+          ],
         ),
-        child: ElevatedButton(
-          onPressed: () {
-            try {
-              HapticFeedback.heavyImpact();
-            } catch (_) {}
-            _onSave();
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 8,
-            shadowColor: AppColors.primary.withValues(alpha: 0.4),
+        bottomNavigationBar: Container(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: const Border(top: BorderSide(color: AppColors.border)),
           ),
-          child: Text(
-            _isEditMode ? 'Save changes' : 'Add customer',
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              color: Theme.of(context).colorScheme.onPrimary,
-              letterSpacing: 1,
-              fontSize: 14,
+          child: ElevatedButton(
+            onPressed: () {
+              try {
+                HapticFeedback.heavyImpact();
+              } catch (_) {}
+              _onSave();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 8,
+              shadowColor: AppColors.primary.withValues(alpha: 0.4),
+            ),
+            child: Text(
+              _isEditMode ? 'Save changes' : 'Add customer',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: Theme.of(context).colorScheme.onPrimary,
+                letterSpacing: 1,
+                fontSize: 14,
+              ),
             ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -628,7 +631,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      validator: validator ??
+      validator:
+          validator ??
           (requiredField
               ? (value) => (value == null || value.isEmpty)
                     ? 'This field is required'

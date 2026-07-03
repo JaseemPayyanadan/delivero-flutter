@@ -63,7 +63,11 @@ class ProductionSummaryScope {
   });
 }
 
-bool _orderMatchesRoute(Order order, String? routeId, List<DeliveryRoute> routes) {
+bool _orderMatchesRoute(
+  Order order,
+  String? routeId,
+  List<DeliveryRoute> routes,
+) {
   if (routeId == null || routeId.trim().isEmpty) return true;
   final resolved = RouteRefs.routeIdForRef(order.assignedRoute, routes);
   return resolved == routeId.trim();
@@ -127,22 +131,24 @@ ProductionSummary buildProductionSummary(
     }
   }
 
-  final lines = lineMap.values
-      .map(
-        (acc) => ProductionLineSummary(
-          productName: acc.productName,
-          foodItemId: acc.foodItemId,
-          unit: acc.unit,
-          totalUnits: acc.totalUnits,
-          orderLineCount: acc.orderLineCount,
-          packBreakdown: Map.unmodifiable(acc.packBreakdown),
-        ),
-      )
-      .toList()
-    ..sort(
-      (a, b) =>
-          a.productName.toLowerCase().compareTo(b.productName.toLowerCase()),
-    );
+  final lines =
+      lineMap.values
+          .map(
+            (acc) => ProductionLineSummary(
+              productName: acc.productName,
+              foodItemId: acc.foodItemId,
+              unit: acc.unit,
+              totalUnits: acc.totalUnits,
+              orderLineCount: acc.orderLineCount,
+              packBreakdown: Map.unmodifiable(acc.packBreakdown),
+            ),
+          )
+          .toList()
+        ..sort(
+          (a, b) => a.productName.toLowerCase().compareTo(
+            b.productName.toLowerCase(),
+          ),
+        );
 
   final totalUnits = lines.fold<int>(0, (sum, line) => sum + line.totalUnits);
 
@@ -165,7 +171,11 @@ class _LineAccumulator {
   int orderLineCount = 0;
   final Map<int, int> packBreakdown = {};
 
-  _LineAccumulator({required this.productName, this.foodItemId, this.unit = ProductUnit.quantity});
+  _LineAccumulator({
+    required this.productName,
+    this.foodItemId,
+    this.unit = ProductUnit.quantity,
+  });
 }
 
 /// One row per pack size, largest quantity first (e.g. "5 × 20 units").
@@ -176,9 +186,7 @@ List<String> formatPackBreakdownLines(
   if (packBreakdown.isEmpty) return const [];
   final entries = packBreakdown.entries.toList()
     ..sort((a, b) => b.key.compareTo(a.key));
-  return [
-    for (final e in entries) '${e.value} × ${e.key} $word',
-  ];
+  return [for (final e in entries) '${e.value} × ${e.key} $word'];
 }
 
 String formatProductionLine(ProductionLineSummary line) {

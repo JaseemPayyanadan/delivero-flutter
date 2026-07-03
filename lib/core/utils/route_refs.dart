@@ -9,10 +9,7 @@ import '../../data/models/delivery_route.dart';
 abstract final class RouteRefs {
   RouteRefs._();
 
-  static DeliveryRoute? routeForRef(
-    String? ref,
-    List<DeliveryRoute> routes,
-  ) {
+  static DeliveryRoute? routeForRef(String? ref, List<DeliveryRoute> routes) {
     final key = ref?.trim();
     if (key == null || key.isEmpty) return null;
     return routes.firstWhereOrNull(

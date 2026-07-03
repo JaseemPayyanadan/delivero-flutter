@@ -107,9 +107,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
         ),
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.success,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -208,10 +206,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
                   value: effectivePaid,
                 ),
                 const SizedBox(height: 10),
-                OrderDetailSummaryRow(
-                  label: 'Balance Due',
-                  value: balanceDue,
-                ),
+                OrderDetailSummaryRow(label: 'Balance Due', value: balanceDue),
               ],
               if (order.paymentTime != null &&
                   order.paymentStatus != PaymentStatus.unpaid) ...[
@@ -229,9 +224,9 @@ class OrderDetailPaymentSection extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      DateFormat('d MMM yyyy · HH:mm').format(
-                        order.paymentTime!,
-                      ),
+                      DateFormat(
+                        'd MMM yyyy · HH:mm',
+                      ).format(order.paymentTime!),
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
@@ -393,9 +388,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
                               onPressed: onResetPaymentDrafts,
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.textSecondary,
-                                side: const BorderSide(
-                                  color: AppColors.border,
-                                ),
+                                side: const BorderSide(color: AppColors.border),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 10,
                                 ),
@@ -417,8 +410,9 @@ class OrderDetailPaymentSection extends StatelessWidget {
                               onPressed: () => _onApply(context),
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppColors.primary,
-                                foregroundColor:
-                                    Theme.of(context).colorScheme.onPrimary,
+                                foregroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.onPrimary,
                                 elevation: 0,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 10,
@@ -450,9 +444,9 @@ class OrderDetailPaymentSection extends StatelessWidget {
 }
 
 IconData _methodIcon(PaymentMethod? method) => switch (method) {
-      PaymentMethod.cash => Icons.payments_rounded,
-      PaymentMethod.upi => Icons.qr_code_rounded,
-      PaymentMethod.card => Icons.credit_card_rounded,
-      PaymentMethod.online => Icons.language_rounded,
-      null => Icons.payments_rounded,
-    };
+  PaymentMethod.cash => Icons.payments_rounded,
+  PaymentMethod.upi => Icons.qr_code_rounded,
+  PaymentMethod.card => Icons.credit_card_rounded,
+  PaymentMethod.online => Icons.language_rounded,
+  null => Icons.payments_rounded,
+};

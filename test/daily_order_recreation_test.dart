@@ -59,57 +59,63 @@ void main() {
       expect(created.first.status, OrderStatus.pending);
     });
 
-    test('creates pending order from yesterday delivered daily order', () async {
-      final delivered = productionTestOrder(
-        id: 'src-1',
-        orderDate: day1Morning,
-        status: OrderStatus.delivered,
-      );
-      final created = <Order>[];
+    test(
+      'creates pending order from yesterday delivered daily order',
+      () async {
+        final delivered = productionTestOrder(
+          id: 'src-1',
+          orderDate: day1Morning,
+          status: OrderStatus.delivered,
+        );
+        final created = <Order>[];
 
-      final result = await runBatchForTargetDay(
-        targetBusinessDay: DateTime(2025, 6, 21),
-        orders: [delivered],
-        customers: [activeCustomer()],
-        rolloverHour: rolloverHour,
-        addOrder: created.add,
-      );
+        final result = await runBatchForTargetDay(
+          targetBusinessDay: DateTime(2025, 6, 21),
+          orders: [delivered],
+          customers: [activeCustomer()],
+          rolloverHour: rolloverHour,
+          addOrder: created.add,
+        );
 
-      expect(result.createdCount, 1);
-      expect(created, hasLength(1));
-      expect(created.first.status, OrderStatus.pending);
-      expect(created.first.recreatedFromOrderId, 'src-1');
-      expect(created.first.paymentStatus, PaymentStatus.unpaid);
-      expect(
-        businessDayKey(created.first.orderDate, rolloverHour: rolloverHour),
-        DateTime(2025, 6, 21),
-      );
-    });
+        expect(result.createdCount, 1);
+        expect(created, hasLength(1));
+        expect(created.first.status, OrderStatus.pending);
+        expect(created.first.recreatedFromOrderId, 'src-1');
+        expect(created.first.paymentStatus, PaymentStatus.unpaid);
+        expect(
+          businessDayKey(created.first.orderDate, rolloverHour: rolloverHour),
+          DateTime(2025, 6, 21),
+        );
+      },
+    );
 
-    test('skips when linked pending child already exists for target day', () async {
-      final delivered = productionTestOrder(
-        id: 'src-1',
-        orderDate: day1Morning,
-        status: OrderStatus.delivered,
-      );
-      final existing = productionTestOrder(
-        id: 'existing',
-        orderDate: day2Morning,
-        status: OrderStatus.pending,
-      ).copyWith(recreatedFromOrderId: 'src-1');
-      final created = <Order>[];
+    test(
+      'skips when linked pending child already exists for target day',
+      () async {
+        final delivered = productionTestOrder(
+          id: 'src-1',
+          orderDate: day1Morning,
+          status: OrderStatus.delivered,
+        );
+        final existing = productionTestOrder(
+          id: 'existing',
+          orderDate: day2Morning,
+          status: OrderStatus.pending,
+        ).copyWith(recreatedFromOrderId: 'src-1');
+        final created = <Order>[];
 
-      final result = await runBatchForTargetDay(
-        targetBusinessDay: DateTime(2025, 6, 21),
-        orders: [delivered, existing],
-        customers: [activeCustomer()],
-        rolloverHour: rolloverHour,
-        addOrder: created.add,
-      );
+        final result = await runBatchForTargetDay(
+          targetBusinessDay: DateTime(2025, 6, 21),
+          orders: [delivered, existing],
+          customers: [activeCustomer()],
+          rolloverHour: rolloverHour,
+          addOrder: created.add,
+        );
 
-      expect(result.createdCount, 0);
-      expect(created, isEmpty);
-    });
+        expect(result.createdCount, 0);
+        expect(created, isEmpty);
+      },
+    );
 
     test('recreates each split order same customer and run', () async {
       final box1 = productionTestOrder(
@@ -153,7 +159,10 @@ void main() {
       );
 
       expect(result.createdCount, 2);
-      expect(created.map((o) => o.recreatedFromOrderId).toSet(), {'box-1', 'box-2'});
+      expect(created.map((o) => o.recreatedFromOrderId).toSet(), {
+        'box-1',
+        'box-2',
+      });
       expect(created.every((o) => o.items.first.quantity == 50), isTrue);
     });
 
@@ -177,41 +186,44 @@ void main() {
       expect(created, isEmpty);
     });
 
-    test('skips one-time, special, cancelled, and inactive customers', () async {
-      final oneTime = productionTestOrder(
-        id: 'one-time',
-        orderDate: day1Morning,
-        status: OrderStatus.delivered,
-        orderType: OrderType.oneTime,
-      );
-      final special = productionTestOrder(
-        id: 'special',
-        orderDate: day1Morning,
-        status: OrderStatus.delivered,
-        orderType: OrderType.special,
-      );
-      final cancelled = productionTestOrder(
-        id: 'cancelled',
-        orderDate: day1Morning,
-        status: OrderStatus.cancelled,
-      );
-      final inactive = productionTestOrder(
-        id: 'inactive',
-        orderDate: day1Morning,
-        status: OrderStatus.delivered,
-      ).copyWith(customerId: 'cust-2');
-      final created = <Order>[];
+    test(
+      'skips one-time, special, cancelled, and inactive customers',
+      () async {
+        final oneTime = productionTestOrder(
+          id: 'one-time',
+          orderDate: day1Morning,
+          status: OrderStatus.delivered,
+          orderType: OrderType.oneTime,
+        );
+        final special = productionTestOrder(
+          id: 'special',
+          orderDate: day1Morning,
+          status: OrderStatus.delivered,
+          orderType: OrderType.special,
+        );
+        final cancelled = productionTestOrder(
+          id: 'cancelled',
+          orderDate: day1Morning,
+          status: OrderStatus.cancelled,
+        );
+        final inactive = productionTestOrder(
+          id: 'inactive',
+          orderDate: day1Morning,
+          status: OrderStatus.delivered,
+        ).copyWith(customerId: 'cust-2');
+        final created = <Order>[];
 
-      final result = await runBatchForTargetDay(
-        targetBusinessDay: DateTime(2025, 6, 21),
-        orders: [oneTime, special, cancelled, inactive],
-        customers: [activeCustomer(), inactiveCustomer()],
-        rolloverHour: rolloverHour,
-        addOrder: created.add,
-      );
+        final result = await runBatchForTargetDay(
+          targetBusinessDay: DateTime(2025, 6, 21),
+          orders: [oneTime, special, cancelled, inactive],
+          customers: [activeCustomer(), inactiveCustomer()],
+          rolloverHour: rolloverHour,
+          addOrder: created.add,
+        );
 
-      expect(result.createdCount, 0);
-    });
+        expect(result.createdCount, 0);
+      },
+    );
 
     test('creates separate orders per delivery run', () async {
       final morning = productionTestOrder(
@@ -365,16 +377,17 @@ void main() {
 
   group('ensureRecreatedOrderIsPending', () {
     test('forces pending and clears delivery/payment fields', () {
-      final delivered = productionTestOrder(
-        id: 'src-1',
-        orderDate: day1Morning,
-        status: OrderStatus.delivered,
-      ).copyWith(
-        recreatedFromOrderId: 'parent',
-        paymentStatus: PaymentStatus.paid,
-        deliveryDate: day1Morning,
-        deliveryTime: day1Morning,
-      );
+      final delivered =
+          productionTestOrder(
+            id: 'src-1',
+            orderDate: day1Morning,
+            status: OrderStatus.delivered,
+          ).copyWith(
+            recreatedFromOrderId: 'parent',
+            paymentStatus: PaymentStatus.paid,
+            deliveryDate: day1Morning,
+            deliveryTime: day1Morning,
+          );
 
       final normalized = ensureRecreatedOrderIsPending(delivered);
 

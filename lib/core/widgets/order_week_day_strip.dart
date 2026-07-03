@@ -36,8 +36,7 @@ class _OrderWeekDayStripState extends State<OrderWeekDayStrip> {
 
   void _updateVisibleLeadDate() {
     if (!widget.scrollController.hasClients || _cellWidth <= 0) return;
-    final leadIndex =
-        (widget.scrollController.offset / _cellWidth).round();
+    final leadIndex = (widget.scrollController.offset / _cellWidth).round();
     final lead = dayForIndex(DateTime.now(), leadIndex);
     widget.onVisibleLeadDateChanged?.call(lead);
   }
@@ -92,8 +91,7 @@ class _OrderWeekDayStripState extends State<OrderWeekDayStrip> {
                         isSelected: isSelected,
                         isPast: day.isBefore(todayKey),
                         hasOrders: widget.daysWithOrders.contains(day),
-                        onTap: () =>
-                            widget.onDayTap(day, isSelected),
+                        onTap: () => widget.onDayTap(day, isSelected),
                       ),
                     );
                   },
@@ -187,8 +185,8 @@ class OrderDayStripCell extends StatelessWidget {
               color: isSelected
                   ? AppColors.primary
                   : isToday
-                      ? AppColors.primaryLighter
-                      : Colors.transparent,
+                  ? AppColors.primaryLighter
+                  : Colors.transparent,
               shape: BoxShape.circle,
             ),
             child: Center(

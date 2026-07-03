@@ -39,7 +39,11 @@ DateTime previousBusinessDayKey(
   int rolloverHour = kDefaultBusinessDayRolloverHour,
 }) {
   final key = businessDayKey(reference, rolloverHour: rolloverHour);
-  return DateTime(key.year, key.month, key.day).subtract(const Duration(days: 1));
+  return DateTime(
+    key.year,
+    key.month,
+    key.day,
+  ).subtract(const Duration(days: 1));
 }
 
 /// Next business day key relative to [reference]'s business day.
@@ -97,12 +101,7 @@ DateTime businessDayRolloverAt(
   DateTime reference, {
   int rolloverHour = kDefaultBusinessDayRolloverHour,
 }) {
-  return DateTime(
-    reference.year,
-    reference.month,
-    reference.day,
-    rolloverHour,
-  );
+  return DateTime(reference.year, reference.month, reference.day, rolloverHour);
 }
 
 /// After rollover, orders placed before today's cutoff cannot be merged or edited.

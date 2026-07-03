@@ -6,14 +6,14 @@ void main() {
   final now = DateTime(2025, 1, 1);
 
   FoodItem make(ProductUnit unit) => FoodItem(
-        id: 'f1',
-        factoryId: 'FAC',
-        name: 'Rice',
-        price: 50,
-        unit: unit,
-        createdAt: now,
-        updatedAt: now,
-      );
+    id: 'f1',
+    factoryId: 'FAC',
+    name: 'Rice',
+    price: 50,
+    unit: unit,
+    createdAt: now,
+    updatedAt: now,
+  );
 
   test('defaults to quantity', () {
     final item = FoodItem(

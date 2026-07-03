@@ -59,20 +59,32 @@ void main() {
       expect(result?.id, 'yesterday');
     });
 
-    test('midnight _orderDate converts correctly to business-day timestamp', () {
-      final midnight = DateTime(2026, 6, 21, 0, 0); // hour=0 → would roll back before fix
-      const rolloverHour = 19;
-      final converted = orderDateForBusinessDay(midnight, rolloverHour: rolloverHour);
-      // converted should be June 21 at 19:00 → maps to June 21 business day
-      expect(
-        businessDayKey(converted, rolloverHour: rolloverHour),
-        equals(DateTime(2026, 6, 21)),
-      );
-      // midnight itself would map to June 20 — confirm the bug existed
-      expect(
-        businessDayKey(midnight, rolloverHour: rolloverHour),
-        equals(DateTime(2026, 6, 20)),
-      );
-    });
+    test(
+      'midnight _orderDate converts correctly to business-day timestamp',
+      () {
+        final midnight = DateTime(
+          2026,
+          6,
+          21,
+          0,
+          0,
+        ); // hour=0 → would roll back before fix
+        const rolloverHour = 19;
+        final converted = orderDateForBusinessDay(
+          midnight,
+          rolloverHour: rolloverHour,
+        );
+        // converted should be June 21 at 19:00 → maps to June 21 business day
+        expect(
+          businessDayKey(converted, rolloverHour: rolloverHour),
+          equals(DateTime(2026, 6, 21)),
+        );
+        // midnight itself would map to June 20 — confirm the bug existed
+        expect(
+          businessDayKey(midnight, rolloverHour: rolloverHour),
+          equals(DateTime(2026, 6, 20)),
+        );
+      },
+    );
   });
 }

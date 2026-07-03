@@ -12,10 +12,7 @@ void main() {
   group('filterOrdersForProduction', () {
     test('excludes pre-7 AM orders from same calendar production day', () {
       final orders = [
-        productionTestOrder(
-          id: 'early',
-          orderDate: DateTime(2025, 6, 20, 6),
-        ),
+        productionTestOrder(id: 'early', orderDate: DateTime(2025, 6, 20, 6)),
         productionTestOrder(
           id: 'after-seven',
           orderDate: DateTime(2025, 6, 20, 8),
@@ -23,11 +20,7 @@ void main() {
       ];
       final filtered = filterOrdersForProduction(
         orders,
-        ProductionSummaryScope(
-          day: scopeDay,
-          routes: routes,
-          rolloverHour: 7,
-        ),
+        ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
       );
       expect(filtered.map((o) => o.id).toList(), ['after-seven']);
     });
@@ -35,14 +28,8 @@ void main() {
     test('keeps same-day non-cancelled orders', () {
       final orders = [
         productionTestOrder(id: 'o1'),
-        productionTestOrder(
-          id: 'o2',
-          status: OrderStatus.cancelled,
-        ),
-        productionTestOrder(
-          id: 'o3',
-          orderDate: DateTime(2025, 6, 19),
-        ),
+        productionTestOrder(id: 'o2', status: OrderStatus.cancelled),
+        productionTestOrder(id: 'o3', orderDate: DateTime(2025, 6, 19)),
       ];
       final filtered = filterOrdersForProduction(
         orders,
@@ -195,50 +182,57 @@ void main() {
 
       expect(summary.lines.length, 2);
       expect(summary.totalUnits, 100);
-      expect(
-        summary.lines.map((l) => l.productName).toSet(),
-        {'Japathi (Box 1)', 'Japathi (Box 2)'},
-      );
+      expect(summary.lines.map((l) => l.productName).toSet(), {
+        'Japathi (Box 1)',
+        'Japathi (Box 2)',
+      });
     });
 
-    test('separates items with same name and different pack labels when foodItemId is empty', () {
-      final orders = [
-        productionTestOrder(
-          id: 'o1',
-          items: [
-            OrderItem(
-              id: 'l1',
-              foodItemId: '',
-              foodItemName: 'Milk',
-              quantity: 10,
-              unitPrice: 20,
-              totalPrice: 200,
-              packLabel: '500ml',
-            ),
-            OrderItem(
-              id: 'l2',
-              foodItemId: '',
-              foodItemName: 'Milk',
-              quantity: 5,
-              unitPrice: 40,
-              totalPrice: 200,
-              packLabel: '1L',
-            ),
-          ],
-        ),
-      ];
+    test(
+      'separates items with same name and different pack labels when foodItemId is empty',
+      () {
+        final orders = [
+          productionTestOrder(
+            id: 'o1',
+            items: [
+              OrderItem(
+                id: 'l1',
+                foodItemId: '',
+                foodItemName: 'Milk',
+                quantity: 10,
+                unitPrice: 20,
+                totalPrice: 200,
+                packLabel: '500ml',
+              ),
+              OrderItem(
+                id: 'l2',
+                foodItemId: '',
+                foodItemName: 'Milk',
+                quantity: 5,
+                unitPrice: 40,
+                totalPrice: 200,
+                packLabel: '1L',
+              ),
+            ],
+          ),
+        ];
 
-      final summary = buildProductionSummary(
-        orders,
-        ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
-      );
+        final summary = buildProductionSummary(
+          orders,
+          ProductionSummaryScope(
+            day: scopeDay,
+            routes: routes,
+            rolloverHour: 7,
+          ),
+        );
 
-      expect(summary.lines.length, 2);
-      expect(
-        summary.lines.map((l) => l.productName).toSet(),
-        {'Milk (500ml)', 'Milk (1L)'},
-      );
-    });
+        expect(summary.lines.length, 2);
+        expect(summary.lines.map((l) => l.productName).toSet(), {
+          'Milk (500ml)',
+          'Milk (1L)',
+        });
+      },
+    );
 
     test('counts orders by type', () {
       final orders = [
@@ -287,7 +281,10 @@ void main() {
         [productionTestOrder(orderDate: DateTime(2025, 6, 20, 10))],
         ProductionSummaryScope(day: scopeDay, routes: routes, rolloverHour: 7),
       );
-      expect(formatProductionLine(summary.lines.single), contains('units total'));
+      expect(
+        formatProductionLine(summary.lines.single),
+        contains('units total'),
+      );
     });
   });
 

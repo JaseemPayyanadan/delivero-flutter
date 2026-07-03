@@ -52,9 +52,9 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: AppColors.primary,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppColors.primary),
           ),
           child: child!,
         );
@@ -190,9 +190,7 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
             parent: BouncingScrollPhysics(),
           ),
           slivers: [
-            SliverToBoxAdapter(
-              child: _buildCalendarSection(daysWithOrders),
-            ),
+            SliverToBoxAdapter(child: _buildCalendarSection(daysWithOrders)),
             SliverToBoxAdapter(child: _buildFilters(myAllOrders)),
             if (isLoading)
               const SliverFillRemaining(
@@ -258,9 +256,9 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
                         ),
                       )
                     : Text(
-                        DateFormat('MMMM yyyy').format(
-                          _visibleLeadDate ?? DateTime.now(),
-                        ),
+                        DateFormat(
+                          'MMMM yyyy',
+                        ).format(_visibleLeadDate ?? DateTime.now()),
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,

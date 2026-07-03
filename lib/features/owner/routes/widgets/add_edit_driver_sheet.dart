@@ -434,333 +434,339 @@ class _AddEditDriverSheetState extends ConsumerState<AddEditDriverSheet> {
     return UnsavedChangesGuard(
       hasUnsavedChanges: _hasUnsavedChanges && !_submitting,
       child: Padding(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.92,
-        ),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      _isEdit ? 'Edit driver' : 'New driver',
-                      style: context.appTextStyles.sectionHeader,
-                    ),
-                    const SizedBox(height: 18),
-                    Center(
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Image.asset(
-                          _vehicleAsset(_vehicle),
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Drivers sign in to Delivro with their phone number and OTP. '
-                      'Use a phone they have access to.',
-                      style: context.appTextStyles.caption.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _nameController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: _driverSheetInputDecoration(
-                        label: 'Full name',
-                        hint: 'e.g. Rahul Kumar',
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    IntlPhoneField(
-                      controller: _phoneController,
-                      initialCountryCode: 'IN',
-                      disableLengthCheck: false,
-                      invalidNumberMessage:
-                          'Please enter a valid mobile number',
-                      dropdownIconPosition: IconPosition.trailing,
-                      decoration: _driverSheetInputDecoration(
-                        label: 'Phone',
-                        hint: '00000 00000',
-                      ),
-                      onChanged: (phone) => _phoneNumber = phone,
-                    ),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<VehicleType>(
-                      initialValue: _vehicle,
-                      items: VehicleType.values
-                          .map(
-                            (v) => DropdownMenuItem(
-                              value: v,
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 28,
-                                    height: 28,
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.backgroundSecondary,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: AppColors.border,
-                                      ),
-                                    ),
-                                    child: Image.asset(
-                                      _vehicleAsset(v),
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    v.name.isEmpty
-                                        ? v.name
-                                        : '${v.name[0].toUpperCase()}${v.name.substring(1)}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => _vehicle = val ?? VehicleType.bike),
-                      decoration: _driverSheetInputDecoration(label: 'Vehicle'),
-                    ),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<String?>(
-                      initialValue: routeDropdownValue,
-                      isExpanded: true,
-                      items: <DropdownMenuItem<String?>>[
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text(
-                            'No route assigned',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        ...sortedRoutes.map<DropdownMenuItem<String?>>((
-                          DeliveryRoute r,
-                        ) {
-                          final area = r.area.trim();
-                          final label = area.isEmpty
-                              ? r.name
-                              : '${r.name} · $area';
-                          return DropdownMenuItem<String?>(
-                            value: r.id,
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.alt_route_rounded,
-                                  color: AppColors.primary,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    label,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                      onChanged: _submitting
-                          ? null
-                          : (val) => setState(() => _selectedRouteId = val),
-                      decoration: _driverSheetInputDecoration(
-                        label: 'Route',
-                        hint: sortedRoutes.isEmpty
-                            ? 'No routes available yet'
-                            : 'Optional',
-                      ),
-                    ),
-                    if (_isLinked) ...[
-                      const SizedBox(height: 18),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.verified_user_outlined,
-                              color: AppColors.primary,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Sign-in active',
-                                    style: context.appTextStyles.caption
-                                        .copyWith(
-                                          color: AppColors.textSecondary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    widget.driver!.phone,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ] else if (_isEdit) ...[
-                      const SizedBox(height: 18),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.warningLighter,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: AppColors.warning.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.hourglass_top_rounded,
-                              color: AppColors.warning,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Pending first sign-in. Driver will activate '
-                                'on their first OTP login.',
-                                style: context.appTextStyles.caption.copyWith(
-                                  color: AppColors.warning,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 28),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _submitting
-                                ? null
-                                : () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: FilledButton(
-                            onPressed: _submitting
-                                ? null
-                                : () {
-                                    try {
-                                      HapticFeedback.selectionClick();
-                                    } catch (_) {}
-                                    _onSave();
-                                  },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: _submitting
-                                ? const SizedBox(
-                                    height: 22,
-                                    width: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : Text(
-                                    _isEdit ? 'Save' : 'Create driver',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+          ),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(999),
                 ),
               ),
-            ),
-          ],
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        _isEdit ? 'Edit driver' : 'New driver',
+                        style: context.appTextStyles.sectionHeader,
+                      ),
+                      const SizedBox(height: 18),
+                      Center(
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Image.asset(
+                            _vehicleAsset(_vehicle),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Drivers sign in to Delivro with their phone number and OTP. '
+                        'Use a phone they have access to.',
+                        style: context.appTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _nameController,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: _driverSheetInputDecoration(
+                          label: 'Full name',
+                          hint: 'e.g. Rahul Kumar',
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      IntlPhoneField(
+                        controller: _phoneController,
+                        initialCountryCode: 'IN',
+                        disableLengthCheck: false,
+                        invalidNumberMessage:
+                            'Please enter a valid mobile number',
+                        dropdownIconPosition: IconPosition.trailing,
+                        decoration: _driverSheetInputDecoration(
+                          label: 'Phone',
+                          hint: '00000 00000',
+                        ),
+                        onChanged: (phone) => _phoneNumber = phone,
+                      ),
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<VehicleType>(
+                        initialValue: _vehicle,
+                        items: VehicleType.values
+                            .map(
+                              (v) => DropdownMenuItem(
+                                value: v,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.backgroundSecondary,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: AppColors.border,
+                                        ),
+                                      ),
+                                      child: Image.asset(
+                                        _vehicleAsset(v),
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      v.name.isEmpty
+                                          ? v.name
+                                          : '${v.name[0].toUpperCase()}${v.name.substring(1)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) =>
+                            setState(() => _vehicle = val ?? VehicleType.bike),
+                        decoration: _driverSheetInputDecoration(
+                          label: 'Vehicle',
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String?>(
+                        initialValue: routeDropdownValue,
+                        isExpanded: true,
+                        items: <DropdownMenuItem<String?>>[
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text(
+                              'No route assigned',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          ...sortedRoutes.map<DropdownMenuItem<String?>>((
+                            DeliveryRoute r,
+                          ) {
+                            final area = r.area.trim();
+                            final label = area.isEmpty
+                                ? r.name
+                                : '${r.name} · $area';
+                            return DropdownMenuItem<String?>(
+                              value: r.id,
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.alt_route_rounded,
+                                    color: AppColors.primary,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                        onChanged: _submitting
+                            ? null
+                            : (val) => setState(() => _selectedRouteId = val),
+                        decoration: _driverSheetInputDecoration(
+                          label: 'Route',
+                          hint: sortedRoutes.isEmpty
+                              ? 'No routes available yet'
+                              : 'Optional',
+                        ),
+                      ),
+                      if (_isLinked) ...[
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.verified_user_outlined,
+                                color: AppColors.primary,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Sign-in active',
+                                      style: context.appTextStyles.caption
+                                          .copyWith(
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      widget.driver!.phone,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (_isEdit) ...[
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.warningLighter,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppColors.warning.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.hourglass_top_rounded,
+                                color: AppColors.warning,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Pending first sign-in. Driver will activate '
+                                  'on their first OTP login.',
+                                  style: context.appTextStyles.caption.copyWith(
+                                    color: AppColors.warning,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _submitting
+                                  ? null
+                                  : () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: FilledButton(
+                              onPressed: _submitting
+                                  ? null
+                                  : () {
+                                      try {
+                                        HapticFeedback.selectionClick();
+                                      } catch (_) {}
+                                      _onSave();
+                                    },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: _submitting
+                                  ? const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      _isEdit ? 'Save' : 'Create driver',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }

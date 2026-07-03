@@ -197,7 +197,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                                       ? 'Add Customer'
                                       : 'Clear search',
                                   onAction: customers.isEmpty
-                                      ? () => context.push('/owner/customers/add')
+                                      ? () =>
+                                            context.push('/owner/customers/add')
                                       : () {
                                           _searchController.clear();
                                           setState(() {
@@ -216,7 +217,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
                                 ordersByCustomer: ordersByCustomer,
                                 reports: reports,
                               ),
-                            const SliverToBoxAdapter(child: SizedBox(height: 110)),
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 110),
+                            ),
                           ],
                         ),
                       ),
@@ -473,10 +476,7 @@ class _CustomersScreenHeader extends StatelessWidget {
   final VoidCallback onSearch;
   final VoidCallback? onFilter;
 
-  const _CustomersScreenHeader({
-    required this.onSearch,
-    this.onFilter,
-  });
+  const _CustomersScreenHeader({required this.onSearch, this.onFilter});
 
   @override
   Widget build(BuildContext context) {
@@ -964,15 +964,13 @@ class _CustomerRouteChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              isAllRoutes
-                  ? Icons.map_outlined
-                  : Icons.location_on_outlined,
+              isAllRoutes ? Icons.map_outlined : Icons.location_on_outlined,
               size: 16,
               color: isSelected
                   ? Colors.white
                   : tapLocked
-                      ? AppColors.textDisabled
-                      : AppColors.primary,
+                  ? AppColors.textDisabled
+                  : AppColors.primary,
             ),
             const SizedBox(width: 6),
             Text(
@@ -983,8 +981,8 @@ class _CustomerRouteChip extends StatelessWidget {
                 color: isSelected
                     ? Colors.white
                     : tapLocked
-                        ? AppColors.textDisabled
-                        : AppColors.primary,
+                    ? AppColors.textDisabled
+                    : AppColors.primary,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.1,

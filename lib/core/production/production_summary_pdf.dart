@@ -66,8 +66,7 @@ Future<Uint8List> buildProductionSummaryPdfBytes({
               },
               children: [
                 pw.TableRow(
-                  decoration:
-                      const pw.BoxDecoration(color: PdfColors.grey100),
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey100),
                   children: [
                     _headerCell('Item'),
                     _headerCell('Total'),
@@ -78,7 +77,11 @@ Future<Uint8List> buildProductionSummaryPdfBytes({
                   return pw.TableRow(
                     children: [
                       _bodyCell(line.productName),
-                      _bodyCell(line.unit == ProductUnit.quantity ? '${line.totalUnits}' : '${line.totalUnits} ${line.unit.productionWord}'),
+                      _bodyCell(
+                        line.unit == ProductUnit.quantity
+                            ? '${line.totalUnits}'
+                            : '${line.totalUnits} ${line.unit.productionWord}',
+                      ),
                       _splitCell(line),
                     ],
                   );
@@ -115,7 +118,10 @@ pw.Widget _bodyCell(String text) {
 }
 
 pw.Widget _splitCell(ProductionLineSummary line) {
-  final rows = formatPackBreakdownLines(line.packBreakdown, word: line.unit.productionWord);
+  final rows = formatPackBreakdownLines(
+    line.packBreakdown,
+    word: line.unit.productionWord,
+  );
   return pw.Padding(
     padding: const pw.EdgeInsets.all(10),
     child: rows.isEmpty

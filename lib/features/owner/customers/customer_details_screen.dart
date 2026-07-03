@@ -241,8 +241,9 @@ class CustomerDetailsScreen extends ConsumerWidget {
       decimalDigits: 0,
     );
     final ltv = customerOrders.fold(0.0, (sum, o) => sum + o.totalAmount);
-    final lastOrderDate =
-        customerOrders.isNotEmpty ? customerOrders.first.orderDate : null;
+    final lastOrderDate = customerOrders.isNotEmpty
+        ? customerOrders.first.orderDate
+        : null;
     final phone = customer.phone.trim();
     final email = customer.email.trim();
     final ownerName = customer.ownerName?.trim() ?? '';
@@ -276,8 +277,7 @@ class CustomerDetailsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Edit customer',
-            onPressed: () =>
-                context.push('/owner/customers/edit/$customerId'),
+            onPressed: () => context.push('/owner/customers/edit/$customerId'),
             icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
           ),
           PopupMenuButton<String>(
@@ -458,7 +458,9 @@ class CustomerDetailsScreen extends ConsumerWidget {
                     _InfoRow(
                       icon: Icons.calendar_today_rounded,
                       label: 'Customer since',
-                      value: DateFormat('d MMM yyyy').format(customer.createdAt),
+                      value: DateFormat(
+                        'd MMM yyyy',
+                      ).format(customer.createdAt),
                     ),
                   ],
                 ),
@@ -534,7 +536,9 @@ class CustomerDetailsScreen extends ConsumerWidget {
                             child: Text(
                               lastOrderDate == null
                                   ? '—'
-                                  : DateFormat('d MMM yy').format(lastOrderDate),
+                                  : DateFormat(
+                                      'd MMM yy',
+                                    ).format(lastOrderDate),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w900,
                                 fontSize: 16,
@@ -640,14 +644,14 @@ class CustomerDetailsScreen extends ConsumerWidget {
                             onPressed: () => context.push('/owner/orders'),
                             child: Text(
                               'View all (${customerOrders.length})',
-                              style: const TextStyle(fontWeight: FontWeight.w900),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    _RecentOrdersList(
-                      orders: customerOrders.take(10).toList(),
-                    ),
+                    _RecentOrdersList(orders: customerOrders.take(10).toList()),
                   ],
                 ),
               ),

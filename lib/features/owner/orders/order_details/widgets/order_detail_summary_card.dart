@@ -65,7 +65,8 @@ class OrderDetailSummaryCard extends StatelessWidget {
       fontWeight: FontWeight.w800,
     );
     final showDue = paymentStatus != PaymentStatus.paid && balanceDue > 0.004;
-    final hasCustomerInfo = name.isNotEmpty ||
+    final hasCustomerInfo =
+        name.isNotEmpty ||
         route.isNotEmpty ||
         phone.isNotEmpty ||
         address.isNotEmpty;
@@ -130,7 +131,10 @@ class OrderDetailSummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
-          Text('Order total', style: captionMuted.copyWith(letterSpacing: 0.35)),
+          Text(
+            'Order total',
+            style: captionMuted.copyWith(letterSpacing: 0.35),
+          ),
           const SizedBox(height: 6),
           Text(
             money0.format(order.totalAmount),
@@ -333,11 +337,7 @@ class _SummaryPhoneRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-          child: Semantics(
-            button: true,
-            label: 'Call $phone',
-            child: row,
-          ),
+          child: Semantics(button: true, label: 'Call $phone', child: row),
         ),
       ),
     );

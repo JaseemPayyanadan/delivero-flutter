@@ -4,35 +4,35 @@ import 'package:delivero/data/models/product_unit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Order _order(List<OrderItem> items) => Order(
-      id: 'o1',
-      factoryId: 'FAC',
-      orderType: OrderType.oneTime,
-      deliveryRun: DeliveryRun.morning,
-      customerId: 'c1',
-      customerName: 'Test',
-      customerEmail: '',
-      customerPhone: '',
-      customerAddress: '',
-      items: items,
-      subtotal: 0,
-      discountAmount: 0,
-      totalAmount: 0,
-      status: OrderStatus.delivered,
-      paymentStatus: PaymentStatus.paid,
-      orderDate: DateTime(2025, 6, 20),
-      createdAt: DateTime(2025, 6, 20),
-      updatedAt: DateTime(2025, 6, 20),
-    );
+  id: 'o1',
+  factoryId: 'FAC',
+  orderType: OrderType.oneTime,
+  deliveryRun: DeliveryRun.morning,
+  customerId: 'c1',
+  customerName: 'Test',
+  customerEmail: '',
+  customerPhone: '',
+  customerAddress: '',
+  items: items,
+  subtotal: 0,
+  discountAmount: 0,
+  totalAmount: 0,
+  status: OrderStatus.delivered,
+  paymentStatus: PaymentStatus.paid,
+  orderDate: DateTime(2025, 6, 20),
+  createdAt: DateTime(2025, 6, 20),
+  updatedAt: DateTime(2025, 6, 20),
+);
 
 OrderItem _item(String name, int qty, ProductUnit unit) => OrderItem(
-      id: name,
-      foodItemId: name,
-      foodItemName: name,
-      quantity: qty,
-      unitPrice: 10,
-      totalPrice: (10 * qty).toDouble(),
-      unit: unit,
-    );
+  id: name,
+  foodItemId: name,
+  foodItemName: name,
+  quantity: qty,
+  unitPrice: 10,
+  totalPrice: (10 * qty).toDouble(),
+  unit: unit,
+);
 
 void main() {
   test('ProductSalesData carries the product unit', () {

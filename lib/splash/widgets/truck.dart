@@ -68,7 +68,8 @@ class SplashTruck extends StatelessWidget {
                 ),
               ),
               Transform.translate(
-                offset: wheelLocal(_frontWheelCenter) -
+                offset:
+                    wheelLocal(_frontWheelCenter) -
                     Offset(wheelDiameter / 2, wheelDiameter / 2),
                 child: SplashWheel(
                   rotation: wheelRotation,
@@ -76,7 +77,8 @@ class SplashTruck extends StatelessWidget {
                 ),
               ),
               Transform.translate(
-                offset: wheelLocal(_rearWheelCenter) -
+                offset:
+                    wheelLocal(_rearWheelCenter) -
                     Offset(wheelDiameter / 2, wheelDiameter / 2),
                 child: SplashWheel(
                   rotation: wheelRotation,

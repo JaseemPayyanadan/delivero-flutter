@@ -33,13 +33,13 @@ double? _resolveAmountPaid({
     PaymentStatus.unpaid => null,
     PaymentStatus.paid => order.totalAmount,
     PaymentStatus.partial => () {
-        final raw = partialAmountText?.trim().replaceAll(',', '');
-        final parsed = raw == null || raw.isEmpty
-            ? amountPaid
-            : double.tryParse(raw) ?? amountPaid;
-        if (parsed == null) return null;
-        return parsed.clamp(0.0, order.totalAmount);
-      }(),
+      final raw = partialAmountText?.trim().replaceAll(',', '');
+      final parsed = raw == null || raw.isEmpty
+          ? amountPaid
+          : double.tryParse(raw) ?? amountPaid;
+      if (parsed == null) return null;
+      return parsed.clamp(0.0, order.totalAmount);
+    }(),
   };
 }
 
@@ -77,7 +77,8 @@ Future<void> showConfirmMarkDeliveredDialog({
 }) async {
   if (order.status == OrderStatus.delivered) return;
 
-  final draft = paymentDraft ??
+  final draft =
+      paymentDraft ??
       ConfirmMarkDeliveredPaymentDraft(
         status: order.paymentStatus ?? PaymentStatus.unpaid,
         method: order.paymentMethod ?? PaymentMethod.cash,
@@ -118,9 +119,7 @@ Future<void> showConfirmMarkDeliveredDialog({
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text(
-                  'Failed to update order. Check your connection.',
-                ),
+                content: Text('Failed to update order. Check your connection.'),
                 backgroundColor: Color(0xFFD32F2F),
               ),
             );
@@ -174,8 +173,10 @@ class _ConfirmMarkDeliveredDialogState
       money0,
     );
     final effectivePaid = _effectivePaid(order, draft.status, resolvedAmount);
-    final balanceDue =
-        (order.totalAmount - effectivePaid).clamp(0.0, double.infinity);
+    final balanceDue = (order.totalAmount - effectivePaid).clamp(
+      0.0,
+      double.infinity,
+    );
     final paymentColor = orderDetailPaymentColor(draft.status);
     final statusLabel = orderDetailHumanize(draft.status.name);
     final methodLabel = orderDetailHumanize(draft.method.name);
@@ -265,10 +266,7 @@ class _ConfirmMarkDeliveredDialogState
                     ),
                   ],
                   const SizedBox(height: 10),
-                  _PaymentCheckRow(
-                    label: 'Payment via',
-                    value: methodLabel,
-                  ),
+                  _PaymentCheckRow(label: 'Payment via', value: methodLabel),
                 ],
               ),
             ),
@@ -440,7 +438,8 @@ class _PaymentCheckRow extends StatelessWidget {
         else
           Text(
             value ?? '—',
-            style: valueStyle ??
+            style:
+                valueStyle ??
                 TextStyle(
                   color: valueColor ?? AppColors.textPrimary,
                   fontWeight: FontWeight.w800,

@@ -16,7 +16,8 @@ class OtpIllustration extends StatelessWidget {
 
   static const _assetPath = 'assets/images/opt-screen-bg.jpg';
 
-  static double heightForContext(BuildContext context) => otpImageHeightFor(context);
+  static double heightForContext(BuildContext context) =>
+      otpImageHeightFor(context);
 
   @override
   Widget build(BuildContext context) {

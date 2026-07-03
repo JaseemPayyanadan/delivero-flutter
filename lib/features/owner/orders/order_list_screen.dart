@@ -50,10 +50,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   Set<String> _selectedIds = {};
   bool get _isSelecting => _selectedIds.isNotEmpty;
 
-  String _formatBusinessDaySection(
-    DateTime dayKey,
-    DateTime todayKey,
-  ) {
+  String _formatBusinessDaySection(DateTime dayKey, DateTime todayKey) {
     final normalizedDay = DateTime(dayKey.year, dayKey.month, dayKey.day);
     final normalizedToday = DateTime(
       todayKey.year,
@@ -76,8 +73,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   Future<void> _bulkMarkDelivered(List<Order> allOrders) async {
     final now = DateTime.now();
     final targets = allOrders
-        .where((o) =>
-            _selectedIds.contains(o.id) && o.status != OrderStatus.delivered)
+        .where(
+          (o) =>
+              _selectedIds.contains(o.id) && o.status != OrderStatus.delivered,
+        )
         .toList();
     for (final order in targets) {
       final updated = order.copyWith(
@@ -92,7 +91,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       setState(() => _selectedIds = {});
       if (targets.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${targets.length} orders marked as delivered')),
+          SnackBar(
+            content: Text('${targets.length} orders marked as delivered'),
+          ),
         );
       }
     }
@@ -101,9 +102,11 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   Future<void> _bulkMarkPaid(List<Order> allOrders) async {
     final now = DateTime.now();
     final targets = allOrders
-        .where((o) =>
-            _selectedIds.contains(o.id) &&
-            o.paymentStatus != PaymentStatus.paid)
+        .where(
+          (o) =>
+              _selectedIds.contains(o.id) &&
+              o.paymentStatus != PaymentStatus.paid,
+        )
         .toList();
     for (final order in targets) {
       final updated = order.copyWith(
@@ -165,9 +168,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: AppColors.primary,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppColors.primary),
           ),
           child: child!,
         );
@@ -188,9 +191,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: AppColors.primary,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppColors.primary),
           ),
           child: child!,
         );
@@ -222,9 +225,9 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: AppColors.primary,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppColors.primary),
           ),
           child: child!,
         );
@@ -370,7 +373,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       if (q.isNotEmpty) {
         matchesDay = true;
       } else if (_selectedRange != null) {
-        matchesDay = !orderDay.isBefore(_selectedRange!.start) &&
+        matchesDay =
+            !orderDay.isBefore(_selectedRange!.start) &&
             !orderDay.isAfter(_selectedRange!.end);
       } else if (_selectedDate != null) {
         matchesDay = orderDay == _selectedDate;
@@ -403,80 +407,83 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         statusBarColor: Colors.transparent,
       ),
       child: PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _isSelecting) {
-          setState(() => _selectedIds = {});
-        }
-      },
-      child: Scaffold(
-      backgroundColor: AppColors.success,
-      body: Column(
-        children: [
-          ColoredBox(
-            color: AppColors.success,
-            child: SafeArea(
-              bottom: false,
-              child: _OrdersPurpleHeader(
-              isSelecting: _isSelecting,
-              selectedCount: _selectedIds.length,
-              onCloseSelection: () => setState(() => _selectedIds = {}),
-              showProductionAction: !noOrdersYet,
-              onProduction: () => _openProductionSummary(
-                orders: orders,
-                routes: routes,
-                productionDay: productionDay,
-                rolloverHour: rolloverHour,
-              ),
-              onSearch: () => _openSearchSheet(context),
-              onFilter: () => _showFiltersSheet(context),
-            ),
-            ),
-          ),
-          Expanded(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: AppColors.backgroundPrimary,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: Column(
-                children: [
-                  if (!noOrdersYet)
-                    _buildFilters(
-                      routes,
-                      availableRouteIds,
-                      routesLoaded: routesLoaded,
-                      daysWithOrders: daysWithOrders,
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop && _isSelecting) {
+            setState(() => _selectedIds = {});
+          }
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.success,
+          body: Column(
+            children: [
+              ColoredBox(
+                color: AppColors.success,
+                child: SafeArea(
+                  bottom: false,
+                  child: _OrdersPurpleHeader(
+                    isSelecting: _isSelecting,
+                    selectedCount: _selectedIds.length,
+                    onCloseSelection: () => setState(() => _selectedIds = {}),
+                    showProductionAction: !noOrdersYet,
+                    onProduction: () => _openProductionSummary(
+                      orders: orders,
+                      routes: routes,
+                      productionDay: productionDay,
+                      rolloverHour: rolloverHour,
                     ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      color: AppColors.primary,
-                      onRefresh: () =>
-                          ref.read(ordersProvider.notifier).refresh(),
-                      child: _buildOrdersBody(
-                        ordersLoaded: ordersLoaded,
-                        orders: orders,
-                        noOrdersYet: noOrdersYet,
-                        filteredOrders: filteredOrders,
-                        daysWithOrders: daysWithOrders,
+                    onSearch: () => _openSearchSheet(context),
+                    onFilter: () => _showFiltersSheet(context),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: AppColors.backgroundPrimary,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      if (!noOrdersYet)
+                        _buildFilters(
+                          routes,
+                          availableRouteIds,
+                          routesLoaded: routesLoaded,
+                          daysWithOrders: daysWithOrders,
+                        ),
+                      Expanded(
+                        child: RefreshIndicator(
+                          color: AppColors.primary,
+                          onRefresh: () =>
+                              ref.read(ordersProvider.notifier).refresh(),
+                          child: _buildOrdersBody(
+                            ordersLoaded: ordersLoaded,
+                            orders: orders,
+                            noOrdersYet: noOrdersYet,
+                            filteredOrders: filteredOrders,
+                            daysWithOrders: daysWithOrders,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (_isSelecting)
+                        _BulkSelectionBar(
+                          selectedIds: _selectedIds,
+                          onMarkDelivered: () =>
+                              _bulkMarkDelivered(ref.read(ordersProvider)),
+                          onMarkPaid: () =>
+                              _bulkMarkPaid(ref.read(ordersProvider)),
+                        ),
+                    ],
                   ),
-                  if (_isSelecting) _BulkSelectionBar(
-                    selectedIds: _selectedIds,
-                    onMarkDelivered: () =>
-                        _bulkMarkDelivered(ref.read(ordersProvider)),
-                    onMarkPaid: () =>
-                        _bulkMarkPaid(ref.read(ordersProvider)),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
-      ),
-    ),
     );
   }
 
@@ -489,9 +496,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
   }) {
     if (!ordersLoaded && orders.isEmpty) {
       return const CustomScrollView(
-        physics: AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
+        physics: AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         slivers: [
           SliverFillRemaining(
             hasScrollBody: false,
@@ -537,9 +542,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     );
   }
 
-  List<Widget> _buildGroupedOrderWidgets(
-    List<Order> filteredOrders,
-  ) {
+  List<Widget> _buildGroupedOrderWidgets(List<Order> filteredOrders) {
     final todayKey = _calendarDay(DateTime.now());
     final groups = <DateTime, List<Order>>{};
 
@@ -548,15 +551,16 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
       (groups[normalized] ??= []).add(order);
     }
 
-    final sortedDays = groups.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
+    final sortedDays = groups.keys.toList()..sort((a, b) => b.compareTo(a));
 
     final widgets = <Widget>[];
 
     // When a range is active, lead with a summary of the whole span.
     if (_selectedRange != null) {
-      final rangeTotal =
-          filteredOrders.fold(0.0, (sum, o) => sum + o.totalAmount);
+      final rangeTotal = filteredOrders.fold(
+        0.0,
+        (sum, o) => sum + o.totalAmount,
+      );
       widgets.add(
         _RangeSummaryHeader(
           label:
@@ -570,9 +574,7 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
     }
 
     for (final day in sortedDays) {
-      final orders = groups[day]!..sort(
-        (a, b) => compareOrdersByDate(a, b),
-      );
+      final orders = groups[day]!..sort((a, b) => compareOrdersByDate(a, b));
       final dayTotal = orders.fold(0.0, (sum, o) => sum + o.totalAmount);
       widgets.add(
         _DateSectionHeader(
@@ -582,27 +584,29 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
         ),
       );
       for (final o in orders) {
-        widgets.add(OrderCard(
-          key: ValueKey(o.id),
-          order: o,
-          siblingOrders: orders,
-          isSelected: _selectedIds.contains(o.id),
-          onToggleSelect: _isSelecting
-              ? () => setState(() {
+        widgets.add(
+          OrderCard(
+            key: ValueKey(o.id),
+            order: o,
+            siblingOrders: orders,
+            isSelected: _selectedIds.contains(o.id),
+            onToggleSelect: _isSelecting
+                ? () => setState(() {
                     if (_selectedIds.contains(o.id)) {
                       _selectedIds.remove(o.id);
                     } else {
                       _selectedIds.add(o.id);
                     }
                   })
-              : null,
-          onEnterSelectMode: _isSelecting
-              ? () => setState(() => _selectedIds.add(o.id))
-              : () {
-                  HapticFeedback.mediumImpact();
-                  setState(() => _selectedIds.add(o.id));
-                },
-        ));
+                : null,
+            onEnterSelectMode: _isSelecting
+                ? () => setState(() => _selectedIds.add(o.id))
+                : () {
+                    HapticFeedback.mediumImpact();
+                    setState(() => _selectedIds.add(o.id));
+                  },
+          ),
+        );
       }
       widgets.add(const SizedBox(height: 10));
     }
@@ -664,39 +668,39 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         ),
                       )
                     : _selectedDate != null
-                        ? GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: _pickSingleDay,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  DateFormat('EEE, d MMM').format(_selectedDate!),
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                const Icon(
-                                  Icons.keyboard_arrow_down_rounded,
-                                  size: 20,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ],
+                    ? GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _pickSingleDay,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              DateFormat('EEE, d MMM').format(_selectedDate!),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
-                          )
-                        : Text(
-                            DateFormat('MMMM yyyy').format(
-                              _visibleLeadDate ?? DateTime.now(),
+                            const SizedBox(width: 2),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 20,
+                              color: AppColors.textSecondary,
                             ),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
+                          ],
+                        ),
+                      )
+                    : Text(
+                        DateFormat(
+                          'MMMM yyyy',
+                        ).format(_visibleLeadDate ?? DateTime.now()),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
               ),
               Material(
                 color: AppColors.primaryLighter,
@@ -748,7 +752,10 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                         constraints: BoxConstraints(
                           maxWidth: MediaQuery.of(context).size.width - 32,
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.08),
                           border: Border.all(
@@ -880,15 +887,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              isAllRoutes
-                  ? Icons.map_outlined
-                  : Icons.location_on_outlined,
+              isAllRoutes ? Icons.map_outlined : Icons.location_on_outlined,
               size: 16,
               color: isSelected
                   ? Colors.white
                   : isLoading || (!routesLoaded && routeId != null)
-                      ? AppColors.textDisabled
-                      : AppColors.primary,
+                  ? AppColors.textDisabled
+                  : AppColors.primary,
             ),
             const SizedBox(width: 6),
             Text(
@@ -897,8 +902,8 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
                 color: isSelected
                     ? Colors.white
                     : isLoading || (!routesLoaded && routeId != null)
-                        ? AppColors.textDisabled
-                        : AppColors.primary,
+                    ? AppColors.textDisabled
+                    : AppColors.primary,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.1,
@@ -1404,11 +1409,14 @@ class _BulkSelectionBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final allOrders = ref.watch(ordersProvider);
-    final selectedOrders =
-        allOrders.where((o) => selectedIds.contains(o.id)).toList();
-    final allDelivered = selectedOrders.isEmpty ||
+    final selectedOrders = allOrders
+        .where((o) => selectedIds.contains(o.id))
+        .toList();
+    final allDelivered =
+        selectedOrders.isEmpty ||
         selectedOrders.every((o) => o.status == OrderStatus.delivered);
-    final allPaid = selectedOrders.isEmpty ||
+    final allPaid =
+        selectedOrders.isEmpty ||
         selectedOrders.every((o) => o.paymentStatus == PaymentStatus.paid);
 
     return Container(

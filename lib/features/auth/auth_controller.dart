@@ -133,7 +133,9 @@ class AuthNotifier extends Notifier<AuthState> {
     final userJson = await _secureStorage.read(key: _kUserKey);
     if (userJson != null) {
       if (await _isSessionExpired()) {
-        debugPrint('[Auth] Cached session older than 90 days; requiring re-login.');
+        debugPrint(
+          '[Auth] Cached session older than 90 days; requiring re-login.',
+        );
         await _clearStoredSession(signOutFirebase: true);
         state = state.copyWith(isInitialized: true);
         return;
@@ -625,16 +627,20 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   void _saveVerificationId(String id) {
-    _secureStorage.write(key: _kVerificationIdKey, value: id).catchError(
-      (Object e) =>
-          debugPrint('[Auth] Failed to persist verificationId: $e'),
-    );
+    _secureStorage
+        .write(key: _kVerificationIdKey, value: id)
+        .catchError(
+          (Object e) =>
+              debugPrint('[Auth] Failed to persist verificationId: $e'),
+        );
   }
 
   void _clearVerificationId() {
-    _secureStorage.delete(key: _kVerificationIdKey).catchError(
-      (Object e) => debugPrint('[Auth] Failed to clear verificationId: $e'),
-    );
+    _secureStorage
+        .delete(key: _kVerificationIdKey)
+        .catchError(
+          (Object e) => debugPrint('[Auth] Failed to clear verificationId: $e'),
+        );
   }
 
   Future<User?> _loadUserFromFirestore({required String uid}) async {

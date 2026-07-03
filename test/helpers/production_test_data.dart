@@ -42,7 +42,8 @@ Order productionTestOrder({
     customerEmail: '',
     customerPhone: '9999999999',
     customerAddress: '123 Main St',
-    items: items ??
+    items:
+        items ??
         [
           OrderItem(
             id: 'line-1',

@@ -56,10 +56,7 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
       // stack's children on every shell rebuild, throwing away each tab's
       // State (e.g. the Orders screen's selected date kept resetting to today).
       // IndexedStack keeps all tabs alive and preserves their state.
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _screens),
       floatingActionButton: !showOrderFab
           ? null
           : FloatingActionButton(
@@ -75,7 +72,8 @@ class _OwnerShellState extends ConsumerState<OwnerShell> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: PillBottomNavBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        onDestinationSelected: (index) =>
+            setState(() => _selectedIndex = index),
         destinations: const [
           PillNavDestination(
             icon: CupertinoIcons.house,

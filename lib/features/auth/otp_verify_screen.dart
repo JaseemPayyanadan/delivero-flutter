@@ -69,9 +69,9 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
     if (code.length < _codeLength) {
       _errorController.add(ErrorAnimationType.shake);
       ScaffoldMessenger.of(context).removeCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter the 6-digit code')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter the 6-digit code')));
       return;
     }
     try {
@@ -264,8 +264,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
             fieldHeight: fieldHeight,
             fieldWidth: fieldWidth,
             activeFillColor: AppColors.surface,
-            selectedFillColor:
-                AppColors.primaryLighter.withValues(alpha: 0.35),
+            selectedFillColor: AppColors.primaryLighter.withValues(alpha: 0.35),
             inactiveFillColor: AppColors.surface,
             activeColor: hasError ? AppColors.error : AppColors.primary,
             selectedColor: hasError ? AppColors.error : AppColors.primary,
@@ -345,11 +344,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFFFFFF),
-              Color(0xFFFFFFFF),
-              AppColors.primary50,
-            ],
+            colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF), AppColors.primary50],
             stops: [0.0, 0.72, 1.0],
           ),
         ),
@@ -361,9 +356,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
               left: 0,
               right: 0,
               bottom: bottomInset,
-              child: const IgnorePointer(
-                child: OtpIllustration(),
-              ),
+              child: const IgnorePointer(child: OtpIllustration()),
             ),
             SafeArea(
               bottom: false,
@@ -415,8 +408,9 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                             else
                               DeliveroButton(
                                 label: 'Verify & continue',
-                                onPressed:
-                                    authState.isLoading ? null : _handleVerify,
+                                onPressed: authState.isLoading
+                                    ? null
+                                    : _handleVerify,
                                 isLoading: authState.isLoading,
                                 icon: Icons.verified_outlined,
                                 borderRadius: 12,
@@ -492,11 +486,7 @@ class _AutofillHint extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.sms_outlined,
-            size: 13,
-            color: AppColors.textLight,
-          ),
+          const Icon(Icons.sms_outlined, size: 13, color: AppColors.textLight),
           const SizedBox(width: 6),
           const Flexible(
             child: Text(

@@ -167,12 +167,15 @@ class _UnresolvedOrderRow extends ConsumerWidget {
     final itemSummary = order.items.isEmpty
         ? '—'
         : order.items
-                .take(2)
-                .map((i) => '${i.foodItemName} ${i.unit.compactAmount(i.quantity)}')
-                .join(', ') +
-            (order.items.length > 2
-                ? ' +${order.items.length - 2} more'
-                : '');
+                  .take(2)
+                  .map(
+                    (i) =>
+                        '${i.foodItemName} ${i.unit.compactAmount(i.quantity)}',
+                  )
+                  .join(', ') +
+              (order.items.length > 2
+                  ? ' +${order.items.length - 2} more'
+                  : '');
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -228,7 +231,9 @@ class _UnresolvedOrderRow extends ConsumerWidget {
                     try {
                       HapticFeedback.lightImpact();
                     } catch (_) {}
-                    ref.read(ordersProvider.notifier).updateOrder(
+                    ref
+                        .read(ordersProvider.notifier)
+                        .updateOrder(
                           order.copyWith(
                             status: OrderStatus.cancelled,
                             updatedAt: DateTime.now(),
@@ -259,7 +264,9 @@ class _UnresolvedOrderRow extends ConsumerWidget {
                       HapticFeedback.mediumImpact();
                     } catch (_) {}
                     final now = DateTime.now();
-                    ref.read(ordersProvider.notifier).updateOrder(
+                    ref
+                        .read(ordersProvider.notifier)
+                        .updateOrder(
                           order.copyWith(
                             status: OrderStatus.delivered,
                             deliveryTime: order.deliveryTime ?? now,

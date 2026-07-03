@@ -5,10 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// Opens WhatsApp with a pre-filled [message].
 ///
 /// On mobile uses `wa.me`. On web uses WhatsApp Web and falls back to clipboard.
-Future<void> openWhatsAppShare({
-  required String message,
-  String? phone,
-}) async {
+Future<void> openWhatsAppShare({required String message, String? phone}) async {
   final trimmed = message.trim();
   if (trimmed.isEmpty) {
     throw Exception('Nothing to share.');
@@ -38,10 +35,7 @@ Future<void> openWhatsAppShare({
   }
 }
 
-Future<void> _openWhatsAppWeb({
-  required String encoded,
-  String? phone,
-}) async {
+Future<void> _openWhatsAppWeb({required String encoded, String? phone}) async {
   final Uri uri;
   if (phone != null && phone.trim().isNotEmpty) {
     final digits = phone.replaceAll(RegExp(r'\D'), '');

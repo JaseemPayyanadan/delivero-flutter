@@ -136,15 +136,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         dateRange: _selectedDateRange,
       );
       final stamp = DateFormat('yyyyMMdd').format(DateTime.now());
-      await Share.shareXFiles(
-        [
-          XFile.fromData(
-            reportsCsvBytes(csv),
-            name: 'delivero-insights-$stamp.csv',
-            mimeType: 'text/csv',
-          ),
-        ],
-        subject: 'Delivro insights export',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile.fromData(reportsCsvBytes(csv), mimeType: 'text/csv')],
+          fileNameOverrides: ['delivero-insights-$stamp.csv'],
+          subject: 'Delivro insights export',
+        ),
       );
     } catch (e) {
       if (mounted) _toast('Could not export CSV. Try again.');
@@ -256,7 +253,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: rows.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           const Divider(height: 1, color: AppColors.divider),
                       itemBuilder: (context, index) {
                         final row = rows[index];
@@ -288,7 +285,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       },
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -339,16 +335,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             children: [
               const ColoredBox(
                 color: AppColors.success,
-                child: SafeArea(
-                  bottom: false,
-                  child: _ReportsScreenHeader(),
-                ),
+                child: SafeArea(bottom: false, child: _ReportsScreenHeader()),
               ),
               Expanded(
                 child: DecoratedBox(
                   decoration: const BoxDecoration(
                     color: AppColors.backgroundPrimary,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
                   ),
                   child: DeliveroEmptyState(
                     title: 'No insights yet',
@@ -371,312 +366,335 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         statusBarColor: Colors.transparent,
       ),
       child: Scaffold(
-      backgroundColor: AppColors.success,
-      body: Column(
-        children: [
-          ColoredBox(
-            color: AppColors.success,
-            child: SafeArea(
-              bottom: false,
-              child: _ReportsScreenHeader(
-                onDateRange: _selectDateRange,
-                onExportCsv: _exporting ? null : () => _exportCsv(reports),
-                onExportPdf: _exporting ? null : () => _exportPdf(reports),
+        backgroundColor: AppColors.success,
+        body: Column(
+          children: [
+            ColoredBox(
+              color: AppColors.success,
+              child: SafeArea(
+                bottom: false,
+                child: _ReportsScreenHeader(
+                  onDateRange: _selectDateRange,
+                  onExportCsv: _exporting ? null : () => _exportCsv(reports),
+                  onExportPdf: _exporting ? null : () => _exportPdf(reports),
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: AppColors.backgroundPrimary,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: RefreshIndicator(
-                color: AppColors.primary,
-                displacement: 48,
-                onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          Text(
-                            'Revenue, fulfillment, and team performance for any date range.',
-                            style: context.appTextStyles.sliverSubtitle,
-                          ),
-                          const SizedBox(height: 18),
-                          Container(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppColors.border),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: AppColors.shadow,
-                            blurRadius: 16,
-                            offset: Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Reporting period',
-                            style: context.appTextStyles.sectionHeader,
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _PresetPill(
-                                  label: 'Today',
-                                  selected: _preset == _kPresetToday,
-                                  onTap: () => _applyPreset(_kPresetToday),
-                                ),
+            Expanded(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AppColors.backgroundPrimary,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  displacement: 48,
+                  onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                        sliver: SliverList(
+                          delegate: SliverChildListDelegate([
+                            Text(
+                              'Revenue, fulfillment, and team performance for any date range.',
+                              style: context.appTextStyles.sliverSubtitle,
+                            ),
+                            const SizedBox(height: 18),
+                            Container(
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                16,
+                                16,
+                                14,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _PresetPill(
-                                  label: '7 days',
-                                  selected: _preset == _kPresetLast7,
-                                  onTap: () => _applyPreset(_kPresetLast7),
-                                ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: AppColors.border),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: AppColors.shadow,
+                                    blurRadius: 16,
+                                    offset: Offset(0, 8),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _PresetPill(
-                                  label: 'Month',
-                                  selected: _preset == _kPresetThisMonth,
-                                  onTap: () => _applyPreset(_kPresetThisMonth),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton.icon(
-                            onPressed: _selectDateRange,
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                            ),
-                            icon: const Icon(
-                              Icons.date_range_rounded,
-                              size: 18,
-                            ),
-                            label: Text(
-                              rangeLabel,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _InsightKpiTile(
-                            icon: Icons.payments_rounded,
-                            iconColor: AppColors.primary,
-                            iconBg: AppColors.primary.withValues(alpha: 0.12),
-                            label: 'Paid sales',
-                            value: _formatInsightRupee(reports.totalRevenue),
-                            isLoading: isLoading,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _InsightKpiTile(
-                            icon: Icons.schedule_rounded,
-                            iconColor: AppColors.warning,
-                            iconBg: AppColors.warningLighter.withValues(
-                              alpha: 0.65,
-                            ),
-                            label: 'Outstanding',
-                            value: _formatInsightRupee(
-                              reports.totalPendingRevenue,
-                            ),
-                            isLoading: isLoading,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _InsightKpiTile(
-                      icon: Icons.verified_rounded,
-                      iconColor: AppColors.success,
-                      iconBg: AppColors.successLighter.withValues(alpha: 0.75),
-                      label: 'Delivered ÷ total (in range)',
-                      value: successRateLabel,
-                      isLoading: isLoading,
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Text(
-                          '${reports.completedOrders}/${reports.totalOrders} orders',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 10,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _OrderSummaryCard(
-                      reports: reports,
-                      isLoading: isLoading,
-                    ),
-                    const SizedBox(height: 20),
-                    _ReportCard(
-                      title: 'Sales trend',
-                      trailing: TextButton(
-                        onPressed: () => _toast('Detailed view coming soon'),
-                        child: Text(
-                          'Details',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.primary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-                        child: _SalesBarChart(dailySales: reports.dailySales),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _ReportCard(
-                      title: 'Delivery team',
-                      trailing: IconButton(
-                        tooltip: 'Filter',
-                        onPressed: () => _toast('Filter coming soon'),
-                        icon: const Icon(Icons.tune_rounded, size: 20),
-                        color: AppColors.textSecondary,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-                        child: driversLoaded && topStaff.isEmpty
-                            ? Text(
-                                'Assign drivers to routes to see delivery stats here.',
-                                style: context.appTextStyles.body.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              )
-                            : Column(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  for (final s in topStaff.take(3)) ...[
-                                    _StaffRow(stat: s),
-                                    if (s != topStaff.take(3).last)
-                                      const Divider(
-                                        height: 18,
-                                        color: AppColors.divider,
-                                      ),
-                                  ],
+                                  Text(
+                                    'Reporting period',
+                                    style: context.appTextStyles.sectionHeader,
+                                  ),
                                   const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton(
-                                      onPressed: () => _toast('Coming soon'),
-                                      style: OutlinedButton.styleFrom(
-                                        side: const BorderSide(
-                                          color: AppColors.border,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12,
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _PresetPill(
+                                          label: 'Today',
+                                          selected: _preset == _kPresetToday,
+                                          onTap: () =>
+                                              _applyPreset(_kPresetToday),
                                         ),
                                       ),
-                                      child: const Text(
-                                        'View all staff',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w900,
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: _PresetPill(
+                                          label: '7 days',
+                                          selected: _preset == _kPresetLast7,
+                                          onTap: () =>
+                                              _applyPreset(_kPresetLast7),
                                         ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: _PresetPill(
+                                          label: 'Month',
+                                          selected:
+                                              _preset == _kPresetThisMonth,
+                                          onTap: () =>
+                                              _applyPreset(_kPresetThisMonth),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextButton.icon(
+                                    onPressed: _selectDateRange,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.primary,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.date_range_rounded,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      rangeLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 12,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _ReportCard(
-                      title: 'Top products',
-                      trailing: TextButton(
-                        onPressed: () => _showProductDrilldown(reports),
-                        child: const Text(
-                          'View all',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 12,
-                          ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _InsightKpiTile(
+                                    icon: Icons.payments_rounded,
+                                    iconColor: AppColors.primary,
+                                    iconBg: AppColors.primary.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    label: 'Paid sales',
+                                    value: _formatInsightRupee(
+                                      reports.totalRevenue,
+                                    ),
+                                    isLoading: isLoading,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _InsightKpiTile(
+                                    icon: Icons.schedule_rounded,
+                                    iconColor: AppColors.warning,
+                                    iconBg: AppColors.warningLighter.withValues(
+                                      alpha: 0.65,
+                                    ),
+                                    label: 'Outstanding',
+                                    value: _formatInsightRupee(
+                                      reports.totalPendingRevenue,
+                                    ),
+                                    isLoading: isLoading,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _InsightKpiTile(
+                              icon: Icons.verified_rounded,
+                              iconColor: AppColors.success,
+                              iconBg: AppColors.successLighter.withValues(
+                                alpha: 0.75,
+                              ),
+                              label: 'Delivered ÷ total (in range)',
+                              value: successRateLabel,
+                              isLoading: isLoading,
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.backgroundSecondary,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Text(
+                                  '${reports.completedOrders}/${reports.totalOrders} orders',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 10,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _OrderSummaryCard(
+                              reports: reports,
+                              isLoading: isLoading,
+                            ),
+                            const SizedBox(height: 20),
+                            _ReportCard(
+                              title: 'Sales trend',
+                              trailing: TextButton(
+                                onPressed: () =>
+                                    _toast('Detailed view coming soon'),
+                                child: Text(
+                                  'Details',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.primary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+                                child: _SalesBarChart(
+                                  dailySales: reports.dailySales,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _ReportCard(
+                              title: 'Delivery team',
+                              trailing: IconButton(
+                                tooltip: 'Filter',
+                                onPressed: () => _toast('Filter coming soon'),
+                                icon: const Icon(Icons.tune_rounded, size: 20),
+                                color: AppColors.textSecondary,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                                child: driversLoaded && topStaff.isEmpty
+                                    ? Text(
+                                        'Assign drivers to routes to see delivery stats here.',
+                                        style: context.appTextStyles.body
+                                            .copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      )
+                                    : Column(
+                                        children: [
+                                          for (final s in topStaff.take(3)) ...[
+                                            _StaffRow(stat: s),
+                                            if (s != topStaff.take(3).last)
+                                              const Divider(
+                                                height: 18,
+                                                color: AppColors.divider,
+                                              ),
+                                          ],
+                                          const SizedBox(height: 12),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: OutlinedButton(
+                                              onPressed: () =>
+                                                  _toast('Coming soon'),
+                                              style: OutlinedButton.styleFrom(
+                                                side: const BorderSide(
+                                                  color: AppColors.border,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 12,
+                                                    ),
+                                              ),
+                                              child: const Text(
+                                                'View all staff',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _ReportCard(
+                              title: 'Top products',
+                              trailing: TextButton(
+                                onPressed: () => _showProductDrilldown(reports),
+                                child: const Text(
+                                  'View all',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              child: _TopProductsPreview(
+                                reports: reports,
+                                onOpen: () => _showProductDrilldown(reports),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _ReportCard(
+                              title: 'Top customers',
+                              trailing: TextButton(
+                                onPressed: () =>
+                                    _showCustomerDrilldown(reports),
+                                child: const Text(
+                                  'View all',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              child: _TopCustomersPreview(
+                                reports: reports,
+                                onOpen: () => _showCustomerDrilldown(reports),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _InsightsFooterTip(
+                              onLearnMore: () => _toast(
+                                'Use CSV for spreadsheets or PDF for sharing with your team.',
+                                color: AppColors.info,
+                              ),
+                            ),
+                          ]),
                         ),
                       ),
-                      child: _TopProductsPreview(
-                        reports: reports,
-                        onOpen: () => _showProductDrilldown(reports),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _ReportCard(
-                      title: 'Top customers',
-                      trailing: TextButton(
-                        onPressed: () => _showCustomerDrilldown(reports),
-                        child: const Text(
-                          'View all',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      child: _TopCustomersPreview(
-                        reports: reports,
-                        onOpen: () => _showCustomerDrilldown(reports),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _InsightsFooterTip(
-                      onLearnMore: () => _toast(
-                        'Use CSV for spreadsheets or PDF for sharing with your team.',
-                        color: AppColors.info,
-                      ),
-                    ),
-                        ]),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -1254,10 +1272,7 @@ class _OrderSummaryCard extends StatelessWidget {
   final ReportsData reports;
   final bool isLoading;
 
-  const _OrderSummaryCard({
-    required this.reports,
-    required this.isLoading,
-  });
+  const _OrderSummaryCard({required this.reports, required this.isLoading});
 
   @override
   Widget build(BuildContext context) {

@@ -326,113 +326,115 @@ class OrdersNotifier extends Notifier<List<Order>> {
           .where('factoryId', isEqualTo: factoryId)
           .snapshots()
           .listen(
-        (snapshot) {
-          final customers = ref.read(customersProvider);
-          final routes = ref.read(routesProvider);
+            (snapshot) {
+              final customers = ref.read(customersProvider);
+              final routes = ref.read(routesProvider);
 
-          String? deriveRouteKey(Order o) {
-            final raw = o.assignedRoute?.trim();
-            if (raw != null && raw.isNotEmpty) return raw;
+              String? deriveRouteKey(Order o) {
+                final raw = o.assignedRoute?.trim();
+                if (raw != null && raw.isNotEmpty) return raw;
 
-            final byId = customers.firstWhereOrNull(
-              (c) => c.id == o.customerId,
-            );
-            final idRoute = byId?.assignedRoute?.trim();
-            if (idRoute?.isNotEmpty == true) return idRoute;
+                final byId = customers.firstWhereOrNull(
+                  (c) => c.id == o.customerId,
+                );
+                final idRoute = byId?.assignedRoute?.trim();
+                if (idRoute?.isNotEmpty == true) return idRoute;
 
-            final phone = o.customerPhone.trim();
-            if (phone.isNotEmpty) {
-              final byPhone = customers.firstWhereOrNull(
-                (c) => c.phone.trim() == phone,
+                final phone = o.customerPhone.trim();
+                if (phone.isNotEmpty) {
+                  final byPhone = customers.firstWhereOrNull(
+                    (c) => c.phone.trim() == phone,
+                  );
+                  final phoneRoute = byPhone?.assignedRoute?.trim();
+                  if (phoneRoute?.isNotEmpty == true) return phoneRoute;
+                }
+
+                final name = o.customerName.trim().toLowerCase();
+                if (name.isNotEmpty) {
+                  final byName = customers.firstWhereOrNull(
+                    (c) => c.name.trim().toLowerCase() == name,
+                  );
+                  final nameRoute = byName?.assignedRoute?.trim();
+                  if (nameRoute?.isNotEmpty == true) return nameRoute;
+                }
+                return null;
+              }
+
+              String? normalizeRouteId(String? key) {
+                final resolved = RouteRefs.routeIdForRef(key, routes);
+                if (resolved != null) return resolved;
+                final k = key?.trim();
+                if (k == null || k.isEmpty) return null;
+                return k;
+              }
+
+              String? normalizeDriverId(String? routeId) {
+                if (routeId == null) return null;
+                final r = routes.firstWhereOrNull((r) => r.id == routeId);
+                final d = r?.assignedDriver?.trim();
+                if (d == null || d.isEmpty) return null;
+                return d;
+              }
+
+              final nextOrders = <Order>[];
+              for (final doc in snapshot.docs) {
+                try {
+                  final data = doc.data();
+                  final fid = (data['factoryId'] ?? data['factory_id'])
+                      ?.toString();
+                  if (fid != factoryId) continue;
+                  final o = Order.fromJson({...data, 'id': doc.id});
+                  final derivedKey = deriveRouteKey(o);
+                  final normalizedId = normalizeRouteId(derivedKey);
+                  final normalizedDriver = normalizeDriverId(normalizedId);
+
+                  final routeSame =
+                      (o.assignedRoute?.trim().isNotEmpty == true
+                          ? o.assignedRoute!.trim()
+                          : null) ==
+                      normalizedId;
+                  final driverSame =
+                      (o.assignedDriver?.trim().isNotEmpty == true
+                          ? o.assignedDriver!.trim()
+                          : null) ==
+                      normalizedDriver;
+
+                  nextOrders.add(
+                    routeSame && driverSame
+                        ? o
+                        : o.copyWith(
+                            assignedRoute: normalizedId,
+                            assignedDriver: normalizedDriver,
+                          ),
+                  );
+                } catch (e) {
+                  debugPrint(
+                    '[Firestore] Skipping bad order doc ${doc.id}: $e',
+                  );
+                }
+              }
+
+              _emitOrderNotifications(nextOrders);
+
+              state = nextOrders;
+              _scheduleRouteRefMigration(
+                factoryId,
+                routes: ref.read(routesProvider),
+                customers: ref.read(customersProvider),
+                orders: state,
               );
-              final phoneRoute = byPhone?.assignedRoute?.trim();
-              if (phoneRoute?.isNotEmpty == true) return phoneRoute;
-            }
-
-            final name = o.customerName.trim().toLowerCase();
-            if (name.isNotEmpty) {
-              final byName = customers.firstWhereOrNull(
-                (c) => c.name.trim().toLowerCase() == name,
-              );
-              final nameRoute = byName?.assignedRoute?.trim();
-              if (nameRoute?.isNotEmpty == true) return nameRoute;
-            }
-            return null;
-          }
-
-          String? normalizeRouteId(String? key) {
-            final resolved = RouteRefs.routeIdForRef(key, routes);
-            if (resolved != null) return resolved;
-            final k = key?.trim();
-            if (k == null || k.isEmpty) return null;
-            return k;
-          }
-
-          String? normalizeDriverId(String? routeId) {
-            if (routeId == null) return null;
-            final r = routes.firstWhereOrNull((r) => r.id == routeId);
-            final d = r?.assignedDriver?.trim();
-            if (d == null || d.isEmpty) return null;
-            return d;
-          }
-
-          final nextOrders = <Order>[];
-          for (final doc in snapshot.docs) {
-            try {
-              final data = doc.data();
-              final fid =
-                  (data['factoryId'] ?? data['factory_id'])?.toString();
-              if (fid != factoryId) continue;
-              final o = Order.fromJson({...data, 'id': doc.id});
-              final derivedKey = deriveRouteKey(o);
-              final normalizedId = normalizeRouteId(derivedKey);
-              final normalizedDriver = normalizeDriverId(normalizedId);
-
-              final routeSame =
-                  (o.assignedRoute?.trim().isNotEmpty == true
-                      ? o.assignedRoute!.trim()
-                      : null) ==
-                  normalizedId;
-              final driverSame =
-                  (o.assignedDriver?.trim().isNotEmpty == true
-                      ? o.assignedDriver!.trim()
-                      : null) ==
-                  normalizedDriver;
-
-              nextOrders.add(
-                routeSame && driverSame
-                    ? o
-                    : o.copyWith(
-                        assignedRoute: normalizedId,
-                        assignedDriver: normalizedDriver,
-                      ),
-              );
-            } catch (e) {
-              debugPrint('[Firestore] Skipping bad order doc ${doc.id}: $e');
-            }
-          }
-
-          _emitOrderNotifications(nextOrders);
-
-          state = nextOrders;
-          _scheduleRouteRefMigration(
-            factoryId,
-            routes: ref.read(routesProvider),
-            customers: ref.read(customersProvider),
-            orders: state,
+              _scheduleDailyRecreationCatchUp(factoryId);
+              Future.microtask(() {
+                ref.read(ordersLoadedProvider.notifier).state = true;
+              });
+            },
+            onError: (Object e, StackTrace st) {
+              debugPrint('[Firestore] Error fetching orders: $e');
+              Future.microtask(() {
+                ref.read(ordersLoadedProvider.notifier).state = true;
+              });
+            },
           );
-          _scheduleDailyRecreationCatchUp(factoryId);
-          Future.microtask(() {
-            ref.read(ordersLoadedProvider.notifier).state = true;
-          });
-        },
-        onError: (Object e, StackTrace st) {
-          debugPrint('[Firestore] Error fetching orders: $e');
-          Future.microtask(() {
-            ref.read(ordersLoadedProvider.notifier).state = true;
-          });
-        },
-      );
     } catch (e) {
       debugPrint('[Firestore] Error fetching orders: $e');
       Future.microtask(() {
@@ -514,10 +516,9 @@ class OrdersNotifier extends Notifier<List<Order>> {
       );
 
       if (result != null && result.syncedCount > 0 && syncedTarget != null) {
-        ref.read(lastTouchedOrderProvider.notifier).set(
-          id: syncedTarget!.id,
-          wasCreated: false,
-        );
+        ref
+            .read(lastTouchedOrderProvider.notifier)
+            .set(id: syncedTarget!.id, wasCreated: false);
       }
 
       if (updated.orderType == OrderType.daily &&
@@ -548,7 +549,9 @@ class OrdersNotifier extends Notifier<List<Order>> {
         factoryId,
       );
       if (!enabled) return const DailyOrderRecreationResult();
-      if (!ref.read(customersLoadedProvider)) return const DailyOrderRecreationResult();
+      if (!ref.read(customersLoadedProvider)) {
+        return const DailyOrderRecreationResult();
+      }
 
       final rolloverHour = await _readRolloverHour(factoryId);
       final customers = ref.read(customersProvider);
@@ -596,9 +599,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
     );
 
     for (final id in result.createdOrderIds) {
-      ref
-          .read(lastTouchedOrderProvider.notifier)
-          .set(id: id, wasCreated: true);
+      ref.read(lastTouchedOrderProvider.notifier).set(id: id, wasCreated: true);
     }
 
     return result;
@@ -631,9 +632,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
     );
 
     for (final id in result.createdOrderIds) {
-      ref
-          .read(lastTouchedOrderProvider.notifier)
-          .set(id: id, wasCreated: true);
+      ref.read(lastTouchedOrderProvider.notifier).set(id: id, wasCreated: true);
     }
 
     return result;
@@ -753,9 +752,7 @@ class CustomersNotifier extends Notifier<List<Customer>> {
               final parsed = <Customer>[];
               for (final doc in snapshot.docs) {
                 try {
-                  parsed.add(
-                    Customer.fromJson({...doc.data(), 'id': doc.id}),
-                  );
+                  parsed.add(Customer.fromJson({...doc.data(), 'id': doc.id}));
                 } catch (e) {
                   debugPrint(
                     '[Firestore] Skipping bad customer doc ${doc.id}: $e',
@@ -886,9 +883,7 @@ class FoodItemsNotifier extends Notifier<List<FoodItem>> {
               final parsed = <FoodItem>[];
               for (final doc in snapshot.docs) {
                 try {
-                  parsed.add(
-                    FoodItem.fromJson({...doc.data(), 'id': doc.id}),
-                  );
+                  parsed.add(FoodItem.fromJson({...doc.data(), 'id': doc.id}));
                 } catch (e) {
                   debugPrint(
                     '[Firestore] Skipping bad foodItem doc ${doc.id}: $e',

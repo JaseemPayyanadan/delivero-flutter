@@ -5,11 +5,7 @@ import '../splash_constants.dart';
 
 /// Delivro logo fade + scale entrance at the end of the sequence.
 class SplashLogo extends StatelessWidget {
-  const SplashLogo({
-    super.key,
-    required this.opacity,
-    required this.scale,
-  });
+  const SplashLogo({super.key, required this.opacity, required this.scale});
 
   final double opacity;
   final double scale;

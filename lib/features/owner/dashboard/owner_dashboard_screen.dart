@@ -128,10 +128,11 @@ class OwnerDashboardScreen extends ConsumerWidget {
           (d) => d.isActive && (d.currentRoute?.trim().isNotEmpty ?? false),
         )
         .length;
-    final todayPendingOrderCount = (todayOrdersCount -
-            todayDeliveredCount -
-            todayCancelledCount)
-        .clamp(0, todayOrdersCount);
+    final todayPendingOrderCount =
+        (todayOrdersCount - todayDeliveredCount - todayCancelledCount).clamp(
+          0,
+          todayOrdersCount,
+        );
 
     final bool isEmpty =
         customers.isEmpty &&
@@ -202,7 +203,12 @@ class OwnerDashboardScreen extends ConsumerWidget {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, kDashboardHeroKpiStripContentTopPadding, 20, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  20,
+                  kDashboardHeroKpiStripContentTopPadding,
+                  20,
+                  0,
+                ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     if (showOnboardingBanner) ...[
@@ -215,9 +221,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                       subtitle: 'Jump to the workflows you use most',
                     ),
                     const SizedBox(height: 16),
-                    _QuickActionsGrid(
-                      actions: _ownerQuickActions,
-                    ),
+                    _QuickActionsGrid(actions: _ownerQuickActions),
                     const SizedBox(height: 32),
                     _SectionHeader(
                       eyebrow: 'Today',
@@ -366,7 +370,12 @@ class _DashboardHero extends StatelessWidget {
           const Positioned.fill(child: DashboardHeroBackground()),
           dashboardHeroBannerPositioned(context),
           Padding(
-            padding: EdgeInsets.fromLTRB(20, topInset + 18, 20, kDashboardHeroKpiStripBottomPadding),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              topInset + 18,
+              20,
+              kDashboardHeroKpiStripBottomPadding,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -439,16 +448,11 @@ class _HeroTopRow extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 3,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.25),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
               ),
               child: Text(
                 'OWNER',
@@ -651,29 +655,6 @@ class _HeroRevenueSplitPill extends StatelessWidget {
   }
 }
 
-class _GlowBlob extends StatelessWidget {
-  final double size;
-  final Color color;
-  const _GlowBlob({required this.size, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color, color.withValues(alpha: 0.0)],
-            stops: const [0.0, 1.0],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // ---------------------------------------------------------------------------
 // KPI strip — overlapping the hero, glanceable secondary metrics
 // ---------------------------------------------------------------------------
@@ -760,8 +741,9 @@ class _KpiStrip extends StatelessWidget {
                         iconTone: AppColors.error,
                         title: 'Dues',
                         isLoading: isLoading,
-                        value:
-                            isLoading ? '—' : moneyCompact.format(pendingRevenue),
+                        value: isLoading
+                            ? '—'
+                            : moneyCompact.format(pendingRevenue),
                       ),
                     ),
                   ],
@@ -868,10 +850,11 @@ class _DeliveryStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pendingCount = (totalOrders - deliveredCount - cancelledCount)
-        .clamp(0, totalOrders);
-    final progress =
-        totalOrders == 0 ? 0.0 : deliveredCount / totalOrders;
+    final pendingCount = (totalOrders - deliveredCount - cancelledCount).clamp(
+      0,
+      totalOrders,
+    );
+    final progress = totalOrders == 0 ? 0.0 : deliveredCount / totalOrders;
 
     return _SurfaceCard(
       padding: const EdgeInsets.all(18),
@@ -903,8 +886,9 @@ class _DeliveryStatusCard extends StatelessWidget {
                             child: LinearProgressIndicator(
                               value: progress,
                               minHeight: 7,
-                              backgroundColor:
-                                  AppColors.border.withValues(alpha: 0.6),
+                              backgroundColor: AppColors.border.withValues(
+                                alpha: 0.6,
+                              ),
                               valueColor: const AlwaysStoppedAnimation<Color>(
                                 AppColors.success,
                               ),
@@ -924,7 +908,9 @@ class _DeliveryStatusCard extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: activeDrivers > 0
-                                ? AppColors.primaryLighter.withValues(alpha: 0.5)
+                                ? AppColors.primaryLighter.withValues(
+                                    alpha: 0.5,
+                                  )
                                 : AppColors.backgroundSecondary,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
@@ -987,8 +973,7 @@ class _DeliveryStatusCard extends StatelessWidget {
                       ],
                       const SizedBox(width: 8),
                       _StatusChip(
-                        label:
-                            '${(progress * 100).round()}% done',
+                        label: '${(progress * 100).round()}% done',
                         color: AppColors.success,
                       ),
                     ],
@@ -1678,13 +1663,16 @@ class _SalesTrendCardState extends State<_SalesTrendCard> {
                           }
                           final isHighlight = i == highlightIndex;
                           // For 30D, only show every 7th label to avoid crowding
-                          final skip30 = _rangeDays > 7 &&
+                          final skip30 =
+                              _rangeDays > 7 &&
                               i % 7 != 0 &&
                               i != last.length - 1;
                           if (skip30) return const SizedBox.shrink();
                           final fmt = _rangeDays > 7
                               ? DateFormat('d MMM').format(last[i].date)
-                              : DateFormat('EEE').format(last[i].date).toUpperCase();
+                              : DateFormat(
+                                  'EEE',
+                                ).format(last[i].date).toUpperCase();
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
@@ -1804,7 +1792,10 @@ class _RangeToggle extends StatelessWidget {
               onTap: () => onChanged(options[i]),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: selected == options[i]
                       ? AppColors.primary
@@ -2072,8 +2063,7 @@ class _RecentOrderTile extends StatelessWidget {
         '₹${NumberFormat.decimalPattern('en_IN').format(order.totalAmount)}';
     return Semantics(
       button: true,
-      label:
-          '${order.customerName}, $amountLabel, ${order.status.label}',
+      label: '${order.customerName}, $amountLabel, ${order.status.label}',
       hint: 'Opens order details',
       child: Material(
         color: Colors.transparent,

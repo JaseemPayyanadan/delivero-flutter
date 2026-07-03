@@ -77,8 +77,14 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                   onSelected: (val) => setState(() => _sort = val),
                   itemBuilder: (context) => [
                     _buildSortMenuItem(_ProductSort.nameAsc, 'Name (A–Z)'),
-                    _buildSortMenuItem(_ProductSort.priceAsc, 'Price (Low → High)'),
-                    _buildSortMenuItem(_ProductSort.priceDesc, 'Price (High → Low)'),
+                    _buildSortMenuItem(
+                      _ProductSort.priceAsc,
+                      'Price (Low → High)',
+                    ),
+                    _buildSortMenuItem(
+                      _ProductSort.priceDesc,
+                      'Price (High → Low)',
+                    ),
                   ],
                 ),
                 const SizedBox(width: 12),
@@ -180,8 +186,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
 
   Widget _buildOverviewCard(List<FoodItem> items) {
     final count = items.length;
-    final avgPrice =
-        items.fold<double>(0, (sum, i) => sum + i.price) / count;
+    final avgPrice = items.fold<double>(0, (sum, i) => sum + i.price) / count;
     final unitTypes = items.map((i) => i.unit).toSet().length;
     final currency = NumberFormat.decimalPattern();
 
@@ -241,7 +246,10 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
               children: [
                 _buildOverviewStat('$count', 'Products'),
                 _buildOverviewDivider(),
-                _buildOverviewStat('₹${currency.format(avgPrice.round())}', 'Avg price'),
+                _buildOverviewStat(
+                  '₹${currency.format(avgPrice.round())}',
+                  'Avg price',
+                ),
                 _buildOverviewDivider(),
                 _buildOverviewStat('$unitTypes', 'Unit types'),
               ],
@@ -333,9 +341,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
         decoration: BoxDecoration(
           color: selected ? accent : AppColors.surface,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? accent : AppColors.border,
-          ),
+          border: Border.all(color: selected ? accent : AppColors.border),
         ),
         child: Row(
           children: [
@@ -403,11 +409,7 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                     color: unitColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: Icon(
-                    _unitIcon(item.unit),
-                    color: unitColor,
-                    size: 24,
-                  ),
+                  child: Icon(_unitIcon(item.unit), color: unitColor, size: 24),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -506,39 +508,40 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
   }
 
   static IconData _unitIcon(ProductUnit unit) => switch (unit) {
-        ProductUnit.quantity => Icons.inventory_2_rounded,
-        ProductUnit.kilogram => Icons.scale_rounded,
-        ProductUnit.gram => Icons.scale_rounded,
-        ProductUnit.litre => Icons.water_drop_rounded,
-      };
+    ProductUnit.quantity => Icons.inventory_2_rounded,
+    ProductUnit.kilogram => Icons.scale_rounded,
+    ProductUnit.gram => Icons.scale_rounded,
+    ProductUnit.litre => Icons.water_drop_rounded,
+  };
 
   static Color _unitColor(ProductUnit unit) => switch (unit) {
-        ProductUnit.quantity => AppColors.primary,
-        ProductUnit.kilogram => AppColors.success,
-        ProductUnit.gram => AppColors.success,
-        ProductUnit.litre => AppColors.info,
-      };
+    ProductUnit.quantity => AppColors.primary,
+    ProductUnit.kilogram => AppColors.success,
+    ProductUnit.gram => AppColors.success,
+    ProductUnit.litre => AppColors.info,
+  };
 
   static String _unitLabel(ProductUnit unit) => switch (unit) {
-        ProductUnit.quantity => 'PER PIECE',
-        ProductUnit.kilogram => 'PER KG',
-        ProductUnit.gram => 'PER GRAM',
-        ProductUnit.litre => 'PER LITRE',
-      };
+    ProductUnit.quantity => 'PER PIECE',
+    ProductUnit.kilogram => 'PER KG',
+    ProductUnit.gram => 'PER GRAM',
+    ProductUnit.litre => 'PER LITRE',
+  };
 
   static String _unitLabelShort(ProductUnit unit) => switch (unit) {
-        ProductUnit.quantity => 'Piece',
-        ProductUnit.kilogram => 'Kg',
-        ProductUnit.gram => 'Gram',
-        ProductUnit.litre => 'Litre',
-      };
+    ProductUnit.quantity => 'Piece',
+    ProductUnit.kilogram => 'Kg',
+    ProductUnit.gram => 'Gram',
+    ProductUnit.litre => 'Litre',
+  };
 
   Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
     final isFiltering = _searchQuery.trim().isNotEmpty || _unitFilter != null;
     if (isFiltering) {
       return DeliveroEmptyState(
         title: 'No matching products',
-        subtitle: 'Try a different search or clear the filters to see your full catalog.',
+        subtitle:
+            'Try a different search or clear the filters to see your full catalog.',
         icon: Icons.search_off_rounded,
         actionLabel: 'Clear filters',
         onActionPressed: () {
@@ -719,9 +722,11 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
             final factoryId = await ref.read(factoryIdProvider.future);
             if (factoryId == null || factoryId.isEmpty) return false;
             if (isEdit) {
-              await ref.read(foodItemsProvider.notifier).updateFoodItem(
+              await ref
+                  .read(foodItemsProvider.notifier)
+                  .updateFoodItem(
                     FoodItem(
-                      id: item!.id,
+                      id: item.id,
                       factoryId: item.factoryId,
                       name: name,
                       price: price,
@@ -731,7 +736,9 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                     ),
                   );
             } else {
-              await ref.read(foodItemsProvider.notifier).addFoodItem(
+              await ref
+                  .read(foodItemsProvider.notifier)
+                  .addFoodItem(
                     FoodItem(
                       id: const Uuid().v4(),
                       factoryId: factoryId,
@@ -759,21 +766,21 @@ class _FoodItemsScreenState extends ConsumerState<FoodItemsScreen> {
                       .where(
                         (o) =>
                             activeStatuses.contains(o.status) &&
-                            o.items.any((i) => i.foodItemId == item!.id),
+                            o.items.any((i) => i.foodItemId == item.id),
                       )
                       .length;
                   if (activeCount > 0) {
                     sm.showSnackBar(
                       SnackBar(
                         content: Text(
-                          '"${item!.name}" is on $activeCount active order(s). Deliver or cancel them first.',
+                          '"${item.name}" is on $activeCount active order(s). Deliver or cancel them first.',
                         ),
                         backgroundColor: AppColors.error,
                       ),
                     );
                     return;
                   }
-                  final confirmed = await _confirmDelete(this.context, item!);
+                  final confirmed = await _confirmDelete(this.context, item);
                   if (confirmed == true) {
                     try {
                       await ref
@@ -810,7 +817,8 @@ class _FoodItemEditorDialog extends StatefulWidget {
   final FoodItem? item;
   final String initialName;
   final String initialPrice;
-  final Future<bool> Function(String name, double price, ProductUnit unit) onSave;
+  final Future<bool> Function(String name, double price, ProductUnit unit)
+  onSave;
   final Future<void> Function()? onDelete;
 
   @override
@@ -860,18 +868,18 @@ class _FoodItemEditorDialogState extends State<_FoodItemEditorDialog> {
   }
 
   static IconData _unitIcon(ProductUnit unit) => switch (unit) {
-        ProductUnit.quantity => Icons.inventory_2_rounded,
-        ProductUnit.kilogram => Icons.scale_rounded,
-        ProductUnit.gram => Icons.scale_rounded,
-        ProductUnit.litre => Icons.water_drop_rounded,
-      };
+    ProductUnit.quantity => Icons.inventory_2_rounded,
+    ProductUnit.kilogram => Icons.scale_rounded,
+    ProductUnit.gram => Icons.scale_rounded,
+    ProductUnit.litre => Icons.water_drop_rounded,
+  };
 
   static Color _unitColor(ProductUnit unit) => switch (unit) {
-        ProductUnit.quantity => AppColors.primary,
-        ProductUnit.kilogram => AppColors.success,
-        ProductUnit.gram => AppColors.success,
-        ProductUnit.litre => AppColors.info,
-      };
+    ProductUnit.quantity => AppColors.primary,
+    ProductUnit.kilogram => AppColors.success,
+    ProductUnit.gram => AppColors.success,
+    ProductUnit.litre => AppColors.info,
+  };
 
   @override
   void dispose() {

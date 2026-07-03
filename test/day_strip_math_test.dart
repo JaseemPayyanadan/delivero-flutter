@@ -11,7 +11,10 @@ void main() {
     });
 
     test('a Sunday maps to itself', () {
-      expect(currentWeekSunday(DateTime(2026, 6, 21, 9)), DateTime(2026, 6, 21));
+      expect(
+        currentWeekSunday(DateTime(2026, 6, 21, 9)),
+        DateTime(2026, 6, 21),
+      );
     });
   });
 
@@ -39,8 +42,14 @@ void main() {
     });
 
     test('future and past dates offset from the base index', () {
-      expect(dayIndexForDate(now, DateTime(2026, 6, 29)), kDayStripBaseIndex + 5);
-      expect(dayIndexForDate(now, DateTime(2026, 6, 21)), kDayStripBaseIndex - 3);
+      expect(
+        dayIndexForDate(now, DateTime(2026, 6, 29)),
+        kDayStripBaseIndex + 5,
+      );
+      expect(
+        dayIndexForDate(now, DateTime(2026, 6, 21)),
+        kDayStripBaseIndex - 3,
+      );
     });
 
     test('round-trips with dayForIndex', () {
