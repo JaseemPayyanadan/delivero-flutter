@@ -12,21 +12,21 @@ const List<_IntroSlide> _kIntroSlides = [
     titleRest: 'with ease',
     subtitle:
         'Add customers, manage orders, assign routes and keep everything organized.',
-    imageAsset: 'assets/images/slide-1.jpg',
+    imageAsset: 'assets/images/slide-1.webp',
   ),
   _IntroSlide(
     title: 'Track',
     titleRest: 'with confidence',
     subtitle:
         'Real-time status, verified drop-offs and clear proof of delivery on every order.',
-    imageAsset: 'assets/images/slide-2.jpg',
+    imageAsset: 'assets/images/slide-2.webp',
   ),
   _IntroSlide(
     title: 'Deliver',
     titleRest: 'smiles',
     subtitle:
         'Hassle-free deliveries, happy customers and growing your business.',
-    imageAsset: 'assets/images/slide-3.jpg',
+    imageAsset: 'assets/images/slide-3.webp',
   ),
 ];
 

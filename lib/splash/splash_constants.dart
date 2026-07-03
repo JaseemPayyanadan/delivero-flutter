@@ -7,7 +7,7 @@ class SplashConstants {
   /// Reference launcher video duration (~5.04s).
   static const duration = Duration(milliseconds: 5042);
 
-  static const launcherVideoAsset = 'assets/videos/delivero-launcher.mp4';
+  static const launcherVideoAsset = 'assets/videos/delivero-new.mp4';
 
   static const skyBackground = Color(0xFFF5F5F5);
 
