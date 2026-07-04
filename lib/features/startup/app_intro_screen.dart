@@ -178,49 +178,52 @@ class _IntroSlideView extends StatelessWidget {
             child: Image.asset(slide.imageAsset, fit: BoxFit.cover),
           ),
         ),
-        // Soft light scrim at the top so the dark headline stays legible
-        // regardless of what sits behind it in the artwork.
+        // Soft light scrim at the top keeps the dark headline legible over the
+        // faint skyline without washing out the artwork below.
         const Align(
           alignment: Alignment.topCenter,
           child: SizedBox(
-            height: 320,
+            height: 340,
             width: double.infinity,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xE6FFFFFF), Color(0x00FFFFFF)],
+                  colors: [Color(0xD9FFFFFF), Color(0x00FFFFFF)],
                 ),
               ),
             ),
           ),
         ),
-        // Headline + subtitle on the light upper area.
+        // Headline + subtitle, centered and seated in the clean upper band so
+        // they read as a deliberate group above the artwork (not pinned to the
+        // status bar with a void beneath).
         SafeArea(
           bottom: false,
           child: Align(
-            alignment: Alignment.topLeft,
+            alignment: const Alignment(0, -0.58),
             child: Opacity(
               opacity: centered,
               child: Transform.translate(
                 offset: Offset(0, (1 - centered) * 20),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: MediaQuery.withClampedTextScaling(
                     maxScaleFactor: 1.3,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         RichText(
+                          textAlign: TextAlign.center,
                           text: TextSpan(
                             style: const TextStyle(
-                              fontSize: 38,
+                              fontSize: 34,
                               fontWeight: FontWeight.w800,
                               color: AppColors.textPrimary,
-                              letterSpacing: -1.0,
-                              height: 1.05,
+                              letterSpacing: -0.8,
+                              height: 1.1,
                             ),
                             children: [
                               TextSpan(
@@ -241,11 +244,12 @@ class _IntroSlideView extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 300),
                           child: Text(
                             slide.subtitle,
+                            textAlign: TextAlign.center,
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
