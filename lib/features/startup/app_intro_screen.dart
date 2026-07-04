@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,13 +42,27 @@ class AppIntroScreen extends ConsumerStatefulWidget {
 class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  double _page = 0;
 
   int get _slideCount => _kIntroSlides.length;
   bool get _isLastPage => _currentPage >= _slideCount - 1;
   bool get _isFirstPage => _currentPage == 0;
 
   @override
+  void initState() {
+    super.initState();
+    _pageController.addListener(_onPageScroll);
+  }
+
+  void _onPageScroll() {
+    if (!_pageController.hasClients) return;
+    final page = _pageController.page ?? _currentPage.toDouble();
+    if (page != _page) setState(() => _page = page);
+  }
+
+  @override
   void dispose() {
+    _pageController.removeListener(_onPageScroll);
     _pageController.dispose();
     super.dispose();
   }
@@ -72,17 +88,6 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
     );
   }
 
-  void _goToIndex(int index) {
-    final safe = index.clamp(0, _slideCount - 1);
-    if (safe == _currentPage) return;
-    _hapticLight();
-    _pageController.animateToPage(
-      safe,
-      duration: const Duration(milliseconds: 380),
-      curve: Curves.easeInOutCubic,
-    );
-  }
-
   Future<void> _complete() async {
     try {
       HapticFeedback.mediumImpact();
@@ -101,50 +106,39 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF), AppColors.primary50],
-            stops: [0.0, 0.72, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _IntroTopBar(showSkip: !_isLastPage, onSkip: _complete),
-              const SizedBox(height: 12),
-              _OnboardingStepper(
-                labels: _kIntroSlides.map((s) => s.title).toList(),
-                currentIndex: _currentPage,
-                onTap: _goToIndex,
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  onPageChanged: (index) =>
-                      setState(() => _currentPage = index),
-                  itemCount: _slideCount,
-                  itemBuilder: (context, index) {
-                    return _IntroSlideView(slide: _kIntroSlides[index]);
-                  },
+      backgroundColor: AppColors.primary700,
+      body: Stack(
+        children: [
+          Positioned.fill(child: _HeroBackground(page: _page)),
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SkipButton(showSkip: !_isLastPage, onSkip: _complete),
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: (index) =>
+                        setState(() => _currentPage = index),
+                    itemCount: _slideCount,
+                    itemBuilder: (context, index) => _HeroSlideView(
+                      slide: _kIntroSlides[index],
+                      offset: _page - index,
+                    ),
+                  ),
                 ),
-              ),
-              _IntroFooter(
-                isFirstPage: _isFirstPage,
-                isLastPage: _isLastPage,
-                currentPage: _currentPage,
-                pageCount: _slideCount,
-                onBack: _onBack,
-                onNext: _onNext,
-              ),
-            ],
+                _IntroFooter(
+                  isFirstPage: _isFirstPage,
+                  isLastPage: _isLastPage,
+                  currentPage: _currentPage,
+                  pageCount: _slideCount,
+                  onBack: _onBack,
+                  onNext: _onNext,
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -164,11 +158,84 @@ class _IntroSlide {
   });
 }
 
-class _IntroTopBar extends StatelessWidget {
+class _HeroBackground extends StatelessWidget {
+  final double page;
+  const _HeroBackground({required this.page});
+
+  static const _midColors = [
+    AppColors.primary500,
+    AppColors.primary600,
+    AppColors.primary700,
+  ];
+
+  Color _midFor(double p) {
+    final maxIndex = _midColors.length - 1;
+    final clamped = p.clamp(0.0, maxIndex.toDouble());
+    final lo = clamped.floor();
+    final hi = (lo + 1).clamp(0, maxIndex);
+    return Color.lerp(_midColors[lo], _midColors[hi], clamped - lo)!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mid = _midFor(page);
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.primary700, mid, AppColors.primary900],
+                stops: const [0.0, 0.5, 1.0],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: -60,
+          right: -40,
+          child: _Blob(
+            color: AppColors.secondary.withValues(alpha: 0.12),
+            size: 260,
+          ),
+        ),
+        Positioned(
+          top: 220,
+          left: -70,
+          child: _Blob(
+            color: AppColors.primary300.withValues(alpha: 0.18),
+            size: 300,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Blob extends StatelessWidget {
+  final Color color;
+  final double size;
+  const _Blob({required this.color, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+    );
+  }
+}
+
+class _SkipButton extends StatelessWidget {
   final bool showSkip;
   final VoidCallback onSkip;
-
-  const _IntroTopBar({required this.showSkip, required this.onSkip});
+  const _SkipButton({required this.showSkip, required this.onSkip});
 
   @override
   Widget build(BuildContext context) {
@@ -184,11 +251,9 @@ class _IntroTopBar extends StatelessWidget {
             child: TextButton(
               onPressed: onSkip,
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
+                foregroundColor: Colors.white.withValues(alpha: 0.85),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               ),
               child: const Text(
                 'Skip',
@@ -202,216 +267,116 @@ class _IntroTopBar extends StatelessWidget {
   }
 }
 
-class _OnboardingStepper extends StatelessWidget {
-  final List<String> labels;
-  final int currentIndex;
-  final ValueChanged<int> onTap;
-
-  const _OnboardingStepper({
-    required this.labels,
-    required this.currentIndex,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final count = labels.length;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 34,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: List.generate(count * 2 - 1, (i) {
-                if (i.isOdd) {
-                  final leftIndex = i ~/ 2;
-                  final reached = leftIndex < currentIndex;
-                  return Expanded(child: _StepConnector(reached: reached));
-                }
-                final stepIndex = i ~/ 2;
-                return _StepDot(
-                  index: stepIndex,
-                  currentIndex: currentIndex,
-                  onTap: () => onTap(stepIndex),
-                );
-              }),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: List.generate(count, (i) {
-              final isActive = i == currentIndex;
-              final isDone = i < currentIndex;
-              return Expanded(
-                child: Text(
-                  labels[i],
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                    color: isActive
-                        ? AppColors.primary
-                        : isDone
-                        ? AppColors.textSecondary
-                        : AppColors.textLight,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepDot extends StatelessWidget {
-  final int index;
-  final int currentIndex;
-  final VoidCallback onTap;
-
-  const _StepDot({
-    required this.index,
-    required this.currentIndex,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isActive = index == currentIndex;
-    final isDone = index < currentIndex;
-    final size = isActive ? 34.0 : 30.0;
-    final filled = isDone || isActive;
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        width: 40,
-        height: 34,
-        child: Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: filled ? AppColors.primary : AppColors.neutral100,
-              border: Border.all(
-                color: filled ? AppColors.primary : AppColors.neutral300,
-                width: 1.5,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: isDone
-                ? const Icon(Icons.check_rounded, size: 17, color: Colors.white)
-                : Text(
-                    '${index + 1}',
-                    style: TextStyle(
-                      fontSize: isActive ? 14 : 13,
-                      fontWeight: FontWeight.w800,
-                      color: filled ? Colors.white : AppColors.textLight,
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StepConnector extends StatelessWidget {
-  final bool reached;
-  const _StepConnector({required this.reached});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-      height: 2.5,
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(2),
-        color: reached ? AppColors.primary : AppColors.neutral200,
-      ),
-    );
-  }
-}
-
-class _IntroSlideView extends StatelessWidget {
+class _HeroSlideView extends StatelessWidget {
   final _IntroSlide slide;
-
-  const _IntroSlideView({required this.slide});
+  final double offset;
+  const _HeroSlideView({required this.slide, required this.offset});
 
   @override
   Widget build(BuildContext context) {
+    final centered = (1 - offset.abs()).clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Image.asset(
-              slide.imageAsset,
-              width: double.infinity,
-              fit: BoxFit.contain,
-              alignment: Alignment.center,
+          flex: 55,
+          child: Center(
+            child: Transform.translate(
+              offset: Offset(-offset * 40, 0),
+              child: Transform.scale(
+                scale: 0.92 + 0.08 * centered,
+                child: _HaloIllustration(asset: slide.imageAsset),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 40,
+          child: Opacity(
+            opacity: centered,
+            child: Transform.translate(
+              offset: Offset(0, (1 - centered) * 24),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -1.0,
+                          height: 1.05,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: slide.title,
+                            style:
+                                const TextStyle(color: AppColors.secondary),
+                          ),
+                          const TextSpan(text: '\n'),
+                          TextSpan(text: slide.titleRest),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      slide.subtitle,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.white.withValues(alpha: 0.72),
+                        height: 1.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HaloIllustration extends StatelessWidget {
+  final String asset;
+  const _HaloIllustration({required this.asset});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 320,
+          height: 320,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                Colors.white.withValues(alpha: 0.16),
+                Colors.white.withValues(alpha: 0.0),
+              ],
             ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(28, 8, 28, 12),
-          child: Column(
-            children: [
-              RichText(
-                textAlign: TextAlign.center,
-                text: TextSpan(
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.5,
-                    height: 1.15,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: slide.title,
-                      style: const TextStyle(color: AppColors.primary),
-                    ),
-                    const TextSpan(text: ' '),
-                    TextSpan(text: slide.titleRest),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                width: 28,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                slide.subtitle,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.all(20),
+          child: Image.asset(asset, fit: BoxFit.contain),
         ),
       ],
     );
