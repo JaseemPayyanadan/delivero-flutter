@@ -8,10 +8,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 GoRouter _buildRouter() => GoRouter(
       initialLocation: '/intro',
       routes: [
-        GoRoute(path: '/intro', builder: (_, __) => const AppIntroScreen()),
+        GoRoute(path: '/intro', builder: (_, _) => const AppIntroScreen()),
         GoRoute(
           path: '/login',
-          builder: (_, __) => const Scaffold(body: Text('LOGIN_PAGE')),
+          builder: (_, _) => const Scaffold(body: Text('LOGIN_PAGE')),
         ),
       ],
     );
@@ -19,24 +19,28 @@ GoRouter _buildRouter() => GoRouter(
 Widget _harness() =>
     ProviderScope(child: MaterialApp.router(routerConfig: _buildRouter()));
 
+// The next control is a forward-arrow button (an icon-only lime circle on
+// non-last slides, a "Get started" pill on the last). Locate it by its icon
+// rather than a text label, so the guard is agnostic to the button's styling.
 Future<void> _advance(WidgetTester tester) async {
-  await tester.tap(find.text('Next'));
+  await tester.tap(find.byIcon(Icons.arrow_forward_rounded));
   await tester.pumpAndSettle();
 }
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('first slide shows Skip + Next, not Get started', (tester) async {
+  testWidgets('first slide shows Skip and next control, not Get started',
+      (tester) async {
     await tester.pumpWidget(_harness());
     await tester.pumpAndSettle();
 
     expect(find.text('Skip'), findsOneWidget);
-    expect(find.text('Next'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_forward_rounded), findsOneWidget);
     expect(find.text('Get started'), findsNothing);
   });
 
-  testWidgets('Next twice reaches last slide showing Get started, not Next',
+  testWidgets('advancing twice reaches last slide showing Get started',
       (tester) async {
     await tester.pumpWidget(_harness());
     await tester.pumpAndSettle();
@@ -44,12 +48,11 @@ void main() {
     await _advance(tester);
     await _advance(tester);
 
-    // On the last slide the CTA morphs to "Get started" and "Next" is gone.
+    // On the last slide the next control morphs into the "Get started" pill.
     // Note: the "Skip" Text stays in the tree but is hidden via opacity 0 +
     // IgnorePointer (both before and after the redesign), so asserting its
     // absence with find.text is invalid — its hidden state is a manual check.
     expect(find.text('Get started'), findsOneWidget);
-    expect(find.text('Next'), findsNothing);
   });
 
   testWidgets('Skip marks intro seen and navigates to /login', (tester) async {

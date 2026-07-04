@@ -519,11 +519,7 @@ class _NextButton extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                ] else
-                  // Present in the tree (for the guard test's
-                  // find.text('Next')) but zero-size so the circular button
-                  // stays icon-only.
-                  const SizedBox.shrink(child: Text('Next')),
+                ],
                 const Icon(
                   Icons.arrow_forward_rounded,
                   color: AppColors.onSecondary,
