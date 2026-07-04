@@ -77,5 +77,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('LOGIN_PAGE'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('hasSeenAppIntro'), true);
+  });
+
+  testWidgets(
+      'back control is hidden on first slide and shown after advancing',
+      (tester) async {
+    await tester.pumpWidget(_harness());
+    await tester.pumpAndSettle();
+
+    bool backIgnoring() => tester
+        .widget<IgnorePointer>(
+          find
+              .ancestor(
+                of: find.byIcon(Icons.arrow_back_rounded),
+                matching: find.byType(IgnorePointer),
+              )
+              .first,
+        )
+        .ignoring;
+
+    expect(backIgnoring(), true);
+
+    await _advance(tester);
+
+    expect(backIgnoring(), false);
   });
 }

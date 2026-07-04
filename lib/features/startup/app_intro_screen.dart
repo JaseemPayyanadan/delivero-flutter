@@ -43,6 +43,7 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   double _page = 0;
+  bool _completing = false;
 
   int get _slideCount => _kIntroSlides.length;
   bool get _isLastPage => _currentPage >= _slideCount - 1;
@@ -89,6 +90,8 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
   }
 
   Future<void> _complete() async {
+    if (_completing) return;
+    _completing = true;
     try {
       HapticFeedback.mediumImpact();
     } catch (_) {}
@@ -298,50 +301,64 @@ class _HeroSlideView extends StatelessWidget {
               offset: Offset(0, (1 - centered) * 24),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        style: const TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: -1.0,
-                          height: 1.05,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: MediaQuery.withClampedTextScaling(
+                      maxScaleFactor: 1.3,
+                      child: SizedBox(
+                        width: constraints.maxWidth,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RichText(
+                              text: TextSpan(
+                                style: const TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: -1.0,
+                                  height: 1.05,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: slide.title,
+                                    style: const TextStyle(
+                                        color: AppColors.secondary),
+                                  ),
+                                  const TextSpan(text: '\n'),
+                                  TextSpan(text: slide.titleRest),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Container(
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              slide.subtitle,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.white.withValues(alpha: 0.72),
+                                height: 1.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
-                        children: [
-                          TextSpan(
-                            text: slide.title,
-                            style:
-                                const TextStyle(color: AppColors.secondary),
-                          ),
-                          const TextSpan(text: '\n'),
-                          TextSpan(text: slide.titleRest),
-                        ],
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      slide.subtitle,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.white.withValues(alpha: 0.72),
-                        height: 1.5,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
