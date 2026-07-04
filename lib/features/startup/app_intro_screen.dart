@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,21 +12,21 @@ const List<_IntroSlide> _kIntroSlides = [
     titleRest: 'with ease',
     subtitle:
         'Add customers, manage orders, assign routes and keep everything organized.',
-    imageAsset: 'assets/images/slide-1.webp',
+    imageAsset: 'assets/images/introscreen-1.jpg',
   ),
   _IntroSlide(
     title: 'Track',
     titleRest: 'with confidence',
     subtitle:
         'Real-time status, verified drop-offs and clear proof of delivery on every order.',
-    imageAsset: 'assets/images/slide-2.webp',
+    imageAsset: 'assets/images/introscreen-2.jpg',
   ),
   _IntroSlide(
     title: 'Deliver',
     titleRest: 'smiles',
     subtitle:
         'Hassle-free deliveries, happy customers and growing your business.',
-    imageAsset: 'assets/images/slide-3.webp',
+    imageAsset: 'assets/images/introscreen-3.jpg',
   ),
 ];
 
@@ -109,28 +107,27 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary700,
+      backgroundColor: AppColors.backgroundPrimary,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          Positioned.fill(child: _HeroBackground(page: _page)),
+          // Full-bleed swipeable slide backgrounds (image + top headline).
+          PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemCount: _slideCount,
+            itemBuilder: (context, index) => _IntroSlideView(
+              slide: _kIntroSlides[index],
+              offset: _page - index,
+            ),
+          ),
+          // Overlaid controls: Skip pinned top-right, footer pinned bottom.
           SafeArea(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _SkipButton(showSkip: !_isLastPage, onSkip: _complete),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _pageController,
-                    onPageChanged: (index) =>
-                        setState(() => _currentPage = index),
-                    itemCount: _slideCount,
-                    itemBuilder: (context, index) => _HeroSlideView(
-                      slide: _kIntroSlides[index],
-                      offset: _page - index,
-                    ),
-                  ),
-                ),
-                _GlassFooter(
+                const Spacer(),
+                _IntroFooter(
                   isFirstPage: _isFirstPage,
                   isLastPage: _isLastPage,
                   currentPage: _currentPage,
@@ -161,76 +158,113 @@ class _IntroSlide {
   });
 }
 
-class _HeroBackground extends StatelessWidget {
-  final double page;
-  const _HeroBackground({required this.page});
-
-  static const _midColors = [
-    AppColors.primary500,
-    AppColors.primary600,
-    AppColors.primary700,
-  ];
-
-  Color _midFor(double p) {
-    final maxIndex = _midColors.length - 1;
-    final clamped = p.clamp(0.0, maxIndex.toDouble());
-    final lo = clamped.floor();
-    final hi = (lo + 1).clamp(0, maxIndex);
-    return Color.lerp(_midColors[lo], _midColors[hi], clamped - lo)!;
-  }
+class _IntroSlideView extends StatelessWidget {
+  final _IntroSlide slide;
+  final double offset;
+  const _IntroSlideView({required this.slide, required this.offset});
 
   @override
   Widget build(BuildContext context) {
-    final mid = _midFor(page);
+    final centered = (1 - offset.abs()).clamp(0.0, 1.0);
     return Stack(
+      fit: StackFit.expand,
       children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [AppColors.primary700, mid, AppColors.primary900],
-                stops: const [0.0, 0.5, 1.0],
+        // Full-bleed artwork. Slightly over-scaled so the gentle parallax
+        // translate never reveals an empty edge during a swipe.
+        Transform.scale(
+          scale: 1.1,
+          child: Transform.translate(
+            offset: Offset(-offset * 14, 0),
+            child: Image.asset(slide.imageAsset, fit: BoxFit.cover),
+          ),
+        ),
+        // Soft light scrim at the top so the dark headline stays legible
+        // regardless of what sits behind it in the artwork.
+        const Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            height: 320,
+            width: double.infinity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xE6FFFFFF), Color(0x00FFFFFF)],
+                ),
               ),
             ),
           ),
         ),
-        Positioned(
-          top: -60,
-          right: -40,
-          child: _Blob(
-            color: AppColors.secondary.withValues(alpha: 0.12),
-            size: 260,
-          ),
-        ),
-        Positioned(
-          top: 220,
-          left: -70,
-          child: _Blob(
-            color: AppColors.primary300.withValues(alpha: 0.18),
-            size: 300,
+        // Headline + subtitle on the light upper area.
+        SafeArea(
+          bottom: false,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Opacity(
+              opacity: centered,
+              child: Transform.translate(
+                offset: Offset(0, (1 - centered) * 20),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
+                  child: MediaQuery.withClampedTextScaling(
+                    maxScaleFactor: 1.3,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            style: const TextStyle(
+                              fontSize: 38,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -1.0,
+                              height: 1.05,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: slide.title,
+                                style: const TextStyle(color: AppColors.primary),
+                              ),
+                              const TextSpan(text: '\n'),
+                              TextSpan(text: slide.titleRest),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 300),
+                          child: Text(
+                            slide.subtitle,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: AppColors.textSecondary,
+                              height: 1.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _Blob extends StatelessWidget {
-  final Color color;
-  final double size;
-  const _Blob({required this.color, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return ImageFiltered(
-      imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
     );
   }
 }
@@ -254,7 +288,7 @@ class _SkipButton extends StatelessWidget {
             child: TextButton(
               onPressed: onSkip,
               style: TextButton.styleFrom(
-                foregroundColor: Colors.white.withValues(alpha: 0.85),
+                foregroundColor: AppColors.textSecondary,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               ),
@@ -270,137 +304,7 @@ class _SkipButton extends StatelessWidget {
   }
 }
 
-class _HeroSlideView extends StatelessWidget {
-  final _IntroSlide slide;
-  final double offset;
-  const _HeroSlideView({required this.slide, required this.offset});
-
-  @override
-  Widget build(BuildContext context) {
-    final centered = (1 - offset.abs()).clamp(0.0, 1.0);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 55,
-          child: Center(
-            child: Transform.translate(
-              offset: Offset(-offset * 40, 0),
-              child: Transform.scale(
-                scale: 0.92 + 0.08 * centered,
-                child: _HaloIllustration(asset: slide.imageAsset),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          flex: 40,
-          child: Opacity(
-            opacity: centered,
-            child: Transform.translate(
-              offset: Offset(0, (1 - centered) * 24),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
-                child: LayoutBuilder(
-                  builder: (context, constraints) => FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: MediaQuery.withClampedTextScaling(
-                      maxScaleFactor: 1.3,
-                      child: SizedBox(
-                        width: constraints.maxWidth,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            RichText(
-                              text: TextSpan(
-                                style: const TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  letterSpacing: -1.0,
-                                  height: 1.05,
-                                ),
-                                children: [
-                                  TextSpan(
-                                    text: slide.title,
-                                    style: const TextStyle(
-                                        color: AppColors.secondary),
-                                  ),
-                                  const TextSpan(text: '\n'),
-                                  TextSpan(text: slide.titleRest),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Container(
-                              width: 40,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: AppColors.secondary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              slide.subtitle,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.white.withValues(alpha: 0.72),
-                                height: 1.5,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HaloIllustration extends StatelessWidget {
-  final String asset;
-  const _HaloIllustration({required this.asset});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: 320,
-          height: 320,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                Colors.white.withValues(alpha: 0.16),
-                Colors.white.withValues(alpha: 0.0),
-              ],
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Image.asset(asset, fit: BoxFit.contain),
-        ),
-      ],
-    );
-  }
-}
-
-class _GlassFooter extends StatelessWidget {
+class _IntroFooter extends StatelessWidget {
   final bool isFirstPage;
   final bool isLastPage;
   final int currentPage;
@@ -408,7 +312,7 @@ class _GlassFooter extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onNext;
 
-  const _GlassFooter({
+  const _IntroFooter({
     required this.isFirstPage,
     required this.isLastPage,
     required this.currentPage,
@@ -421,43 +325,40 @@ class _GlassFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(36),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(36),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.18),
-                width: 1,
-              ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(36),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadowDeep,
+              blurRadius: 20,
+              offset: Offset(0, 8),
             ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 48,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    opacity: isFirstPage ? 0 : 1,
-                    child: IgnorePointer(
-                      ignoring: isFirstPage,
-                      child: _GlassCircleButton(
-                        icon: Icons.arrow_back_rounded,
-                        onTap: onBack,
-                      ),
-                    ),
+          ],
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 48,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: isFirstPage ? 0 : 1,
+                child: IgnorePointer(
+                  ignoring: isFirstPage,
+                  child: _CircleNavButton(
+                    icon: Icons.arrow_back_rounded,
+                    onTap: onBack,
                   ),
                 ),
-                Expanded(
-                  child: _ExpandingDots(count: pageCount, index: currentPage),
-                ),
-                _NextButton(isLast: isLastPage, onTap: onNext),
-              ],
+              ),
             ),
-          ),
+            Expanded(
+              child: _ExpandingDots(count: pageCount, index: currentPage),
+            ),
+            _NextButton(isLast: isLastPage, onTap: onNext),
+          ],
         ),
       ),
     );
@@ -482,9 +383,7 @@ class _ExpandingDots extends StatelessWidget {
           width: active ? 22 : 7,
           height: 7,
           decoration: BoxDecoration(
-            color: active
-                ? AppColors.secondary
-                : Colors.white.withValues(alpha: 0.35),
+            color: active ? AppColors.primary : AppColors.neutral300,
             borderRadius: BorderRadius.circular(8),
           ),
         );
@@ -518,8 +417,15 @@ class _NextButton extends StatelessWidget {
             width: isLast ? null : 52,
             padding: EdgeInsets.symmetric(horizontal: isLast ? 22 : 0),
             decoration: BoxDecoration(
-              color: AppColors.secondary,
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.28),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
             alignment: Alignment.center,
             child: Row(
@@ -529,7 +435,7 @@ class _NextButton extends StatelessWidget {
                   const Text(
                     'Get started',
                     style: TextStyle(
-                      color: AppColors.onSecondary,
+                      color: Colors.white,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.2,
@@ -539,7 +445,7 @@ class _NextButton extends StatelessWidget {
                 ],
                 const Icon(
                   Icons.arrow_forward_rounded,
-                  color: AppColors.onSecondary,
+                  color: Colors.white,
                   size: 20,
                 ),
               ],
@@ -551,23 +457,29 @@ class _NextButton extends StatelessWidget {
   }
 }
 
-class _GlassCircleButton extends StatelessWidget {
+class _CircleNavButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _GlassCircleButton({required this.icon, required this.onTap});
+  const _CircleNavButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.14),
+      color: AppColors.surface,
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
         customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 48,
-          height: 48,
-          child: Icon(icon, color: Colors.white, size: 20),
+        child: Ink(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.neutral200, width: 1.2),
+          ),
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Icon(icon, color: AppColors.primary, size: 20),
+          ),
         ),
       ),
     );

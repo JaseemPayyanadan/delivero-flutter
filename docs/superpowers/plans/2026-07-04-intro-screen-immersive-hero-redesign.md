@@ -13,7 +13,7 @@
 - No new dependencies. Flutter built-ins only.
 - Do NOT change: the 3 slides / illustrations / copy (`Manage with ease`, `Track with confidence`, `Deliver smiles`), the `_IntroSlide` model, the `_kIntroSlides` list, or asset paths (`assets/images/slide-1.webp`..`slide-3.webp`).
 - Do NOT change navigation/state: keep `_complete()` calling `ref.read(appStartupProvider.notifier).markAppIntroSeen()` then `context.go('/login')`; keep haptics (light on step, medium on complete).
-- Button/label text stays: `Skip`, `Next`, `Get started` — these are the plain-`Text` behavioral anchors the test suite relies on.
+- Button/label text stays: `Skip` and `Get started` (plain-`Text` behavioral anchors). The next control is intentionally icon-only on non-last slides per the immersive design, so the guard test locates it by `Icons.arrow_forward_rounded` rather than a "Next" label.
 - Brand colors via `AppColors`: purple = `primary500` (`#5A45FE`); lime accent = `secondary` (`#BFE003`), dark-on-lime = `onSecondary` (`neutral900`).
 - Analyzer must stay clean (`flutter analyze` → no new issues); no unused private widgets left behind.
 
