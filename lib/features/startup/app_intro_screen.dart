@@ -196,27 +196,25 @@ class _IntroSlideView extends StatelessWidget {
             ),
           ),
         ),
-        // Headline + subtitle, centered and seated in the clean upper band so
-        // they read as a deliberate group above the artwork (not pinned to the
-        // status bar with a void beneath).
+        // Headline + subtitle, top-left, with comfortable spacing below the
+        // status bar so they read as a clean header over the light upper band.
         SafeArea(
           bottom: false,
           child: Align(
-            alignment: const Alignment(0, -0.58),
+            alignment: Alignment.topLeft,
             child: Opacity(
               opacity: centered,
               child: Transform.translate(
                 offset: Offset(0, (1 - centered) * 20),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
                   child: MediaQuery.withClampedTextScaling(
                     maxScaleFactor: 1.3,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         RichText(
-                          textAlign: TextAlign.center,
                           text: TextSpan(
                             style: const TextStyle(
                               fontSize: 34,
@@ -249,7 +247,6 @@ class _IntroSlideView extends StatelessWidget {
                           constraints: const BoxConstraints(maxWidth: 300),
                           child: Text(
                             slide.subtitle,
-                            textAlign: TextAlign.center,
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
