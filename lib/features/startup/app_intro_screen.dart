@@ -207,7 +207,7 @@ class _IntroSlideView extends StatelessWidget {
               child: Transform.translate(
                 offset: Offset(0, (1 - centered) * 20),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
+                  padding: const EdgeInsets.fromLTRB(28, 52, 28, 0),
                   child: MediaQuery.withClampedTextScaling(
                     maxScaleFactor: 1.3,
                     child: Column(
