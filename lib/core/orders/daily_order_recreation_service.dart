@@ -16,12 +16,14 @@ class DailyOrderRecreationResult {
   final int syncedCount;
   final int cancelledCount;
   final List<String> createdOrderIds;
+  final List<String> unresolvedSourceOrderIds;
 
   const DailyOrderRecreationResult({
     this.createdCount = 0,
     this.syncedCount = 0,
     this.cancelledCount = 0,
     this.createdOrderIds = const [],
+    this.unresolvedSourceOrderIds = const [],
   });
 
   DailyOrderRecreationResult merge(DailyOrderRecreationResult other) {
@@ -30,11 +32,16 @@ class DailyOrderRecreationResult {
       syncedCount: syncedCount + other.syncedCount,
       cancelledCount: cancelledCount + other.cancelledCount,
       createdOrderIds: [...createdOrderIds, ...other.createdOrderIds],
+      unresolvedSourceOrderIds: unresolvedSourceOrderIds.isNotEmpty
+          ? unresolvedSourceOrderIds
+          : other.unresolvedSourceOrderIds,
     );
   }
 
   bool get hasChanges =>
       createdCount > 0 || syncedCount > 0 || cancelledCount > 0;
+
+  bool get blockedByUnresolvedOrders => unresolvedSourceOrderIds.isNotEmpty;
 }
 
 class DailyOrderRecreationPrefs {
@@ -409,9 +416,12 @@ Future<DailyOrderRecreationResult> runBatchForTargetDay({
           sourceBusinessDay.day,
         );
 
-  final sources = orders.where(
-    (o) => isEligibleRecreationSource(o, sourceDay, rolloverHour: rolloverHour),
-  );
+  final sources = orders
+      .where(
+        (o) =>
+            isEligibleRecreationSource(o, sourceDay, rolloverHour: rolloverHour),
+      )
+      .toList();
 
   final createdIds = <String>[];
   for (final source in sources) {
@@ -547,6 +557,7 @@ Future<DailyOrderRecreationResult> runRolloverBatch({
   required DateTime now,
   required FutureOr<void> Function(Order order) addOrder,
   bool autoRecreationEnabled = true,
+  bool allowUnresolvedSources = false,
 }) async {
   if (!autoRecreationEnabled) {
     return const DailyOrderRecreationResult();
@@ -578,6 +589,19 @@ Future<DailyOrderRecreationResult> runRolloverBatch({
   var result = const DailyOrderRecreationResult();
   var daysProcessed = 0;
   final mutableOrders = [...orders];
+
+  if (!allowUnresolvedSources) {
+    final unresolved = findUnresolvedSourceOrders(
+      orders: mutableOrders,
+      sourceBusinessDay: day.subtract(const Duration(days: 1)),
+      rolloverHour: rolloverHour,
+    );
+    if (unresolved.isNotEmpty) {
+      return DailyOrderRecreationResult(
+        unresolvedSourceOrderIds: unresolved.map((o) => o.id).toList(),
+      );
+    }
+  }
 
   while (!day.isAfter(normalizedCurrent) &&
       daysProcessed < kMaxBackfillBusinessDays) {

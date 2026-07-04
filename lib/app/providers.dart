@@ -162,6 +162,25 @@ class LastTouchedOrderNotifier extends Notifier<LastTouchedOrderState?> {
   void clear() => state = null;
 }
 
+/// Set when auto-recreation is blocked by unresolved yesterday orders.
+/// [DeliveroApp] listens and shows [UnresolvedOrdersSheet] before retrying.
+final pendingUnresolvedDailyReviewProvider =
+    NotifierProvider<PendingUnresolvedDailyReviewNotifier, List<String>?>(
+      PendingUnresolvedDailyReviewNotifier.new,
+    );
+
+class PendingUnresolvedDailyReviewNotifier extends Notifier<List<String>?> {
+  @override
+  List<String>? build() => null;
+
+  void setPending(List<String> orderIds) {
+    if (orderIds.isEmpty) return;
+    state = orderIds;
+  }
+
+  void clear() => state = null;
+}
+
 final ordersLoadedProvider = NotifierProvider<_LoadedFlagNotifier, bool>(
   _LoadedFlagNotifier.new,
 );
@@ -538,8 +557,9 @@ class OrdersNotifier extends Notifier<List<Order>> {
   }
 
   Future<DailyOrderRecreationResult> runDailyRecreationCatchUp(
-    String factoryId,
-  ) async {
+    String factoryId, {
+    bool allowUnresolvedSources = false,
+  }) async {
     if (_recreationCatchUpRunning) {
       return const DailyOrderRecreationResult();
     }
@@ -565,7 +585,14 @@ class OrdersNotifier extends Notifier<List<Order>> {
         now: DateTime.now(),
         addOrder: addOrder,
         autoRecreationEnabled: enabled,
+        allowUnresolvedSources: allowUnresolvedSources,
       );
+
+      if (result.blockedByUnresolvedOrders) {
+        ref
+            .read(pendingUnresolvedDailyReviewProvider.notifier)
+            .setPending(result.unresolvedSourceOrderIds);
+      }
 
       for (final id in result.createdOrderIds) {
         ref

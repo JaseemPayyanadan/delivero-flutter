@@ -82,7 +82,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/icons/
-    - assets/videos/delivero-new.mp4
+    - assets/videos/launcher-new.mp4
 
 flutter_launcher_icons:
   android: true

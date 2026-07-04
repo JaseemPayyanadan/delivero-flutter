@@ -24,6 +24,7 @@ import '../features/profile/settings_screen.dart';
 import '../features/startup/app_intro_screen.dart';
 import '../features/startup/app_launcher_screen.dart';
 import 'launcher_animation.dart';
+import 'navigation.dart';
 import 'providers.dart';
 
 class RouterNotifier extends ChangeNotifier {
@@ -94,6 +95,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final notifier = ref.watch(routerNotifierProvider);
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     refreshListenable: notifier,
     redirect: notifier.redirect,
