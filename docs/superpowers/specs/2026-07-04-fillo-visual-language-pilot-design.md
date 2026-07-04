@@ -36,11 +36,15 @@ bar. The mockup's signature move: an avatar/leading element overlaps the bottom
 edge of the banner onto the white content below.
 
 - Gradient: `AppColors.primaryGradientStart → primaryGradientEnd`
-  (`primary500 → primary700`), top-to-bottom.
-- Height: ~140px banner (tunable constant). White title text.
-- Exposes a slot for content that overlaps the bottom edge (the avatar), so
-  callers position an overlapping child without re-implementing the Stack.
-- Back button / actions render in white on the gradient.
+  (`primary500 → primary700`), ~160° diagonal.
+- **Chosen layout: "Straddle" (option A).** Banner height ~130px (tunable
+  constant). The circular avatar straddles the banner's bottom edge — roughly
+  half on purple, half on the white content below — left-aligned. Name, phone,
+  and status chip sit left-aligned on white directly under the avatar.
+- White title text + back button on the gradient.
+- Exposes a slot for the overlapping avatar child so callers don't
+  re-implement the Stack. Avatar has a white ring + soft shadow to read against
+  both the purple and the white.
 
 **What it is:** the screen's top chrome + hero banner.
 **How you use it:** wrap the screen body; pass `title`, optional `overlapChild`.
