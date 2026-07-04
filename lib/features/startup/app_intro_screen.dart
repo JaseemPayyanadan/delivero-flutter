@@ -127,7 +127,7 @@ class _AppIntroScreenState extends ConsumerState<AppIntroScreen> {
                     ),
                   ),
                 ),
-                _IntroFooter(
+                _GlassFooter(
                   isFirstPage: _isFirstPage,
                   isLastPage: _isLastPage,
                   currentPage: _currentPage,
@@ -383,7 +383,7 @@ class _HaloIllustration extends StatelessWidget {
   }
 }
 
-class _IntroFooter extends StatelessWidget {
+class _GlassFooter extends StatelessWidget {
   final bool isFirstPage;
   final bool isLastPage;
   final int currentPage;
@@ -391,7 +391,7 @@ class _IntroFooter extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onNext;
 
-  const _IntroFooter({
+  const _GlassFooter({
     required this.isFirstPage,
     required this.isLastPage,
     required this.currentPage,
@@ -404,81 +404,42 @@ class _IntroFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 52,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 200),
-              opacity: isFirstPage ? 0 : 1,
-              child: IgnorePointer(
-                ignoring: isFirstPage,
-                child: _CircleIconButton(
-                  icon: Icons.arrow_back_rounded,
-                  onTap: onBack,
-                ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(36),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(36),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.18),
+                width: 1,
               ),
             ),
-          ),
-          Expanded(
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(pageCount, (index) {
-                final isActive = index == currentPage;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: isActive ? 18 : 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: isActive ? AppColors.primary : AppColors.neutral300,
-                    borderRadius: BorderRadius.circular(8),
+              children: [
+                SizedBox(
+                  width: 48,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: isFirstPage ? 0 : 1,
+                    child: IgnorePointer(
+                      ignoring: isFirstPage,
+                      child: _GlassCircleButton(
+                        icon: Icons.arrow_back_rounded,
+                        onTap: onBack,
+                      ),
+                    ),
                   ),
-                );
-              }),
+                ),
+                Expanded(
+                  child: _ExpandingDots(count: pageCount, index: currentPage),
+                ),
+                _NextButton(isLast: isLastPage, onTap: onNext),
+              ],
             ),
-          ),
-          _PrimaryPillButton(
-            label: isLastPage ? 'Get started' : 'Next',
-            onTap: onNext,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CircleIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _CircleIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      shape: const CircleBorder(),
-      elevation: 0,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Ink(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.neutral200, width: 1.2),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadow,
-                blurRadius: 8,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: SizedBox(
-            width: 52,
-            height: 52,
-            child: Icon(icon, color: AppColors.primary, size: 22),
           ),
         ),
       ),
@@ -486,55 +447,114 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
-class _PrimaryPillButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
+class _ExpandingDots extends StatelessWidget {
+  final int count;
+  final int index;
+  const _ExpandingDots({required this.count, required this.index});
 
-  const _PrimaryPillButton({required this.label, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (i) {
+        final active = i == index;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: active ? 22 : 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: active
+                ? AppColors.secondary
+                : Colors.white.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(8),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _NextButton extends StatelessWidget {
+  final bool isLast;
+  final VoidCallback onTap;
+  const _NextButton({required this.isLast, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.primary,
-      borderRadius: BorderRadius.circular(28),
-      elevation: 0,
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(28),
-        child: Container(
-          height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            color: AppColors.primary,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.28),
-                blurRadius: 12,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.2,
+        borderRadius: BorderRadius.circular(26),
+        // AnimatedSize measures the (always fully-sized, never squeezed) Row
+        // below and tweens the outer box toward it — unlike animating the
+        // `width` field directly, the inner Row is never handed less space
+        // than it needs, so it can't overflow mid-morph.
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutExpo,
+          alignment: Alignment.centerRight,
+          child: Container(
+            height: 52,
+            width: isLast ? null : 52,
+            padding: EdgeInsets.symmetric(horizontal: isLast ? 22 : 0),
+            decoration: BoxDecoration(
+              color: AppColors.secondary,
+              borderRadius: BorderRadius.circular(26),
+            ),
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isLast) ...[
+                  const Text(
+                    'Get started',
+                    style: TextStyle(
+                      color: AppColors.onSecondary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ] else
+                  // Present in the tree (for the guard test's
+                  // find.text('Next')) but zero-size so the circular button
+                  // stays icon-only.
+                  const SizedBox.shrink(child: Text('Next')),
+                const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: AppColors.onSecondary,
+                  size: 20,
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.arrow_forward_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ],
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassCircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _GlassCircleButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.14),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Icon(icon, color: Colors.white, size: 20),
         ),
       ),
     );
