@@ -40,6 +40,13 @@ class AppColors {
   static const primaryGradientStart = primary500;
   static const primaryGradientEnd = primary700;
 
+  /// Shared purple header gradient for banner/sheet headers across the app.
+  static const primaryHeaderGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primaryGradientStart, primaryGradientEnd],
+  );
+
   static const success = Color(0xFF059669);
   static const successDark = Color(0xFF047857);
   static const successDarker = Color(0xFF065F46);

@@ -414,11 +414,13 @@ class _OrderListScreenState extends ConsumerState<OrderListScreen> {
           }
         },
         child: Scaffold(
-          backgroundColor: AppColors.success,
+          backgroundColor: AppColors.primaryGradientEnd,
           body: Column(
             children: [
-              ColoredBox(
-                color: AppColors.success,
+              DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: AppColors.primaryHeaderGradient,
+                ),
                 child: SafeArea(
                   bottom: false,
                   child: _OrdersPurpleHeader(

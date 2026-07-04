@@ -341,7 +341,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                           const SizedBox(height: 24),
                           Align(
                             alignment: Alignment.center,
-                            child: DeliveroButton(
+                            child: DeliveroButton.lime(
                               label: 'Send OTP',
                               onPressed: authState.isLoading
                                   ? null
@@ -349,7 +349,6 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                               isLoading: authState.isLoading,
                               isFullWidth: false,
                               icon: Icons.sms_outlined,
-                              borderRadius: 28,
                               height: 52,
                             ),
                           ),

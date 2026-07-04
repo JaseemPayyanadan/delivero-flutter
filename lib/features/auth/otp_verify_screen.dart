@@ -406,14 +406,13 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                                 ),
                               )
                             else
-                              DeliveroButton(
+                              DeliveroButton.lime(
                                 label: 'Verify & continue',
                                 onPressed: authState.isLoading
                                     ? null
                                     : _handleVerify,
                                 isLoading: authState.isLoading,
                                 icon: Icons.verified_outlined,
-                                borderRadius: 12,
                               ),
                             const SizedBox(height: 20),
                             _buildResendRow(isLoading: authState.isLoading),

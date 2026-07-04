@@ -11,7 +11,6 @@ import '../../../core/orders/order_sort.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_format.dart';
 import '../../../core/widgets/delivero_empty_state.dart';
-import '../../../core/widgets/delivero_sliver_header.dart';
 import '../../../core/widgets/order_week_day_strip.dart';
 import '../../../data/models/order.dart';
 import 'driver_order_scope.dart';
@@ -159,63 +158,75 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
 
     sortOrdersByDate(myOrders);
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundPrimary,
-      appBar: DeliveroAppBar(
-        title: 'Assigned Orders',
-        leading: null,
-        actions: [
-          IconButton(
-            tooltip: 'New order',
-            onPressed: () => context.push('/delivery/new-order'),
-            icon: const Icon(
-              Icons.add_circle_outline_rounded,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Search',
-            onPressed: () => _openSearchSheet(context),
-            icon: const Icon(
-              Icons.search_rounded,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
       ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          slivers: [
-            SliverToBoxAdapter(child: _buildCalendarSection(daysWithOrders)),
-            SliverToBoxAdapter(child: _buildFilters(myAllOrders)),
-            if (isLoading)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (myOrders.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: _buildEmptyState(
-                  hasAnyAssigned: myAllOrders.isNotEmpty,
-                  daysWithOrders: daysWithOrders,
+      child: Scaffold(
+        backgroundColor: AppColors.primaryGradientEnd,
+        body: Column(
+          children: [
+            DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryHeaderGradient,
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: _AssignedOrdersHeader(
+                  onNewOrder: () => context.push('/delivery/new-order'),
+                  onSearch: () => _openSearchSheet(context),
                 ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 100),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) =>
-                        _buildOrderCard(context, ref, myOrders[index]),
-                    childCount: myOrders.length,
+              ),
+            ),
+            Expanded(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AppColors.backgroundPrimary,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: RefreshIndicator(
+                  onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: _buildCalendarSection(daysWithOrders),
+                      ),
+                      SliverToBoxAdapter(child: _buildFilters(myAllOrders)),
+                      if (isLoading)
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (myOrders.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: _buildEmptyState(
+                            hasAnyAssigned: myAllOrders.isNotEmpty,
+                            daysWithOrders: daysWithOrders,
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 100),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _buildOrderCard(
+                                context,
+                                ref,
+                                myOrders[index],
+                              ),
+                              childCount: myOrders.length,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -766,6 +777,85 @@ class _OrderStatusListScreenState extends ConsumerState<OrderStatusListScreen> {
       onActionPressed: hasAnyAssigned
           ? null
           : () => context.push('/delivery/new-order'),
+    );
+  }
+}
+
+class _AssignedOrdersHeader extends StatelessWidget {
+  final VoidCallback onNewOrder;
+  final VoidCallback onSearch;
+
+  const _AssignedOrdersHeader({
+    required this.onNewOrder,
+    required this.onSearch,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 12, 20),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Assigned Orders',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.8,
+              ),
+            ),
+          ),
+          _AssignedHeaderButton(
+            icon: Icons.add_circle_outline_rounded,
+            tooltip: 'New order',
+            onPressed: onNewOrder,
+          ),
+          _AssignedHeaderButton(
+            icon: Icons.search_rounded,
+            tooltip: 'Search',
+            onPressed: onSearch,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AssignedHeaderButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _AssignedHeaderButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.white.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../app/providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/maps_launch.dart';
+import '../../../../core/widgets/delivero_gradient_header.dart';
 import '../../../../core/widgets/delivero_sliver_header.dart';
 import '../../../../data/models/order.dart';
 import 'order_detail_formatting.dart';
@@ -120,58 +121,6 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
-      appBar: DeliveroAppBar(
-        title: orderDetailDisplayId(order.id),
-        actions: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: OrderDetailPillBadge(
-                label: orderDetailHumanize(
-                  resolved.paymentStatus.name,
-                ).toUpperCase(),
-                background: paymentColor == AppColors.error
-                    ? AppColors.errorLighter.withValues(alpha: 0.68)
-                    : paymentColor.withValues(alpha: 0.096),
-                foreground: paymentColor,
-                border: paymentColor.withValues(alpha: 0.22),
-              ),
-            ),
-          ),
-          PopupMenuButton<_OrderMenuAction>(
-            tooltip: 'More',
-            icon: const Icon(
-              Icons.more_vert_rounded,
-              color: AppColors.textPrimary,
-            ),
-            onSelected: (action) {
-              switch (action) {
-                case _OrderMenuAction.edit:
-                  context.push('/owner/orders/edit/${order.id}');
-                  break;
-                case _OrderMenuAction.delete:
-                  _handleDelete(context, ref, order);
-              }
-            },
-            itemBuilder: (context) {
-              final canEdit =
-                  order.status != OrderStatus.delivered &&
-                  order.status != OrderStatus.cancelled;
-              return [
-                if (canEdit)
-                  const PopupMenuItem(
-                    value: _OrderMenuAction.edit,
-                    child: Text('Edit order'),
-                  ),
-                const PopupMenuItem(
-                  value: _OrderMenuAction.delete,
-                  child: Text('Delete order'),
-                ),
-              ];
-            },
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
@@ -179,138 +128,194 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
           ),
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+          padding: EdgeInsets.zero,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              OrderDetailSummaryCard(
-                order: order,
-                orderIdDisplay: orderDetailDisplayId(order.id),
-                money0: money0,
-                routeLabel: resolved.summaryRouteLabel,
-                paymentStatus: resolved.paymentStatus,
-                paymentColor: paymentColor,
-                statusBg: statusBg,
-                statusFg: statusFg,
-                statusLabel: orderDetailHumanize(order.status.name),
-                balanceDue: resolved.balanceDue,
-                onPhoneTap: order.customerPhone.trim().isEmpty
-                    ? null
-                    : () {
-                        try {
-                          HapticFeedback.selectionClick();
-                        } catch (_) {}
-                        _handleCallCustomer(context, order.customerPhone);
-                      },
-                onViewCustomer: order.customerId.trim().isEmpty
-                    ? null
-                    : () =>
-                          context.push('/owner/customers/${order.customerId}'),
-              ),
-              const SizedBox(height: 24),
-              OrderDetailSectionHeader(
-                title: 'Items',
-                trailing: '${order.items.length} Items',
-              ),
-              const SizedBox(height: 10),
-              OrderDetailCard(
-                child: Column(
-                  children: [
-                    for (int idx = 0; idx < order.items.length; idx++) ...[
-                      OrderDetailItemRow(item: order.items[idx]),
-                      if (idx != order.items.length - 1)
-                        const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: AppColors.border,
+              DeliveroGradientHeader(
+                title: orderDetailDisplayId(order.id),
+                onBack: Navigator.of(context).canPop()
+                    ? () => context.pop()
+                    : null,
+                horizontalPadding: 20,
+                bannerHeight: 104,
+                overlap: 36,
+                actions: [_buildOverflowMenu(context, ref, order)],
+                overlapChild: OrderDetailSummaryCard(
+                  order: order,
+                  orderIdDisplay: orderDetailDisplayId(order.id),
+                  money0: money0,
+                  routeLabel: resolved.summaryRouteLabel,
+                  paymentStatus: resolved.paymentStatus,
+                  paymentColor: paymentColor,
+                  statusBg: statusBg,
+                  statusFg: statusFg,
+                  statusLabel: orderDetailHumanize(order.status.name),
+                  balanceDue: resolved.balanceDue,
+                  onPhoneTap: order.customerPhone.trim().isEmpty
+                      ? null
+                      : () {
+                          try {
+                            HapticFeedback.selectionClick();
+                          } catch (_) {}
+                          _handleCallCustomer(context, order.customerPhone);
+                        },
+                  onViewCustomer: order.customerId.trim().isEmpty
+                      ? null
+                      : () => context.push(
+                          '/owner/customers/${order.customerId}',
                         ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OrderDetailSectionHeader(
+                      title: 'Items',
+                      trailing: '${order.items.length} Items',
+                    ),
+                    const SizedBox(height: 10),
+                    OrderDetailCard(
+                      child: Column(
+                        children: [
+                          for (
+                            int idx = 0;
+                            idx < order.items.length;
+                            idx++
+                          ) ...[
+                            OrderDetailItemRow(item: order.items[idx]),
+                            if (idx != order.items.length - 1)
+                              const Divider(
+                                height: 1,
+                                thickness: 1,
+                                color: AppColors.border,
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    OrderDetailPaymentSection(
+                      order: order,
+                      money0: money0,
+                      paymentStatus: resolved.paymentStatus,
+                      paymentColor: paymentColor,
+                      deliveryFee: resolved.deliveryFee,
+                      effectivePaid: resolved.effectivePaid,
+                      balanceDue: resolved.balanceDue,
+                      draftPaymentStatus:
+                          _draftPaymentStatus ?? PaymentStatus.unpaid,
+                      draftPaymentMethod:
+                          _draftPaymentMethod ?? PaymentMethod.cash,
+                      partialAmountController: _partialAmountController,
+                      draftAmountPaid: _draftAmountPaid,
+                      onDraftPaymentStatusChanged: (v) => setState(() {
+                        _draftPaymentStatus = v;
+                        if (v != PaymentStatus.partial) {
+                          _draftAmountPaid = null;
+                          _partialAmountController.clear();
+                        } else {
+                          _draftAmountPaid = order.amountPaid;
+                        }
+                      }),
+                      onDraftPaymentMethodChanged: (v) =>
+                          setState(() => _draftPaymentMethod = v),
+                      onPartialAmountChanged: (val) {
+                        final raw = val.trim().replaceAll(',', '');
+                        final parsed = double.tryParse(raw);
+                        setState(() => _draftAmountPaid = parsed);
+                      },
+                      onResetPaymentDrafts: () => setState(() {
+                        _resetPaymentDrafts(order);
+                      }),
+                      ref: ref,
+                    ),
+                    if ((order.notes ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      const OrderDetailSectionHeader(
+                        title: 'Notes',
+                        icon: Icons.sticky_note_2_rounded,
+                      ),
+                      const SizedBox(height: 10),
+                      OrderDetailCard(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          order.notes!.trim(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
                     ],
+                    const SizedBox(height: 20),
+                    OrderDetailBottomActions(
+                      isDelivered: order.status == OrderStatus.delivered,
+                      onMarkDelivered: () => showConfirmMarkDeliveredDialog(
+                        context: context,
+                        ref: ref,
+                        order: order,
+                        paymentDraft: ConfirmMarkDeliveredPaymentDraft(
+                          status: _draftPaymentStatus ?? PaymentStatus.unpaid,
+                          method: _draftPaymentMethod ?? PaymentMethod.cash,
+                          amountPaid: _draftAmountPaid,
+                          partialAmountText: _partialAmountController.text,
+                        ),
+                      ),
+                      onOpenMaps: order.customerAddress.trim().isEmpty
+                          ? null
+                          : () => _openMaps(context, order.customerAddress),
+                      onCancelOrder:
+                          (order.status == OrderStatus.cancelled ||
+                              order.status == OrderStatus.delivered)
+                          ? null
+                          : () => _confirmCancelOrder(context, ref, order),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(height: MediaQuery.paddingOf(context).bottom),
                   ],
                 ),
               ),
-              const SizedBox(height: 22),
-              OrderDetailPaymentSection(
-                order: order,
-                money0: money0,
-                paymentStatus: resolved.paymentStatus,
-                paymentColor: paymentColor,
-                deliveryFee: resolved.deliveryFee,
-                effectivePaid: resolved.effectivePaid,
-                balanceDue: resolved.balanceDue,
-                draftPaymentStatus: _draftPaymentStatus ?? PaymentStatus.unpaid,
-                draftPaymentMethod: _draftPaymentMethod ?? PaymentMethod.cash,
-                partialAmountController: _partialAmountController,
-                draftAmountPaid: _draftAmountPaid,
-                onDraftPaymentStatusChanged: (v) => setState(() {
-                  _draftPaymentStatus = v;
-                  if (v != PaymentStatus.partial) {
-                    _draftAmountPaid = null;
-                    _partialAmountController.clear();
-                  } else {
-                    _draftAmountPaid = order.amountPaid;
-                  }
-                }),
-                onDraftPaymentMethodChanged: (v) =>
-                    setState(() => _draftPaymentMethod = v),
-                onPartialAmountChanged: (val) {
-                  final raw = val.trim().replaceAll(',', '');
-                  final parsed = double.tryParse(raw);
-                  setState(() => _draftAmountPaid = parsed);
-                },
-                onResetPaymentDrafts: () => setState(() {
-                  _resetPaymentDrafts(order);
-                }),
-                ref: ref,
-              ),
-              if ((order.notes ?? '').trim().isNotEmpty) ...[
-                const SizedBox(height: 24),
-                const OrderDetailSectionHeader(
-                  title: 'Notes',
-                  icon: Icons.sticky_note_2_rounded,
-                ),
-                const SizedBox(height: 10),
-                OrderDetailCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    order.notes!.trim(),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              OrderDetailBottomActions(
-                isDelivered: order.status == OrderStatus.delivered,
-                onMarkDelivered: () => showConfirmMarkDeliveredDialog(
-                  context: context,
-                  ref: ref,
-                  order: order,
-                  paymentDraft: ConfirmMarkDeliveredPaymentDraft(
-                    status: _draftPaymentStatus ?? PaymentStatus.unpaid,
-                    method: _draftPaymentMethod ?? PaymentMethod.cash,
-                    amountPaid: _draftAmountPaid,
-                    partialAmountText: _partialAmountController.text,
-                  ),
-                ),
-                onOpenMaps: order.customerAddress.trim().isEmpty
-                    ? null
-                    : () => _openMaps(context, order.customerAddress),
-                onCancelOrder:
-                    (order.status == OrderStatus.cancelled ||
-                        order.status == OrderStatus.delivered)
-                    ? null
-                    : () => _confirmCancelOrder(context, ref, order),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(height: MediaQuery.paddingOf(context).bottom),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildOverflowMenu(BuildContext context, WidgetRef ref, Order order) {
+    return PopupMenuButton<_OrderMenuAction>(
+      tooltip: 'More',
+      icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+      onSelected: (action) {
+        switch (action) {
+          case _OrderMenuAction.edit:
+            context.push('/owner/orders/edit/${order.id}');
+            break;
+          case _OrderMenuAction.delete:
+            _handleDelete(context, ref, order);
+        }
+      },
+      itemBuilder: (context) {
+        final canEdit =
+            order.status != OrderStatus.delivered &&
+            order.status != OrderStatus.cancelled;
+        return [
+          if (canEdit)
+            const PopupMenuItem(
+              value: _OrderMenuAction.edit,
+              child: Text('Edit order'),
+            ),
+          const PopupMenuItem(
+            value: _OrderMenuAction.delete,
+            child: Text('Delete order'),
+          ),
+        ];
+      },
     );
   }
 
