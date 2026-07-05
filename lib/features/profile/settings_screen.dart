@@ -982,11 +982,13 @@ class _ProfileGenerateOrdersRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          DeliveroButton.lime(
+          DeliveroButton(
             onPressed: onPressed,
             isLoading: isLoading,
             icon: Icons.auto_fix_high_rounded,
             label: isLoading ? 'Generating…' : 'Generate now',
+            backgroundColor: AppColors.primary,
+            borderRadius: 999,
           ),
         ],
       ),

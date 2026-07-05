@@ -16,7 +16,6 @@ import 'core/services/local_notifications_service.dart';
 import 'core/services/order_day_reset_notification_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'data/models/user.dart';
-import 'features/owner/orders/unresolved_orders_sheet.dart';
 
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -55,7 +54,6 @@ Future<void> _syncOrderDayResetNotification(WidgetRef ref, User? user) async {
 }
 
 class _DeliveroAppState extends ConsumerState<DeliveroApp> {
-  bool _unresolvedSheetShowing = false;
   bool _recreationCatchUpInFlight = false;
 
   @override
@@ -85,60 +83,8 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
     });
   }
 
-  Future<void> _showUnresolvedOrdersSheet(List<String> orderIds) async {
-    final navigator = rootNavigatorKey.currentState;
-    if (navigator == null || !navigator.mounted) return;
-
-    _unresolvedSheetShowing = true;
-    try {
-      await showModalBottomSheet<void>(
-        context: navigator.context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => UnresolvedOrdersSheet(
-          orderIds: orderIds,
-          title: 'Unresolved orders from yesterday',
-          subtitle:
-              "Review and update each order before today's orders are created.",
-          doneLabel: "Done — create today's orders",
-        ),
-      );
-    } finally {
-      _unresolvedSheetShowing = false;
-    }
-  }
-
-  Future<void> _completeUnresolvedReviewAndGenerate() async {
-    final user = ref.read(authProvider).user;
-    final factoryId = user?.factoryId;
-    if (factoryId == null || factoryId.isEmpty) return;
-    if (user?.role != UserRole.owner) return;
-
-    ref.read(pendingUnresolvedDailyReviewProvider.notifier).clear();
-
-    final result = await ref
-        .read(ordersProvider.notifier)
-        .runDailyRecreationCatchUp(
-          factoryId,
-          allowUnresolvedSources: true,
-        );
-
-    if (!result.hasChanges || !mounted) return;
-    final messenger = rootScaffoldMessengerKey.currentState;
-    if (messenger == null) return;
-
-    final message = switch (result.createdCount) {
-      0 => 'Daily orders synced for today',
-      1 => '1 daily order auto-created for today',
-      _ => '${result.createdCount} daily orders auto-created for today',
-    };
-    messenger.showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
-  }
-
   Future<void> _runDailyRecreationCatchUp({required bool showFeedback}) async {
-    if (_recreationCatchUpInFlight || _unresolvedSheetShowing) return;
+    if (_recreationCatchUpInFlight) return;
 
     final user = ref.read(authProvider).user;
     final factoryId = user?.factoryId;
@@ -190,18 +136,6 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
       if (loaded) {
         _scheduleDailyRecreationCatchUp(showFeedback: false);
       }
-    });
-
-    ref.listen(pendingUnresolvedDailyReviewProvider, (previous, orderIds) {
-      if (orderIds == null || orderIds.isEmpty || _unresolvedSheetShowing) {
-        return;
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted || _unresolvedSheetShowing) return;
-        await _showUnresolvedOrdersSheet(orderIds);
-        if (!mounted) return;
-        await _completeUnresolvedReviewAndGenerate();
-      });
     });
 
     return MaterialApp.router(

@@ -59,10 +59,11 @@ class AppColors {
   static const info = Color(0xFF0284C7);
   static const infoLighter = Color(0xFFE0F2FE);
 
-  /// Dashboard hero gradient — dark/mid/light derived from [success] green.
-  static const dashboardHeroGradientStart = successDarker;
-  static const dashboardHeroGradientMid = success;
-  static const dashboardHeroGradientEnd = successLighter;
+  /// Dashboard hero gradient — dark/mid/light purple, matching the Fillo
+  /// header language used across the rest of the app.
+  static const dashboardHeroGradientStart = primary700;
+  static const dashboardHeroGradientMid = primary500;
+  static const dashboardHeroGradientEnd = primary300;
 
   static const backgroundPrimary = neutral25;
   static const backgroundSecondary = neutral50;

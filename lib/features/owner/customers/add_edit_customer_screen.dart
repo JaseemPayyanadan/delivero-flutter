@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import '../../../app/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delivero_sliver_header.dart';
+import '../../../core/widgets/use_current_location_button.dart';
+import '../../../core/widgets/address_autocomplete_field.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/delivery_route.dart';
 import '../../../core/utils/route_refs.dart';
@@ -361,12 +363,21 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                         requiredField: false,
                       ),
                       const SizedBox(height: 16),
-                      _buildTextField(
-                        'Delivery address',
-                        _addressController,
-                        Icons.location_on_rounded,
-                        hint: 'e.g. 12, MG Road, Bangalore',
-                        requiredField: false,
+                      AddressAutocompleteField(
+                        controller: _addressController,
+                        decoration: const InputDecoration(
+                          labelText: 'Delivery address',
+                          hintText: 'e.g. 12, MG Road, Bangalore',
+                          prefixIcon: Icon(
+                            Icons.location_on_rounded,
+                            color: AppColors.textLight,
+                            size: 20,
+                          ),
+                          alignLabelWithHint: true,
+                        ),
+                      ),
+                      UseCurrentLocationButton(
+                        addressController: _addressController,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(

@@ -203,12 +203,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  kDashboardHeroKpiStripContentTopPadding,
-                  20,
-                  0,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     if (showOnboardingBanner) ...[
@@ -360,52 +355,69 @@ class _DashboardHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
-    final textWidth = MediaQuery.sizeOf(context).width * 0.56;
+    final textWidth = MediaQuery.sizeOf(context).width * 0.66;
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          const Positioned.fill(child: DashboardHeroBackground()),
-          dashboardHeroBannerPositioned(context),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              topInset + 18,
-              20,
-              kDashboardHeroKpiStripBottomPadding,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: textWidth,
-                  child: _HeroTopRow(greeting: _greeting(), name: displayName),
+    // The floating strip is pulled up by roughly half its own height so it
+    // straddles the purple hero's bottom edge: top half over purple, bottom
+    // half over the white page below.
+    const stripStraddle = 44.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(36),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Positioned.fill(child: DashboardHeroBackground()),
+              dashboardHeroBannerPositioned(context),
+              Padding(
+                // Bottom padding leaves a purple band under the revenue for the
+                // strip's top half to sit on.
+                padding: EdgeInsets.fromLTRB(20, topInset + 18, 20, 56),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: textWidth,
+                      child: _HeroTopRow(
+                        greeting: _greeting(),
+                        name: displayName,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    SizedBox(
+                      width: textWidth,
+                      child: _HeroRevenue(
+                        isLoading: isLoading,
+                        totalRevenue: totalRevenue,
+                        collectedRevenue: collectedRevenue,
+                        pendingRevenue: pendingRevenue,
+                        todayOrdersCount: todayOrdersCount,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 22),
-                SizedBox(
-                  width: textWidth,
-                  child: _HeroRevenue(
-                    isLoading: isLoading,
-                    totalRevenue: totalRevenue,
-                    collectedRevenue: collectedRevenue,
-                    pendingRevenue: pendingRevenue,
-                    todayOrdersCount: todayOrdersCount,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                _KpiStrip(
-                  isLoading: isLoading,
-                  deliveredToday: todayDeliveredCount,
-                  pendingToday: todayPendingOrderCount,
-                  pendingRevenue: pendingRevenue,
-                ),
-              ],
+              ),
+            ],
+          ),
+        ),
+        Transform.translate(
+          offset: const Offset(0, -stripStraddle),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _KpiStrip(
+              isLoading: isLoading,
+              deliveredToday: todayDeliveredCount,
+              pendingToday: todayPendingOrderCount,
+              pendingRevenue: pendingRevenue,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -582,21 +594,26 @@ class _HeroRevenue extends StatelessWidget {
             ),
           )
         else
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _HeroRevenueSplitPill(
-                label: 'Total billed',
-                value: '₹${money0.format(totalRevenue.round())}',
-                color: Colors.white.withValues(alpha: 0.8),
-              ),
-              if (pendingRevenue > 0)
-                _HeroRevenueSplitPill(
-                  label: 'Pending',
-                  value: '₹${money0.format(pendingRevenue.round())}',
-                  color: AppColors.warning,
+              Expanded(
+                child: _HeroRevenueSplitPill(
+                  label: 'Total billed',
+                  value: '₹${money0.format(totalRevenue.round())}',
+                  color: Colors.white.withValues(alpha: 0.8),
                 ),
+              ),
+              if (pendingRevenue > 0) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _HeroRevenueSplitPill(
+                    label: 'Pending',
+                    value: '₹${money0.format(pendingRevenue.round())}',
+                    color: AppColors.warning,
+                  ),
+                ),
+              ],
             ],
           ),
       ],
@@ -618,35 +635,53 @@ class _HeroRevenueSplitPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.appTextStyles.caption.copyWith(
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            '$label ',
-            style: context.appTextStyles.caption.copyWith(
-              color: Colors.white.withValues(alpha: 0.8),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(
-            value,
-            style: context.appTextStyles.caption.copyWith(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: context.appTextStyles.sliverTitle.copyWith(
+                color: Colors.white,
+                fontSize: 15,
+                letterSpacing: -0.3,
+                height: 1.0,
+              ),
             ),
           ),
         ],
@@ -680,78 +715,82 @@ class _KpiStrip extends StatelessWidget {
       decimalDigits: 0,
     );
 
-    return Transform.translate(
-      offset: const Offset(0, kDashboardHeroKpiStripOffset),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primaryGradientEnd.withValues(alpha: 0.18),
-              blurRadius: 30,
-              offset: const Offset(0, 16),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _KpiPill(
-                        icon: Icons.check_circle_outline_rounded,
-                        iconTone: AppColors.success,
-                        title: 'Delivered',
-                        isLoading: isLoading,
-                        value: isLoading ? '—' : deliveredToday.toString(),
-                      ),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary900.withValues(alpha: 0.22),
+            blurRadius: 34,
+            spreadRadius: -4,
+            offset: const Offset(0, 20),
+          ),
+          const BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _KpiPill(
+                      icon: Icons.check_circle_outline_rounded,
+                      iconTone: AppColors.success,
+                      title: 'Delivered',
+                      isLoading: isLoading,
+                      value: isLoading ? '—' : deliveredToday.toString(),
                     ),
-                    const VerticalDivider(
-                      width: 1,
-                      thickness: 1,
-                      color: AppColors.divider,
-                      indent: 6,
-                      endIndent: 6,
+                  ),
+                  const VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: AppColors.divider,
+                    indent: 6,
+                    endIndent: 6,
+                  ),
+                  Expanded(
+                    child: _KpiPill(
+                      icon: Icons.hourglass_top_rounded,
+                      iconTone: AppColors.warning,
+                      title: 'Pending',
+                      isLoading: isLoading,
+                      value: isLoading ? '—' : pendingToday.toString(),
                     ),
-                    Expanded(
-                      child: _KpiPill(
-                        icon: Icons.hourglass_top_rounded,
-                        iconTone: AppColors.warning,
-                        title: 'Pending',
-                        isLoading: isLoading,
-                        value: isLoading ? '—' : pendingToday.toString(),
-                      ),
+                  ),
+                  const VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: AppColors.divider,
+                    indent: 6,
+                    endIndent: 6,
+                  ),
+                  Expanded(
+                    child: _KpiPill(
+                      icon: Icons.pending_actions_rounded,
+                      iconTone: AppColors.error,
+                      title: 'Dues',
+                      isLoading: isLoading,
+                      value: isLoading
+                          ? '—'
+                          : moneyCompact.format(pendingRevenue),
                     ),
-                    const VerticalDivider(
-                      width: 1,
-                      thickness: 1,
-                      color: AppColors.divider,
-                      indent: 6,
-                      endIndent: 6,
-                    ),
-                    Expanded(
-                      child: _KpiPill(
-                        icon: Icons.pending_actions_rounded,
-                        iconTone: AppColors.error,
-                        title: 'Dues',
-                        isLoading: isLoading,
-                        value: isLoading
-                            ? '—'
-                            : moneyCompact.format(pendingRevenue),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

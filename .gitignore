@@ -59,3 +59,9 @@ android/key.properties
 gitignore
 **/android/key.properties
 **/android/app/*.jks**/android/app/*.keystore.superpowers/
+
+# Firestore export (contains prod data) + service-account keys — never commit
+firestore-export/
+scripts/*-key.json
+scripts/serviceAccount*.json
+**/*-firebase-adminsdk-*.json

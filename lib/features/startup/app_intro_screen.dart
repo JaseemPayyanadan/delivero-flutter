@@ -238,7 +238,8 @@ class _IntroSlideView extends StatelessWidget {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
+                            // Lime accent bar — Fillo accent under the headline.
+                            color: AppColors.secondary,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),

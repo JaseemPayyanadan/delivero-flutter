@@ -323,7 +323,9 @@ class AuthNotifier extends Notifier<AuthState> {
   ///
   /// 1. If `users/{uid}` exists → set state.user and we're done.
   /// 2. Else if a pending driver matches the phone → auto-link as delivery.
-  /// 3. Else → auto-create a minimal owner profile; onboarding fills the rest.
+  /// 3. Else if an existing owner matches the phone → re-link to that owner's
+  ///    factory (prevents spawning a duplicate factory for a returning owner).
+  /// 4. Else → auto-create a minimal owner profile; onboarding fills the rest.
   Future<void> _completeSignIn({
     required String uid,
     required String phone,
@@ -340,6 +342,13 @@ class AuthNotifier extends Notifier<AuthState> {
       if (linked != null) {
         await _persistSession(linked);
         state = AuthState(user: linked, isInitialized: true);
+        return;
+      }
+
+      final owner = await _tryAutoLinkOwner(uid: uid, phone: phone);
+      if (owner != null) {
+        await _persistSession(owner);
+        state = AuthState(user: owner, isInitialized: true);
         return;
       }
 
@@ -409,6 +418,77 @@ class AuthNotifier extends Notifier<AuthState> {
           'status': DriverStatus.active.name,
           'updatedAt': FieldValue.serverTimestamp(),
         });
+    await batch.commit();
+    return user;
+  }
+
+  /// Looks for an existing owner whose phone matches [phone]. If found, links
+  /// the current Firebase UID to that owner's factory and writes the
+  /// `users/{uid}` doc — so a returning owner (whose account was created out of
+  /// band, e.g. via the admin panel or a prior UID) reuses their existing
+  /// factory instead of `_autoCreateOwnerProfile` minting a brand-new one.
+  ///
+  /// Owner docs are historically stored with varying phone formats (E.164,
+  /// digits only, or the national number), so we match against a small set of
+  /// candidate representations rather than a single exact string.
+  Future<User?> _tryAutoLinkOwner({
+    required String uid,
+    required String phone,
+  }) async {
+    final ownersRef = FirebaseService.firestore.collection('owners');
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+
+    final candidates = <String>{phone};
+    if (digits.isNotEmpty) {
+      candidates.add(digits);
+      if (digits.length > 10) {
+        candidates.add(digits.substring(digits.length - 10));
+      }
+    }
+
+    final snapshot = await ownersRef
+        .where('phone', whereIn: candidates.toList())
+        .limit(10)
+        .get();
+    if (snapshot.docs.isEmpty) return null;
+
+    // Prefer an owner not yet linked to a different Firebase UID; phone is the
+    // identity under phone-auth, so an unclaimed or self-owned doc is safe to
+    // adopt. Skip docs already claimed by a *different* uid to avoid hijacking.
+    final match = snapshot.docs.firstWhereOrNull((doc) {
+          final existingUserId = (doc.data()['userId'] as String?) ?? '';
+          return existingUserId.isEmpty || existingUserId == uid;
+        }) ??
+        snapshot.docs.firstWhereOrNull(
+          (doc) => ((doc.data()['userId'] as String?) ?? '').isEmpty,
+        );
+    if (match == null) return null;
+
+    final ownerData = match.data();
+    final ownerId = match.id;
+    final factoryId = (ownerData['factoryId'] as String?) ?? '';
+    if (factoryId.isEmpty) return null;
+    final ownerName = (ownerData['name'] as String?) ?? '';
+
+    final user = User(
+      id: uid,
+      phone: phone,
+      name: ownerName,
+      role: UserRole.owner,
+      factoryId: factoryId,
+      linkedEntityId: ownerId,
+    );
+
+    final batch = FirebaseService.firestore.batch();
+    batch.set(
+      FirebaseService.firestore.collection('users').doc(uid),
+      {...user.toJson(), 'role': user.role.name},
+      SetOptions(merge: true),
+    );
+    batch.update(FirebaseService.firestore.collection('owners').doc(ownerId), {
+      'userId': uid,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
     await batch.commit();
     return user;
   }

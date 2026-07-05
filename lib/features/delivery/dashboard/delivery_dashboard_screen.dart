@@ -302,7 +302,6 @@ class _DriverHero extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           const Positioned.fill(child: DashboardHeroBackground()),
-          dashboardHeroBannerPositioned(context),
           Padding(
             padding: EdgeInsets.fromLTRB(
               20,
