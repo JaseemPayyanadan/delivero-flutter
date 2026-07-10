@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
-import 'app/navigation.dart';
 import 'app/order_settings_provider.dart';
 import 'app/providers.dart';
 import 'app/router.dart';

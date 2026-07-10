@@ -455,7 +455,8 @@ class AuthNotifier extends Notifier<AuthState> {
     // Prefer an owner not yet linked to a different Firebase UID; phone is the
     // identity under phone-auth, so an unclaimed or self-owned doc is safe to
     // adopt. Skip docs already claimed by a *different* uid to avoid hijacking.
-    final match = snapshot.docs.firstWhereOrNull((doc) {
+    final match =
+        snapshot.docs.firstWhereOrNull((doc) {
           final existingUserId = (doc.data()['userId'] as String?) ?? '';
           return existingUserId.isEmpty || existingUserId == uid;
         }) ??

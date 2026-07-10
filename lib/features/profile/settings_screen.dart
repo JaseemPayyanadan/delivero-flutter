@@ -113,7 +113,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               user: user,
               driver: driver,
               isDelivery: isDelivery,
-              onBack: Navigator.of(context).canPop() ? () => context.pop() : null,
+              onBack: Navigator.of(context).canPop()
+                  ? () => context.pop()
+                  : null,
             ),
           ),
           SliverToBoxAdapter(
@@ -544,7 +546,9 @@ class _ProfileHeader extends StatelessWidget {
     final avatar = Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: loading ? AppColors.backgroundSecondary : AppColors.primaryLighter,
+        color: loading
+            ? AppColors.backgroundSecondary
+            : AppColors.primaryLighter,
         border: Border.all(color: AppColors.surface, width: 3),
         boxShadow: const [
           BoxShadow(
@@ -677,9 +681,7 @@ class _ProfileDetailsSection extends StatelessWidget {
 
     final cards = <Widget>[];
 
-    if (!isDelivery &&
-        companyName != null &&
-        companyName!.trim().isNotEmpty) {
+    if (!isDelivery && companyName != null && companyName!.trim().isNotEmpty) {
       cards.add(
         DeliveroCard(
           padding: const EdgeInsets.all(16),
@@ -687,7 +689,8 @@ class _ProfileDetailsSection extends StatelessWidget {
             icon: Icons.storefront_rounded,
             label: 'Company',
             title: companyName!.trim(),
-            subtitle: (companyAddress != null && companyAddress!.trim().isNotEmpty)
+            subtitle:
+                (companyAddress != null && companyAddress!.trim().isNotEmpty)
                 ? companyAddress!.trim()
                 : 'Your workspace',
             accentColor: AppColors.primary,

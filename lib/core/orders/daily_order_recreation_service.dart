@@ -456,8 +456,11 @@ Future<DailyOrderRecreationResult> runBatchForTargetDay({
   // businessDayKey differs from the rest).
   if (kDebugDailyRecreation) {
     for (final o in orders.where((o) => o.orderType == OrderType.daily)) {
-      final eligible =
-          isEligibleRecreationSource(o, sourceDay, rolloverHour: rolloverHour);
+      final eligible = isEligibleRecreationSource(
+        o,
+        sourceDay,
+        rolloverHour: rolloverHour,
+      );
       _recreationLog(
         '  candidate eligible=$eligible ${_describeOrderForLog(o, rolloverHour)}',
       );
@@ -466,12 +469,17 @@ Future<DailyOrderRecreationResult> runBatchForTargetDay({
 
   final sources = orders
       .where(
-        (o) =>
-            isEligibleRecreationSource(o, sourceDay, rolloverHour: rolloverHour),
+        (o) => isEligibleRecreationSource(
+          o,
+          sourceDay,
+          rolloverHour: rolloverHour,
+        ),
       )
       .toList();
 
-  _recreationLog('  eligible sources on ${_fmtDay(sourceDay)}: ${sources.length}');
+  _recreationLog(
+    '  eligible sources on ${_fmtDay(sourceDay)}: ${sources.length}',
+  );
 
   final createdIds = <String>[];
   for (final source in sources) {

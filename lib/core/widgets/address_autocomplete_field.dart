@@ -83,17 +83,17 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
           displayStringForOption: (option) => option,
           fieldViewBuilder:
               (context, textController, focusNode, onFieldSubmitted) {
-            return TextField(
-              controller: textController,
-              focusNode: focusNode,
-              enabled: widget.enabled,
-              maxLines: widget.maxLines,
-              minLines: widget.minLines,
-              textInputAction: widget.textInputAction,
-              decoration: widget.decoration,
-              onSubmitted: (_) => onFieldSubmitted(),
-            );
-          },
+                return TextField(
+                  controller: textController,
+                  focusNode: focusNode,
+                  enabled: widget.enabled,
+                  maxLines: widget.maxLines,
+                  minLines: widget.minLines,
+                  textInputAction: widget.textInputAction,
+                  decoration: widget.decoration,
+                  onSubmitted: (_) => onFieldSubmitted(),
+                );
+              },
           optionsViewBuilder: (context, onSelected, options) {
             return Align(
               alignment: Alignment.topLeft,

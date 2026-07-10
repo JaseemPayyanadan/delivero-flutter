@@ -63,7 +63,9 @@ class DashboardHeroBannerBlock extends StatelessWidget {
       alignment: Alignment.center,
       gaplessPlayback: true,
       filterQuality: FilterQuality.medium,
-      color: AppColors.primary900.withValues(alpha: kDashboardHeroBannerOpacity),
+      color: AppColors.primary900.withValues(
+        alpha: kDashboardHeroBannerOpacity,
+      ),
       colorBlendMode: BlendMode.srcIn,
       errorBuilder: (context, error, stackTrace) {
         return const SizedBox.shrink();

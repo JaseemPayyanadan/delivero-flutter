@@ -18,7 +18,7 @@ class AddressSuggestionService {
   final String countryCodes;
 
   AddressSuggestionService({http.Client? client, this.countryCodes = 'in'})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   static const _minQueryLength = 3;
   static const _userAgent = 'DelivroApp/1.0 (delivery management app)';
@@ -43,10 +43,7 @@ class AddressSuggestionService {
       final response = await _client
           .get(
             uri,
-            headers: const {
-              'User-Agent': _userAgent,
-              'Accept-Language': 'en',
-            },
+            headers: const {'User-Agent': _userAgent, 'Accept-Language': 'en'},
           )
           .timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return const [];

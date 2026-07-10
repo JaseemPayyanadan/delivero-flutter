@@ -226,7 +226,9 @@ class _IntroSlideView extends StatelessWidget {
                             children: [
                               TextSpan(
                                 text: slide.title,
-                                style: const TextStyle(color: AppColors.primary),
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                ),
                               ),
                               const TextSpan(text: '\n'),
                               TextSpan(text: slide.titleRest),
@@ -291,8 +293,10 @@ class _SkipButton extends StatelessWidget {
               onPressed: onSkip,
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.textSecondary,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
               ),
               child: const Text(
                 'Skip',

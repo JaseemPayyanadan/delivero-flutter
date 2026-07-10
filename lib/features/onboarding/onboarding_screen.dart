@@ -28,11 +28,13 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   static const _kBusinessNameKey = 'onboarding_business_name';
+  static const _kBusinessAddressKey = 'onboarding_business_address';
   static const _kStepCount = 4;
 
   final _pageController = PageController();
   final _ownerNameController = TextEditingController();
   final _businessNameController = TextEditingController();
+  final _businessAddressController = TextEditingController();
   final _routeNameController = TextEditingController();
   final _routeAreaController = TextEditingController();
   final _customerNameController = TextEditingController();
@@ -82,6 +84,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _pageController.dispose();
     _ownerNameController.dispose();
     _businessNameController.dispose();
+    _businessAddressController.dispose();
     _routeNameController.dispose();
     _routeAreaController.dispose();
     _customerNameController.dispose();
@@ -246,12 +249,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (_profileLoaded) return;
     final prefs = await SharedPreferences.getInstance();
     final cachedBusiness = (prefs.getString(_kBusinessNameKey) ?? '').trim();
+    final cachedAddress = (prefs.getString(_kBusinessAddressKey) ?? '').trim();
     final cachedOwner = (ref.read(authProvider).user?.name ?? '').trim();
     if (!mounted) return;
     setState(() {
       _profileLoaded = true;
       _businessName = cachedBusiness;
       _businessNameController.text = cachedBusiness;
+      _businessAddressController.text = cachedAddress;
       _ownerName = cachedOwner;
       _ownerNameController.text = cachedOwner;
     });
@@ -264,9 +269,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     required bool productsDone,
   }) {
     if (!profileDone) return 0;
-    if (!routesDone) return 1;
-    if (!customersDone) return 2;
-    if (!productsDone) return 3;
+    if (!productsDone) return 1;
+    if (!routesDone) return 2;
+    if (!customersDone) return 3;
     return _kStepCount - 1;
   }
 
@@ -274,12 +279,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     FocusScope.of(context).unfocus();
     final ownerNext = _ownerNameController.text.trim();
     final businessNext = _businessNameController.text.trim();
+    final addressNext = _businessAddressController.text.trim();
 
     if (ownerNext.isEmpty || businessNext.isEmpty) {
       setState(() {
         _ownerNameError = ownerNext.isEmpty ? 'Please enter your name' : null;
-        _businessNameError =
-            businessNext.isEmpty ? 'Please enter your business name' : null;
+        _businessNameError = businessNext.isEmpty
+            ? 'Please enter your business name'
+            : null;
       });
       return false;
     }
@@ -297,6 +304,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kBusinessNameKey, businessNext);
+    await prefs.setString(_kBusinessAddressKey, addressNext);
 
     try {
       final factoryId = ref.read(factoryIdProvider).asData?.value;
@@ -308,6 +316,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             .doc(factoryId)
             .set({
               'name': businessNext,
+              'address': addressNext,
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
       }
@@ -392,6 +401,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         _jumpTo(1);
         return;
       case 1:
+        final name = _productNameController.text.trim();
+        final priceText = _productPriceController.text.trim();
+        final hasFormData = name.isNotEmpty && priceText.isNotEmpty;
+        final hasExistingProducts = ref.read(foodItemsProvider).isNotEmpty;
+
+        if (hasFormData) {
+          final saved = await _saveInlineProduct();
+          if (!saved || !mounted) return;
+          _jumpTo(2);
+          return;
+        }
+
+        // Partial input, or nothing entered yet and no product saved: prompt
+        // inline for the missing required field(s).
+        if (name.isNotEmpty || priceText.isNotEmpty || !hasExistingProducts) {
+          setState(() {
+            _productNameError = name.isEmpty ? 'Add a product name' : null;
+            _productPriceError = priceText.isEmpty ? 'Add a price' : null;
+          });
+          return;
+        }
+
+        // Fields left blank but a product already exists — allowed to continue.
+        _jumpTo(2);
+        return;
+      case 2:
         final name = _routeNameController.text.trim();
         final area = _routeAreaController.text.trim();
         final hasFormData = name.isNotEmpty && area.isNotEmpty;
@@ -400,7 +435,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         if (hasFormData) {
           final saved = await _saveInlineRoute();
           if (!saved || !mounted) return;
-          _jumpTo(2);
+          _jumpTo(3);
           return;
         }
 
@@ -415,39 +450,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         }
 
         // Fields left blank but a route already exists — allowed to continue.
-        _jumpTo(2);
+        _jumpTo(3);
         return;
-      case 2:
-        // Customers step is optional. If user entered a name, save it.
+      case 3:
+        // Customers step is optional and last. If user entered a name, save it.
         if (_customerNameController.text.trim().isNotEmpty) {
           await _saveInlineCustomer();
           if (!mounted) return;
         }
-        _jumpTo(3);
-        return;
-      case 3:
-        final name = _productNameController.text.trim();
-        final priceText = _productPriceController.text.trim();
-        final hasFormData = name.isNotEmpty && priceText.isNotEmpty;
-        final hasExistingProducts = ref.read(foodItemsProvider).isNotEmpty;
-
-        if (hasFormData) {
-          final saved = await _saveInlineProduct();
-          if (!saved || !mounted) return;
-          await _finishOnboarding();
-          return;
-        }
-
-        // Partial input, or nothing entered yet and no product saved: prompt
-        // inline for the missing required field(s).
-        if (name.isNotEmpty || priceText.isNotEmpty || !hasExistingProducts) {
-          setState(() {
-            _productNameError = name.isEmpty ? 'Add a product name' : null;
-            _productPriceError = priceText.isEmpty ? 'Add a price' : null;
-          });
-          return;
-        }
-
         await _finishOnboarding();
         return;
     }
@@ -500,9 +510,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     final stepStatuses = <bool>[
       profileDone,
+      productsDone,
       routesDone,
       customersDone,
-      productsDone,
     ];
 
     return Scaffold(
@@ -533,7 +543,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               overlapChild: DeliveroCard(
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                 child: _StepperHeader(
-                  labels: const ['Profile', 'Routes', 'Customers', 'Products'],
+                  labels: const ['Profile', 'Products', 'Routes', 'Customers'],
                   statuses: stepStatuses,
                   currentIndex: _currentStep,
                   firstIncomplete: firstIncomplete,
@@ -550,10 +560,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   _BusinessStepPage(
                     ownerController: _ownerNameController,
                     businessController: _businessNameController,
+                    addressController: _businessAddressController,
                     isCompleted: profileDone,
                     saving: _savingProfile,
                     ownerError: _ownerNameError,
                     businessError: _businessNameError,
+                  ),
+                  _ProductsStepPage(
+                    nameController: _productNameController,
+                    priceController: _productPriceController,
+                    saving: _savingProduct,
+                    nameError: _productNameError,
+                    priceError: _productPriceError,
                   ),
                   _RoutesStepPage(
                     nameController: _routeNameController,
@@ -571,15 +589,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       try {
                         HapticFeedback.selectionClick();
                       } catch (_) {}
-                      _jumpTo(3);
+                      _finishOnboarding();
                     },
-                  ),
-                  _ProductsStepPage(
-                    nameController: _productNameController,
-                    priceController: _productPriceController,
-                    saving: _savingProduct,
-                    nameError: _productNameError,
-                    priceError: _productPriceError,
                   ),
                 ],
               ),
@@ -858,6 +869,7 @@ class _StepHeader extends StatelessWidget {
 class _BusinessStepPage extends StatelessWidget {
   final TextEditingController ownerController;
   final TextEditingController businessController;
+  final TextEditingController addressController;
   final bool isCompleted;
   final bool saving;
   final String? ownerError;
@@ -866,6 +878,7 @@ class _BusinessStepPage extends StatelessWidget {
   const _BusinessStepPage({
     required this.ownerController,
     required this.businessController,
+    required this.addressController,
     required this.isCompleted,
     required this.saving,
     this.ownerError,
@@ -912,7 +925,7 @@ class _BusinessStepPage extends StatelessWidget {
                 TextField(
                   controller: businessController,
                   enabled: !saving,
-                  textInputAction: TextInputAction.done,
+                  textInputAction: TextInputAction.next,
                   textCapitalization: TextCapitalization.words,
                   decoration: _formDecoration(
                     hint: 'e.g. Acme Foods',
@@ -920,6 +933,23 @@ class _BusinessStepPage extends StatelessWidget {
                     errorText: businessError,
                   ),
                 ),
+                const SizedBox(height: 18),
+                const _FormFieldLabel(
+                  label: 'Business address',
+                  optional: true,
+                ),
+                const SizedBox(height: 8),
+                AddressAutocompleteField(
+                  controller: addressController,
+                  enabled: !saving,
+                  textInputAction: TextInputAction.done,
+                  decoration: _formDecoration(
+                    hint: 'e.g. 12 Market Road, Kochi',
+                    icon: Icons.place_outlined,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                UseCurrentLocationButton(addressController: addressController),
               ],
             ),
           ),
@@ -927,7 +957,7 @@ class _BusinessStepPage extends StatelessWidget {
           _HintCard(
             icon: Icons.info_outline_rounded,
             text:
-                'You can update both anytime from settings. The business name will be saved to your factory profile.',
+                'You can update these anytime from settings. Your business name and address are saved to your factory profile.',
           ),
         ],
       ),
@@ -1009,17 +1039,35 @@ class _RoutesStepPage extends ConsumerWidget {
 
 class _FormFieldLabel extends StatelessWidget {
   final String label;
-  const _FormFieldLabel({required this.label});
+  final bool optional;
+  const _FormFieldLabel({required this.label, this.optional = false});
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        color: AppColors.textPrimary,
-        fontSize: 13,
-        fontWeight: FontWeight.w800,
-      ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        if (optional) ...[
+          const SizedBox(width: 6),
+          const Text(
+            'optional',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1218,8 +1266,9 @@ class _ProductsStepPage extends ConsumerWidget {
                 TextField(
                   controller: priceController,
                   enabled: !saving,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   textInputAction: TextInputAction.done,
                   decoration: _formDecoration(
                     hint: 'e.g. 25.00',
