@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../../app/providers.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../data/models/order.dart';
 import '../order_detail_formatting.dart';
 import 'order_detail_surfaces.dart';
 
-class OrderDetailPaymentSection extends StatelessWidget {
+/// Read-only payment summary card. Payment is recorded via the
+/// Mark-as-Delivered flow; after delivery, [onUpdatePayment] (when set)
+/// exposes an "Update payment" link for collecting outstanding balance.
+class OrderDetailPaymentCard extends StatelessWidget {
   final Order order;
   final NumberFormat money0;
   final PaymentStatus paymentStatus;
@@ -17,17 +17,9 @@ class OrderDetailPaymentSection extends StatelessWidget {
   final double deliveryFee;
   final double effectivePaid;
   final double balanceDue;
-  final PaymentStatus draftPaymentStatus;
-  final PaymentMethod draftPaymentMethod;
-  final TextEditingController partialAmountController;
-  final double? draftAmountPaid;
-  final ValueChanged<PaymentStatus> onDraftPaymentStatusChanged;
-  final ValueChanged<PaymentMethod> onDraftPaymentMethodChanged;
-  final ValueChanged<String> onPartialAmountChanged;
-  final VoidCallback onResetPaymentDrafts;
-  final WidgetRef ref;
+  final VoidCallback? onUpdatePayment;
 
-  const OrderDetailPaymentSection({
+  const OrderDetailPaymentCard({
     super.key,
     required this.order,
     required this.money0,
@@ -36,409 +28,239 @@ class OrderDetailPaymentSection extends StatelessWidget {
     required this.deliveryFee,
     required this.effectivePaid,
     required this.balanceDue,
-    required this.draftPaymentStatus,
-    required this.draftPaymentMethod,
-    required this.partialAmountController,
-    required this.draftAmountPaid,
-    required this.onDraftPaymentStatusChanged,
-    required this.onDraftPaymentMethodChanged,
-    required this.onPartialAmountChanged,
-    required this.onResetPaymentDrafts,
-    required this.ref,
+    this.onUpdatePayment,
   });
-
-  void _onApply(BuildContext context) {
-    final nextStatus = draftPaymentStatus;
-    final nextMethod = draftPaymentMethod;
-    double? amountPaid;
-
-    if (nextStatus == PaymentStatus.unpaid) {
-      amountPaid = null;
-    } else if (nextStatus == PaymentStatus.paid) {
-      amountPaid = order.totalAmount;
-    } else {
-      final parsed =
-          (draftAmountPaid ??
-              double.tryParse(
-                partialAmountController.text.trim().replaceAll(',', ''),
-              )) ??
-          0.0;
-      final clamped = parsed.clamp(0.0, order.totalAmount);
-      if (clamped <= 0 || clamped >= order.totalAmount) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Enter an amount between ${money0.format(1)} and ${money0.format(order.totalAmount - 1)}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.warning,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-        return;
-      }
-      amountPaid = clamped;
-    }
-
-    final next = order.copyWith(
-      paymentStatus: nextStatus,
-      paymentMethod: nextMethod,
-      amountPaid: amountPaid,
-      paymentTime: nextStatus == PaymentStatus.unpaid ? null : DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-    ref.read(ordersProvider.notifier).updateOrder(next);
-    ref
-        .read(lastTouchedOrderProvider.notifier)
-        .set(id: next.id, wasCreated: false);
-    try {
-      HapticFeedback.lightImpact();
-    } catch (_) {}
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text(
-          'Payment status updated',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.success,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
-  double? _normalizedAmountForStatus(
-    PaymentStatus status, {
-    required double? amount,
-  }) {
-    return switch (status) {
-      PaymentStatus.unpaid => null,
-      PaymentStatus.paid => order.totalAmount,
-      PaymentStatus.partial => amount,
-    };
-  }
-
-  double? _parsedDraftAmount() {
-    final raw = partialAmountController.text.trim().replaceAll(',', '');
-    if (raw.isEmpty) return draftAmountPaid;
-    return double.tryParse(raw) ?? draftAmountPaid;
-  }
-
-  bool _amountEquals(double? a, double? b) {
-    if (a == null && b == null) return true;
-    if (a == null || b == null) return false;
-    return (a - b).abs() < 0.001;
-  }
 
   @override
   Widget build(BuildContext context) {
-    final originalStatus = order.paymentStatus ?? PaymentStatus.unpaid;
-    final originalMethod = order.paymentMethod ?? PaymentMethod.cash;
-    final originalAmount = _normalizedAmountForStatus(
-      originalStatus,
-      amount: order.amountPaid,
-    );
-    final draftNormalizedAmount = _normalizedAmountForStatus(
-      draftPaymentStatus,
-      amount: _parsedDraftAmount(),
-    );
-    final hasPaymentChanges =
-        draftPaymentStatus != originalStatus ||
-        draftPaymentMethod != originalMethod ||
-        !_amountEquals(draftNormalizedAmount, originalAmount);
+    final statusAmount = paymentStatus == PaymentStatus.paid
+        ? order.totalAmount
+        : balanceDue;
+    final showMethod =
+        paymentStatus != PaymentStatus.unpaid || order.paymentMethod != null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        OrderDetailSectionHeader(
-          title: 'Payment',
-          trailingWidget: OrderDetailPillBadge(
-            label: orderDetailHumanize(paymentStatus.name).toUpperCase(),
-            background: paymentColor == AppColors.error
-                ? AppColors.errorLighter.withValues(alpha: 0.68)
-                : paymentColor.withValues(alpha: 0.096),
-            foreground: paymentColor,
-            border: paymentColor.withValues(alpha: 0.22),
+    return OrderDetailCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          OrderDetailSectionHeader(
+            title: 'Payment',
+            trailingWidget: OrderDetailPillBadge(
+              label: orderDetailHumanize(paymentStatus.name).toUpperCase(),
+              background: paymentColor == AppColors.error
+                  ? AppColors.errorLighter.withValues(alpha: 0.68)
+                  : paymentColor.withValues(alpha: 0.096),
+              foreground: paymentColor,
+              border: paymentColor.withValues(alpha: 0.22),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        OrderDetailCard(
-          padding: const EdgeInsets.all(18),
-          child: Column(
+          const SizedBox(height: 14),
+          Row(
             children: [
-              OrderDetailSummaryRow(label: 'Subtotal', value: order.subtotal),
-              if (order.discountAmount > 0.004) ...[
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Discount',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: AppColors.success,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '−${money0.format(order.discountAmount)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 12,
-                        color: AppColors.success,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 10),
-              OrderDetailSummaryRow(label: 'Delivery Fee', value: deliveryFee),
-              if (paymentStatus == PaymentStatus.partial) ...[
-                const SizedBox(height: 10),
-                OrderDetailSummaryRow(
-                  label: 'Paid Amount',
-                  value: effectivePaid,
-                ),
-                const SizedBox(height: 10),
-                OrderDetailSummaryRow(label: 'Balance Due', value: balanceDue),
-              ],
-              if (order.paymentTime != null &&
-                  order.paymentStatus != PaymentStatus.unpaid) ...[
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Collected at',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      DateFormat(
-                        'd MMM yyyy · HH:mm',
-                      ).format(order.paymentTime!),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Payment via',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _methodIcon(order.paymentMethod),
-                        size: 13,
-                        color: AppColors.textPrimary,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        orderDetailHumanize(
-                          (order.paymentMethod ?? PaymentMethod.cash).name,
-                        ),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              const Divider(height: 1, color: AppColors.divider),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Total Amount',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    money0.format(order.totalAmount),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
-                      letterSpacing: -0.6,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                width: 8,
+                height: 8,
                 decoration: BoxDecoration(
-                  color: AppColors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(22),
+                  color: paymentColor,
+                  shape: BoxShape.circle,
                 ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OrderDetailLabeledDropdown<PaymentStatus>(
-                            label: 'STATUS',
-                            value: draftPaymentStatus,
-                            items: const [
-                              PaymentStatus.unpaid,
-                              PaymentStatus.paid,
-                              PaymentStatus.partial,
-                            ],
-                            itemLabel: (v) => orderDetailHumanize(v.name),
-                            onChanged: onDraftPaymentStatusChanged,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OrderDetailLabeledDropdown<PaymentMethod>(
-                            label: 'METHOD',
-                            value: draftPaymentMethod,
-                            items: const [
-                              PaymentMethod.cash,
-                              PaymentMethod.upi,
-                              PaymentMethod.card,
-                              PaymentMethod.online,
-                            ],
-                            itemLabel: (v) => orderDetailHumanize(v.name),
-                            onChanged: onDraftPaymentMethodChanged,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (draftPaymentStatus == PaymentStatus.partial) ...[
-                      const SizedBox(height: 14),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'AMOUNT PAID',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.textLight,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: partialAmountController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: money0.format(order.totalAmount),
-                              prefixIcon: const Icon(
-                                Icons.currency_rupee_rounded,
-                                size: 18,
-                                color: AppColors.textLight,
-                              ),
-                              filled: true,
-                              fillColor: AppColors.surface,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(18),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            onChanged: onPartialAmountChanged,
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (hasPaymentChanges) ...[
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: onResetPaymentDrafts,
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.textSecondary,
-                                side: const BorderSide(color: AppColors.border),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                minimumSize: const Size(0, 40),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                textStyle: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              child: const Text('Cancel'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: () => _onApply(context),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimary,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                minimumSize: const Size(0, 40),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                textStyle: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              child: const Text('Update'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  orderDetailHumanize(paymentStatus.name),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                money0.format(statusAmount),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.3,
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          if (showMethod) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(
+                  _methodIcon(order.paymentMethod),
+                  size: 15,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  orderDetailHumanize(
+                    (order.paymentMethod ?? PaymentMethod.cash).name,
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 14),
+          const _DashedDivider(),
+          const SizedBox(height: 14),
+          OrderDetailSummaryRow(label: 'Subtotal', value: order.subtotal),
+          if (order.discountAmount > 0.004) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Discount',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ),
+                Text(
+                  '−${money0.format(order.discountAmount)}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                    color: AppColors.success,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 10),
+          OrderDetailSummaryRow(label: 'Delivery Fee', value: deliveryFee),
+          if (paymentStatus == PaymentStatus.partial) ...[
+            const SizedBox(height: 10),
+            OrderDetailSummaryRow(label: 'Paid Amount', value: effectivePaid),
+            const SizedBox(height: 10),
+            OrderDetailSummaryRow(label: 'Balance Due', value: balanceDue),
+          ],
+          if (order.paymentTime != null &&
+              order.paymentStatus != PaymentStatus.unpaid) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Collected at',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Text(
+                  DateFormat('d MMM yyyy · HH:mm').format(order.paymentTime!),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.primary50,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Total Amount',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+                Text(
+                  money0.format(order.totalAmount),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onUpdatePayment != null) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: onUpdatePayment,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Update payment',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 14,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DashedDivider extends StatelessWidget {
+  const _DashedDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const dashWidth = 5.0;
+        const gap = 4.0;
+        final count = (constraints.maxWidth / (dashWidth + gap)).floor();
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(
+            count,
+            (_) => const SizedBox(
+              width: dashWidth,
+              height: 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: AppColors.border),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

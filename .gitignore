@@ -58,4 +58,7 @@ android/key.properties
 **/*.jks
 gitignore
 **/android/key.properties
-**/android/app/*.jks**/android/app/*.keystore
+**/android/app/*.jks**/android/app/*.keystore.superpowers/
+
+# Node dependencies (used only for the web build tooling)
+node_modules/

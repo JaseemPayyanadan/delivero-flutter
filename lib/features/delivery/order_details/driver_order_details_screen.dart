@@ -15,10 +15,12 @@ import '../../owner/orders/order_details/order_detail_formatting.dart';
 import '../../owner/orders/order_details/resolved_order_detail.dart';
 import '../../owner/orders/order_details/widgets/confirm_mark_delivered.dart';
 import '../../owner/orders/order_details/widgets/order_detail_bottom_actions.dart';
+import '../../owner/orders/order_details/widgets/order_detail_customer_card.dart';
 import '../../owner/orders/order_details/widgets/order_detail_item_row.dart';
 import '../../owner/orders/order_details/widgets/order_detail_payment_section.dart';
 import '../../owner/orders/order_details/widgets/order_detail_summary_card.dart';
 import '../../owner/orders/order_details/widgets/order_detail_surfaces.dart';
+import '../../owner/orders/order_details/widgets/order_detail_update_payment_sheet.dart';
 
 class DriverOrderDetailsScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -32,37 +34,6 @@ class DriverOrderDetailsScreen extends ConsumerStatefulWidget {
 
 class _DriverOrderDetailsScreenState
     extends ConsumerState<DriverOrderDetailsScreen> {
-  PaymentStatus? _draftPaymentStatus;
-  PaymentMethod? _draftPaymentMethod;
-  double? _draftAmountPaid;
-  PaymentStatus? _lastServerPaymentStatus;
-  PaymentMethod? _lastServerPaymentMethod;
-  double? _lastServerAmountPaid;
-  final TextEditingController _partialAmountController =
-      TextEditingController();
-
-  void _resetPaymentDrafts(Order order) {
-    _draftPaymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
-    _draftPaymentMethod = order.paymentMethod ?? PaymentMethod.cash;
-    _draftAmountPaid = order.amountPaid;
-    _lastServerPaymentStatus = _draftPaymentStatus;
-    _lastServerPaymentMethod = _draftPaymentMethod;
-    _lastServerAmountPaid = _draftAmountPaid;
-
-    if (_draftPaymentStatus == PaymentStatus.partial) {
-      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
-      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
-    } else {
-      _partialAmountController.clear();
-    }
-  }
-
-  @override
-  void dispose() {
-    _partialAmountController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final money0 = NumberFormat.currency(
@@ -95,40 +66,7 @@ class _DriverOrderDetailsScreenState
 
     final resolved = ResolvedOrderDetail.compute(order, routes, customers);
     final paymentColor = orderDetailPaymentColor(resolved.paymentStatus);
-    final statusBg = orderDetailStatusBg(order.status);
-    final statusFg = orderDetailStatusFg(order.status);
     final hasAddress = order.customerAddress.trim().isNotEmpty;
-
-    final serverStatus = order.paymentStatus ?? PaymentStatus.unpaid;
-    final serverMethod = order.paymentMethod ?? PaymentMethod.cash;
-    final serverAmount = order.amountPaid;
-    if (_draftPaymentStatus == null) {
-      _draftPaymentStatus = serverStatus;
-      _draftPaymentMethod = serverMethod;
-      _draftAmountPaid = serverAmount;
-      _lastServerPaymentStatus = serverStatus;
-      _lastServerPaymentMethod = serverMethod;
-      _lastServerAmountPaid = serverAmount;
-    } else if (serverStatus != _lastServerPaymentStatus ||
-        serverMethod != _lastServerPaymentMethod ||
-        serverAmount != _lastServerAmountPaid) {
-      _draftPaymentStatus = serverStatus;
-      _draftPaymentMethod = serverMethod;
-      _draftAmountPaid = serverAmount;
-      _lastServerPaymentStatus = serverStatus;
-      _lastServerPaymentMethod = serverMethod;
-      _lastServerAmountPaid = serverAmount;
-      _partialAmountController.text =
-          serverStatus == PaymentStatus.partial && (serverAmount ?? 0) > 0
-          ? serverAmount!.toStringAsFixed(0)
-          : '';
-    }
-    if ((_draftPaymentStatus ?? PaymentStatus.unpaid) ==
-            PaymentStatus.partial &&
-        _partialAmountController.text.trim().isEmpty) {
-      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
-      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
-    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -167,54 +105,57 @@ class _DriverOrderDetailsScreenState
                 order: order,
                 orderIdDisplay: orderDetailDisplayId(order.id),
                 money0: money0,
-                routeLabel: resolved.summaryRouteLabel,
                 paymentStatus: resolved.paymentStatus,
-                paymentColor: paymentColor,
-                statusBg: statusBg,
-                statusFg: statusFg,
-                statusLabel: orderDetailHumanize(order.status.name),
                 balanceDue: resolved.balanceDue,
-                onPhoneTap: order.customerPhone.trim().isEmpty
-                    ? null
-                    : () {
-                        try {
-                          HapticFeedback.selectionClick();
-                        } catch (_) {}
-                        _handleCallCustomer(context, order.customerPhone);
-                      },
               ),
               const SizedBox(height: 24),
-              if (hasAddress) ...[
-                const OrderDetailSectionHeader(title: 'Delivery address'),
-                const SizedBox(height: 10),
-                _AddressCard(
-                  address: order.customerAddress.trim(),
-                  onOpenMaps: () => _openMaps(context, order.customerAddress),
+              if (order.customerName.trim().isNotEmpty ||
+                  order.customerPhone.trim().isNotEmpty ||
+                  hasAddress) ...[
+                OrderDetailCustomerCard(
+                  name: order.customerName,
+                  phone: order.customerPhone,
+                  address: order.customerAddress,
+                  routeLabel: resolved.summaryRouteLabel,
+                  onCall: order.customerPhone.trim().isEmpty
+                      ? null
+                      : () {
+                          try {
+                            HapticFeedback.selectionClick();
+                          } catch (_) {}
+                          _handleCallCustomer(context, order.customerPhone);
+                        },
+                  onOpenAddress: hasAddress
+                      ? () => _openMaps(context, order.customerAddress)
+                      : null,
                 ),
                 const SizedBox(height: 24),
               ],
-              OrderDetailSectionHeader(
-                title: 'Items',
-                trailing: '${order.items.length} Items',
-              ),
-              const SizedBox(height: 10),
               OrderDetailCard(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    OrderDetailSectionHeader(
+                      title: 'Items',
+                      trailing:
+                          '${order.items.length} ${order.items.length == 1 ? 'Item' : 'Items'}',
+                    ),
+                    const SizedBox(height: 4),
                     for (int idx = 0; idx < order.items.length; idx++) ...[
                       OrderDetailItemRow(item: order.items[idx]),
                       if (idx != order.items.length - 1)
                         const Divider(
                           height: 1,
                           thickness: 1,
-                          color: AppColors.border,
+                          color: AppColors.divider,
                         ),
                     ],
                   ],
                 ),
               ),
               const SizedBox(height: 22),
-              OrderDetailPaymentSection(
+              OrderDetailPaymentCard(
                 order: order,
                 money0: money0,
                 paymentStatus: resolved.paymentStatus,
@@ -222,30 +163,15 @@ class _DriverOrderDetailsScreenState
                 deliveryFee: resolved.deliveryFee,
                 effectivePaid: resolved.effectivePaid,
                 balanceDue: resolved.balanceDue,
-                draftPaymentStatus: _draftPaymentStatus ?? PaymentStatus.unpaid,
-                draftPaymentMethod: _draftPaymentMethod ?? PaymentMethod.cash,
-                partialAmountController: _partialAmountController,
-                draftAmountPaid: _draftAmountPaid,
-                onDraftPaymentStatusChanged: (v) => setState(() {
-                  _draftPaymentStatus = v;
-                  if (v != PaymentStatus.partial) {
-                    _draftAmountPaid = null;
-                    _partialAmountController.clear();
-                  } else {
-                    _draftAmountPaid = order.amountPaid;
-                  }
-                }),
-                onDraftPaymentMethodChanged: (v) =>
-                    setState(() => _draftPaymentMethod = v),
-                onPartialAmountChanged: (val) {
-                  final raw = val.trim().replaceAll(',', '');
-                  final parsed = double.tryParse(raw);
-                  setState(() => _draftAmountPaid = parsed);
-                },
-                onResetPaymentDrafts: () => setState(() {
-                  _resetPaymentDrafts(order);
-                }),
-                ref: ref,
+                onUpdatePayment:
+                    order.status == OrderStatus.delivered &&
+                        resolved.paymentStatus != PaymentStatus.paid
+                    ? () => showOrderDetailUpdatePaymentSheet(
+                        context: context,
+                        ref: ref,
+                        order: order,
+                      )
+                    : null,
               ),
               if ((order.notes ?? '').trim().isNotEmpty) ...[
                 const SizedBox(height: 24),
@@ -264,28 +190,68 @@ class _DriverOrderDetailsScreenState
                   ),
                 ),
               ],
-              const SizedBox(height: 20),
-              OrderDetailBottomActions(
-                isDelivered: order.status == OrderStatus.delivered,
-                onMarkDelivered: () => showConfirmMarkDeliveredDialog(
-                  context: context,
-                  ref: ref,
-                  order: order,
-                  paymentDraft: ConfirmMarkDeliveredPaymentDraft(
-                    status: _draftPaymentStatus ?? PaymentStatus.unpaid,
-                    method: _draftPaymentMethod ?? PaymentMethod.cash,
-                    amountPaid: _draftAmountPaid,
-                    partialAmountText: _partialAmountController.text,
-                  ),
-                ),
-                onOpenMaps: hasAddress
-                    ? () => _openMaps(context, order.customerAddress)
-                    : null,
-              ),
-              const SizedBox(height: 10),
+              if (order.status != OrderStatus.delivered &&
+                  order.status != OrderStatus.cancelled) ...[
+                const SizedBox(height: 18),
+                const _PaymentInfoBanner(),
+              ],
               SizedBox(height: MediaQuery.paddingOf(context).bottom),
             ],
           ),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: OrderDetailBottomBar(
+              isDelivered: order.status == OrderStatus.delivered,
+              onMarkDelivered: () => showConfirmMarkDeliveredDialog(
+                context: context,
+                ref: ref,
+                order: order,
+              ),
+              onMore: () => _showMoreSheet(context, order),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMoreSheet(BuildContext context, Order order) {
+    final hasAddress = order.customerAddress.trim().isNotEmpty;
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppColors.surface,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasAddress)
+              ListTile(
+                leading: const Icon(
+                  Icons.navigation_rounded,
+                  color: AppColors.primary,
+                ),
+                title: const Text(
+                  'Navigate to address',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _openMaps(context, order.customerAddress);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );
@@ -348,55 +314,30 @@ class _DriverOrderDetailsScreenState
   }
 }
 
-class _AddressCard extends StatelessWidget {
-  final String address;
-  final VoidCallback onOpenMaps;
-
-  const _AddressCard({required this.address, required this.onOpenMaps});
+class _PaymentInfoBanner extends StatelessWidget {
+  const _PaymentInfoBanner();
 
   @override
   Widget build(BuildContext context) {
-    return OrderDetailCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary50,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Row(
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLighter,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: const Icon(
-              Icons.location_on_rounded,
-              color: AppColors.primary,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
+          Icon(Icons.verified_user_rounded, size: 20, color: AppColors.primary),
+          SizedBox(width: 10),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                address,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  height: 1.35,
-                ),
+            child: Text(
+              'You can update payment details after marking the order as delivered.',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+                height: 1.4,
               ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            tooltip: 'Open in maps',
-            onPressed: onOpenMaps,
-            icon: const Icon(
-              Icons.navigation_rounded,
-              color: AppColors.primary,
             ),
           ),
         ],

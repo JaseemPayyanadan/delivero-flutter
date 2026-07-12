@@ -28,6 +28,21 @@ class DeliveroButton extends StatelessWidget {
     this.height,
   });
 
+  /// Lime pill CTA from the Fillo visual language: [AppColors.secondary] fill
+  /// with dark [AppColors.onSecondary] text and a fully rounded shape.
+  const DeliveroButton.lime({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.isLoading = false,
+    this.isFullWidth = true,
+    this.useHaptics = true,
+    this.height,
+  }) : backgroundColor = AppColors.secondary,
+       foregroundColor = AppColors.onSecondary,
+       borderRadius = 999;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

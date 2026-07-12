@@ -3,10 +3,13 @@ import 'package:delivero/core/orders/daily_order_recreation_service.dart';
 import 'package:delivero/data/models/customer.dart';
 import 'package:delivero/data/models/order.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers/production_test_data.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
   const rolloverHour = 7;
   final day1Morning = DateTime(2025, 6, 20, 9);
   final day2Morning = DateTime(2025, 6, 21, 9);
@@ -506,6 +509,54 @@ void main() {
       );
       expect(result.length, 3);
       expect(result.map((o) => o.id), containsAll(['o6', 'o7', 'o8']));
+    });
+  });
+
+  group('runRolloverBatch', () {
+    test('blocks when yesterday has unresolved orders', () async {
+      final pending = productionTestOrder(
+        id: 'src-pending',
+        orderDate: day1Morning,
+        status: OrderStatus.pending,
+      );
+      final created = <Order>[];
+
+      final result = await runRolloverBatch(
+        factoryId: 'FAC_001',
+        orders: [pending],
+        customers: [activeCustomer()],
+        rolloverHour: rolloverHour,
+        now: day2Morning,
+        addOrder: created.add,
+      );
+
+      expect(result.blockedByUnresolvedOrders, isTrue);
+      expect(result.unresolvedSourceOrderIds, ['src-pending']);
+      expect(result.createdCount, 0);
+      expect(created, isEmpty);
+    });
+
+    test('creates orders after unresolved review is confirmed', () async {
+      final pending = productionTestOrder(
+        id: 'src-pending',
+        orderDate: day1Morning,
+        status: OrderStatus.pending,
+      );
+      final created = <Order>[];
+
+      final result = await runRolloverBatch(
+        factoryId: 'FAC_001',
+        orders: [pending],
+        customers: [activeCustomer()],
+        rolloverHour: rolloverHour,
+        now: day2Morning,
+        addOrder: created.add,
+        allowUnresolvedSources: true,
+      );
+
+      expect(result.blockedByUnresolvedOrders, isFalse);
+      expect(result.createdCount, 1);
+      expect(created.first.recreatedFromOrderId, 'src-pending');
     });
   });
 }

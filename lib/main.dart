@@ -53,12 +53,14 @@ Future<void> _syncOrderDayResetNotification(WidgetRef ref, User? user) async {
 }
 
 class _DeliveroAppState extends ConsumerState<DeliveroApp> {
+  bool _recreationCatchUpInFlight = false;
+
   @override
   void initState() {
     super.initState();
     LocalNotificationsService.instance.setNotificationTapHandler((payload) {
       if (payload != 'order_day_reset') return;
-      _runDailyRecreationCatchUp(showFeedback: true);
+      _scheduleDailyRecreationCatchUp(showFeedback: true);
     });
     // Start initialization early but let the splash screen control the transition
     Future.microtask(() async {
@@ -69,33 +71,48 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
         ref.read(authProvider).user,
       );
       await _syncOrderDayResetNotification(ref, ref.read(authProvider).user);
-      _runDailyRecreationCatchUp(showFeedback: false);
+      _scheduleDailyRecreationCatchUp(showFeedback: false);
+    });
+  }
+
+  void _scheduleDailyRecreationCatchUp({required bool showFeedback}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _runDailyRecreationCatchUp(showFeedback: showFeedback);
     });
   }
 
   Future<void> _runDailyRecreationCatchUp({required bool showFeedback}) async {
+    if (_recreationCatchUpInFlight) return;
+
     final user = ref.read(authProvider).user;
     final factoryId = user?.factoryId;
     if (factoryId == null || factoryId.isEmpty) return;
+    if (user?.role != UserRole.owner) return;
     if (!ref.read(ordersLoadedProvider)) return;
     if (!ref.read(customersLoadedProvider)) return;
 
-    final result = await ref
-        .read(ordersProvider.notifier)
-        .runDailyRecreationCatchUp(factoryId);
+    _recreationCatchUpInFlight = true;
+    try {
+      final result = await ref
+          .read(ordersProvider.notifier)
+          .runDailyRecreationCatchUp(factoryId);
 
-    if (!showFeedback || !result.hasChanges || !mounted) return;
-    final messenger = rootScaffoldMessengerKey.currentState;
-    if (messenger == null) return;
+      if (!showFeedback || !result.hasChanges || !mounted) return;
+      final messenger = rootScaffoldMessengerKey.currentState;
+      if (messenger == null) return;
 
-    final message = switch (result.createdCount) {
-      0 => 'Daily orders synced for today',
-      1 => '1 daily order auto-created for today',
-      _ => '${result.createdCount} daily orders auto-created for today',
-    };
-    messenger.showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
+      final message = switch (result.createdCount) {
+        0 => 'Daily orders synced for today',
+        1 => '1 daily order auto-created for today',
+        _ => '${result.createdCount} daily orders auto-created for today',
+      };
+      messenger.showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
+    } finally {
+      _recreationCatchUpInFlight = false;
+    }
   }
 
   @override
@@ -105,12 +122,18 @@ class _DeliveroAppState extends ConsumerState<DeliveroApp> {
     ref.listen(authProvider, (previous, next) {
       PushNotificationService.instance.setUser(next.user);
       _syncOrderDayResetNotification(ref, next.user);
-      _runDailyRecreationCatchUp(showFeedback: false);
+      _scheduleDailyRecreationCatchUp(showFeedback: false);
     });
 
     ref.listen(ordersLoadedProvider, (previous, loaded) {
       if (loaded) {
-        _runDailyRecreationCatchUp(showFeedback: false);
+        _scheduleDailyRecreationCatchUp(showFeedback: false);
+      }
+    });
+
+    ref.listen(customersLoadedProvider, (previous, loaded) {
+      if (loaded) {
+        _scheduleDailyRecreationCatchUp(showFeedback: false);
       }
     });
 

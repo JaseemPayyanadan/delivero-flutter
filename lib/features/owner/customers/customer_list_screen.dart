@@ -125,11 +125,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen>
         statusBarColor: Colors.transparent,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.success,
+        backgroundColor: AppColors.primaryGradientEnd,
         body: Column(
           children: [
-            ColoredBox(
-              color: AppColors.success,
+            DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryHeaderGradient,
+              ),
               child: SafeArea(
                 bottom: false,
                 child: _CustomersScreenHeader(

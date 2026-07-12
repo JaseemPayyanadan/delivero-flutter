@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:collection/collection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,18 +11,47 @@ import 'business_day.dart';
 
 const int kMaxBackfillBusinessDays = 7;
 
+/// TEMP DIAGNOSTIC: flip to false (or delete the [_recreationLog] calls) once
+/// the "route not generating" investigation is done. Logs under the tag
+/// `daily_recreation` — filter logcat with `flutter run --flavor dev` then grep.
+const bool kDebugDailyRecreation = true;
+
+void _recreationLog(String message) {
+  if (!kDebugDailyRecreation) return;
+  developer.log(message, name: 'daily_recreation');
+}
+
+String _fmtDay(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';
+
+/// One-line dump of an order's recreation-relevant fields.
+String _describeOrderForLog(Order o, int rolloverHour) {
+  final bdk = businessDayKey(o.orderDate, rolloverHour: rolloverHour);
+  return 'order ${o.id.substring(0, o.id.length.clamp(0, 8))} '
+      'cust="${o.customerName}"(${o.customerId}) '
+      'route=${o.assignedRoute} run=${o.deliveryRun.name} '
+      'type=${o.orderType.name} status=${o.status.name} '
+      'items=${o.items.length} '
+      'orderDate=${o.orderDate.toIso8601String()} '
+      'businessDayKey=${_fmtDay(bdk)}';
+}
+
 /// Outcome of a rollover batch or sync pass.
 class DailyOrderRecreationResult {
   final int createdCount;
   final int syncedCount;
   final int cancelledCount;
   final List<String> createdOrderIds;
+  final List<String> unresolvedSourceOrderIds;
 
   const DailyOrderRecreationResult({
     this.createdCount = 0,
     this.syncedCount = 0,
     this.cancelledCount = 0,
     this.createdOrderIds = const [],
+    this.unresolvedSourceOrderIds = const [],
   });
 
   DailyOrderRecreationResult merge(DailyOrderRecreationResult other) {
@@ -30,11 +60,16 @@ class DailyOrderRecreationResult {
       syncedCount: syncedCount + other.syncedCount,
       cancelledCount: cancelledCount + other.cancelledCount,
       createdOrderIds: [...createdOrderIds, ...other.createdOrderIds],
+      unresolvedSourceOrderIds: unresolvedSourceOrderIds.isNotEmpty
+          ? unresolvedSourceOrderIds
+          : other.unresolvedSourceOrderIds,
     );
   }
 
   bool get hasChanges =>
       createdCount > 0 || syncedCount > 0 || cancelledCount > 0;
+
+  bool get blockedByUnresolvedOrders => unresolvedSourceOrderIds.isNotEmpty;
 }
 
 class DailyOrderRecreationPrefs {
@@ -409,19 +444,62 @@ Future<DailyOrderRecreationResult> runBatchForTargetDay({
           sourceBusinessDay.day,
         );
 
-  final sources = orders.where(
-    (o) => isEligibleRecreationSource(o, sourceDay, rolloverHour: rolloverHour),
+  _recreationLog(
+    'runBatchForTargetDay target=${_fmtDay(targetBusinessDay)} '
+    'source=${_fmtDay(sourceDay)} rolloverHour=$rolloverHour '
+    'totalOrders=${orders.length}',
+  );
+
+  // Diagnostic: dump every daily order and whether it qualifies as a source for
+  // this exact source-day key. This reveals route-correlated exclusions (e.g. a
+  // route whose orderDate time lands on the other side of the rollover, so its
+  // businessDayKey differs from the rest).
+  if (kDebugDailyRecreation) {
+    for (final o in orders.where((o) => o.orderType == OrderType.daily)) {
+      final eligible = isEligibleRecreationSource(
+        o,
+        sourceDay,
+        rolloverHour: rolloverHour,
+      );
+      _recreationLog(
+        '  candidate eligible=$eligible ${_describeOrderForLog(o, rolloverHour)}',
+      );
+    }
+  }
+
+  final sources = orders
+      .where(
+        (o) => isEligibleRecreationSource(
+          o,
+          sourceDay,
+          rolloverHour: rolloverHour,
+        ),
+      )
+      .toList();
+
+  _recreationLog(
+    '  eligible sources on ${_fmtDay(sourceDay)}: ${sources.length}',
   );
 
   final createdIds = <String>[];
   for (final source in sources) {
-    if (!isCustomerActiveForRecreation(source, customers)) continue;
+    if (!isCustomerActiveForRecreation(source, customers)) {
+      _recreationLog(
+        '  SKIP (customer inactive/not found) '
+        '${_describeOrderForLog(source, rolloverHour)}',
+      );
+      continue;
+    }
     if (hasPendingOrderForTargetDay(
       source: source,
       orders: orders,
       targetBusinessDay: targetBusinessDay,
       rolloverHour: rolloverHour,
     )) {
+      _recreationLog(
+        '  SKIP (already has pending child for target) '
+        '${_describeOrderForLog(source, rolloverHour)}',
+      );
       continue;
     }
 
@@ -437,7 +515,16 @@ Future<DailyOrderRecreationResult> runBatchForTargetDay({
     await addOrder(created);
     createdIds.add(created.id);
     orders = [...orders, created];
+    _recreationLog(
+      '  CREATED for ${_fmtDay(targetBusinessDay)} '
+      'cust="${created.customerName}" route=${created.assignedRoute}',
+    );
   }
+
+  _recreationLog(
+    'runBatchForTargetDay DONE target=${_fmtDay(targetBusinessDay)} '
+    'created=${createdIds.length}',
+  );
 
   return DailyOrderRecreationResult(
     createdCount: createdIds.length,
@@ -481,6 +568,10 @@ Future<DailyOrderRecreationResult> runGapBackfill({
     before: today,
     rolloverHour: rolloverHour,
   );
+  _recreationLog(
+    'runGapBackfill throughDay=${_fmtDay(today)} rolloverHour=$rolloverHour '
+    'anchor(last day with daily sources)=${anchor == null ? "NONE" : _fmtDay(anchor)}',
+  );
   if (anchor == null) return const DailyOrderRecreationResult();
 
   final mutableOrders = [...orders];
@@ -500,15 +591,30 @@ Future<DailyOrderRecreationResult> runGapBackfill({
         )
         .toList();
 
+    _recreationLog(
+      'runGapBackfill fill day=${_fmtDay(day)} source=${_fmtDay(sourceDay)} '
+      'eligibleSources=${sources.length}',
+    );
+
     final createdIds = <String>[];
     for (final source in sources) {
-      if (!isCustomerActiveForRecreation(source, customers)) continue;
+      if (!isCustomerActiveForRecreation(source, customers)) {
+        _recreationLog(
+          '  SKIP (customer inactive/not found) '
+          '${_describeOrderForLog(source, rolloverHour)}',
+        );
+        continue;
+      }
       if (_customerHasDailyOrderOn(
         source.customerId,
         day,
         mutableOrders,
         rolloverHour: rolloverHour,
       )) {
+        _recreationLog(
+          '  SKIP (customer already has daily order on ${_fmtDay(day)}) '
+          '${_describeOrderForLog(source, rolloverHour)}',
+        );
         continue;
       }
       const uuid = Uuid();
@@ -547,6 +653,7 @@ Future<DailyOrderRecreationResult> runRolloverBatch({
   required DateTime now,
   required FutureOr<void> Function(Order order) addOrder,
   bool autoRecreationEnabled = true,
+  bool allowUnresolvedSources = false,
 }) async {
   if (!autoRecreationEnabled) {
     return const DailyOrderRecreationResult();
@@ -578,6 +685,19 @@ Future<DailyOrderRecreationResult> runRolloverBatch({
   var result = const DailyOrderRecreationResult();
   var daysProcessed = 0;
   final mutableOrders = [...orders];
+
+  if (!allowUnresolvedSources) {
+    final unresolved = findUnresolvedSourceOrders(
+      orders: mutableOrders,
+      sourceBusinessDay: day.subtract(const Duration(days: 1)),
+      rolloverHour: rolloverHour,
+    );
+    if (unresolved.isNotEmpty) {
+      return DailyOrderRecreationResult(
+        unresolvedSourceOrderIds: unresolved.map((o) => o.id).toList(),
+      );
+    }
+  }
 
   while (!day.isAfter(normalizedCurrent) &&
       daysProcessed < kMaxBackfillBusinessDays) {

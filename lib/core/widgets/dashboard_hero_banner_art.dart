@@ -9,8 +9,9 @@ const double kDashboardHeroBannerTop = 170;
 const double kDashboardHeroBannerHeight = 156;
 const double kDashboardHeroBannerWidthFactor = 0.58;
 
-/// Hero illustration opacity (0–1).
-const double kDashboardHeroBannerOpacity = 0.30;
+/// Hero watermark opacity (0–1) — the illustration is tinted a deep purple and
+/// used as a subtle tonal brand motif over the (lighter) lower gradient.
+const double kDashboardHeroBannerOpacity = 0.20;
 
 /// How far the white KPI card overlaps downward past the hero content.
 const double kDashboardHeroKpiStripOffset = 56;
@@ -21,7 +22,7 @@ const double kDashboardHeroKpiStripBottomPadding = 76;
 /// Top padding on the scroll content below the hero (clears KPI overlap).
 const double kDashboardHeroKpiStripContentTopPadding = 64;
 
-/// Green vertical gradient matching the dashboard hero mockup.
+/// Purple vertical gradient for the dashboard hero (Fillo language).
 const LinearGradient kDashboardHeroGradient = LinearGradient(
   begin: Alignment.topCenter,
   end: Alignment.bottomCenter,
@@ -33,7 +34,7 @@ const LinearGradient kDashboardHeroGradient = LinearGradient(
   stops: [0.0, 0.45, 1.0],
 );
 
-/// Green vertical gradient matching the dashboard hero mockup.
+/// Purple vertical gradient for the dashboard hero (Fillo language).
 class DashboardHeroBackground extends StatelessWidget {
   const DashboardHeroBackground({super.key});
 
@@ -45,24 +46,30 @@ class DashboardHeroBackground extends StatelessWidget {
   }
 }
 
-/// [hero-banner.png] illustration for the dashboard hero.
+/// [hero-banner.png] tinted to a deep-purple tonal watermark for the hero.
+///
+/// The source art is green; tinting it deep purple with [BlendMode.srcIn] keeps
+/// the silhouette but drops the clashing colour. It sits over the lighter lower
+/// part of the gradient, so a darker tint reads as a quiet embossed brand motif
+/// rather than a competing illustration.
 class DashboardHeroBannerBlock extends StatelessWidget {
   const DashboardHeroBannerBlock({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: kDashboardHeroBannerOpacity,
-      child: Image.asset(
-        kDashboardHeroBannerAsset,
-        fit: BoxFit.contain,
-        alignment: Alignment.center,
-        gaplessPlayback: true,
-        filterQuality: FilterQuality.medium,
-        errorBuilder: (context, error, stackTrace) {
-          return const SizedBox.shrink();
-        },
+    return Image.asset(
+      kDashboardHeroBannerAsset,
+      fit: BoxFit.contain,
+      alignment: Alignment.center,
+      gaplessPlayback: true,
+      filterQuality: FilterQuality.medium,
+      color: AppColors.primary900.withValues(
+        alpha: kDashboardHeroBannerOpacity,
       ),
+      colorBlendMode: BlendMode.srcIn,
+      errorBuilder: (context, error, stackTrace) {
+        return const SizedBox.shrink();
+      },
     );
   }
 }

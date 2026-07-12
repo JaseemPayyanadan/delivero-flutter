@@ -40,6 +40,13 @@ class AppColors {
   static const primaryGradientStart = primary500;
   static const primaryGradientEnd = primary700;
 
+  /// Shared purple header gradient for banner/sheet headers across the app.
+  static const primaryHeaderGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primaryGradientStart, primaryGradientEnd],
+  );
+
   static const success = Color(0xFF059669);
   static const successDark = Color(0xFF047857);
   static const successDarker = Color(0xFF065F46);
@@ -52,10 +59,11 @@ class AppColors {
   static const info = Color(0xFF0284C7);
   static const infoLighter = Color(0xFFE0F2FE);
 
-  /// Dashboard hero gradient — dark/mid/light derived from [success] green.
-  static const dashboardHeroGradientStart = successDarker;
-  static const dashboardHeroGradientMid = success;
-  static const dashboardHeroGradientEnd = successLighter;
+  /// Dashboard hero gradient — dark/mid/light purple, matching the Fillo
+  /// header language used across the rest of the app.
+  static const dashboardHeroGradientStart = primary700;
+  static const dashboardHeroGradientMid = primary500;
+  static const dashboardHeroGradientEnd = primary300;
 
   static const backgroundPrimary = neutral25;
   static const backgroundSecondary = neutral50;

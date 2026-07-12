@@ -557,6 +557,9 @@ class OrdersNotifier extends Notifier<List<Order>> {
       final customers = ref.read(customersProvider);
       final orders = state;
 
+      // Auto-recreation runs silently: today's orders are created from
+      // yesterday's active daily orders without gating on unresolved ones,
+      // so the owner is never blocked by an interruptive review popup.
       final result = await runRolloverBatch(
         factoryId: factoryId,
         orders: orders,
@@ -565,6 +568,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
         now: DateTime.now(),
         addOrder: addOrder,
         autoRecreationEnabled: enabled,
+        allowUnresolvedSources: true,
       );
 
       for (final id in result.createdOrderIds) {

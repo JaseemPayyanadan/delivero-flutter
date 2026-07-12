@@ -330,11 +330,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           statusBarColor: Colors.transparent,
         ),
         child: Scaffold(
-          backgroundColor: AppColors.success,
+          backgroundColor: AppColors.primaryGradientEnd,
           body: Column(
             children: [
-              const ColoredBox(
-                color: AppColors.success,
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryHeaderGradient,
+                ),
                 child: SafeArea(bottom: false, child: _ReportsScreenHeader()),
               ),
               Expanded(
@@ -366,11 +368,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         statusBarColor: Colors.transparent,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.success,
+        backgroundColor: AppColors.primaryGradientEnd,
         body: Column(
           children: [
-            ColoredBox(
-              color: AppColors.success,
+            DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryHeaderGradient,
+              ),
               child: SafeArea(
                 bottom: false,
                 child: _ReportsScreenHeader(

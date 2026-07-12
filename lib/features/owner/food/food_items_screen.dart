@@ -867,13 +867,6 @@ class _FoodItemEditorDialogState extends State<_FoodItemEditorDialog> {
     }
   }
 
-  static IconData _unitIcon(ProductUnit unit) => switch (unit) {
-    ProductUnit.quantity => Icons.inventory_2_rounded,
-    ProductUnit.kilogram => Icons.scale_rounded,
-    ProductUnit.gram => Icons.scale_rounded,
-    ProductUnit.litre => Icons.water_drop_rounded,
-  };
-
   static Color _unitColor(ProductUnit unit) => switch (unit) {
     ProductUnit.quantity => AppColors.primary,
     ProductUnit.kilogram => AppColors.success,
@@ -1062,38 +1055,26 @@ class _FoodItemEditorDialogState extends State<_FoodItemEditorDialog> {
       onTap: () => setState(() => _unit = u),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? color.withValues(alpha: 0.12) : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? color : AppColors.border,
             width: selected ? 1.5 : 1,
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _unitIcon(u),
-              size: 16,
-              color: selected ? color : AppColors.textLight,
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                u.chipLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: selected ? color : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ],
+        child: Text(
+          u.chipLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 13,
+            height: 1.1,
+            fontWeight: FontWeight.w800,
+            color: selected ? color : AppColors.textSecondary,
+          ),
         ),
       ),
     );
