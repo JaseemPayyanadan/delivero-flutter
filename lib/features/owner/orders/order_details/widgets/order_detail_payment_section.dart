@@ -5,6 +5,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../data/models/order.dart';
 import '../order_detail_formatting.dart';
 import 'order_detail_surfaces.dart';
+import '../../../../../core/widgets/detail_surfaces.dart';
 
 /// Read-only payment summary card. Payment is recorded via the
 /// Mark-as-Delivered flow; after delivery, [onUpdatePayment] (when set)
@@ -39,12 +40,12 @@ class OrderDetailPaymentCard extends StatelessWidget {
     final showMethod =
         paymentStatus != PaymentStatus.unpaid || order.paymentMethod != null;
 
-    return OrderDetailCard(
+    return DetailCard(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          OrderDetailSectionHeader(
+          DetailSectionHeader(
             title: 'Payment',
             trailingWidget: OrderDetailPillBadge(
               label: orderDetailHumanize(paymentStatus.name).toUpperCase(),

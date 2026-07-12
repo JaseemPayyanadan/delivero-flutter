@@ -21,6 +21,7 @@ import '../../owner/orders/order_details/widgets/order_detail_payment_section.da
 import '../../owner/orders/order_details/widgets/order_detail_summary_card.dart';
 import '../../owner/orders/order_details/widgets/order_detail_surfaces.dart';
 import '../../owner/orders/order_details/widgets/order_detail_update_payment_sheet.dart';
+import '../../../core/widgets/detail_surfaces.dart';
 
 class DriverOrderDetailsScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -131,12 +132,12 @@ class _DriverOrderDetailsScreenState
                 ),
                 const SizedBox(height: 24),
               ],
-              OrderDetailCard(
+              DetailCard(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    OrderDetailSectionHeader(
+                    DetailSectionHeader(
                       title: 'Items',
                       trailing:
                           '${order.items.length} ${order.items.length == 1 ? 'Item' : 'Items'}',
@@ -175,9 +176,9 @@ class _DriverOrderDetailsScreenState
               ),
               if ((order.notes ?? '').trim().isNotEmpty) ...[
                 const SizedBox(height: 24),
-                const OrderDetailSectionHeader(title: 'Notes'),
+                const DetailSectionHeader(title: 'Notes'),
                 const SizedBox(height: 10),
-                OrderDetailCard(
+                DetailCard(
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     order.notes!.trim(),

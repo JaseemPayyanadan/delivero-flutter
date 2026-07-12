@@ -12,7 +12,7 @@ import '../features/onboarding/onboarding_screen.dart';
 import '../features/owner/owner_shell.dart';
 import '../features/owner/customers/customer_list_screen.dart';
 import '../features/owner/customers/add_edit_customer_screen.dart';
-import '../features/owner/customers/customer_details_screen.dart';
+import '../features/owner/customers/customer_details/customer_details_screen.dart';
 import '../features/owner/routes/route_management_screen.dart';
 import '../features/owner/food/food_items_screen.dart';
 import '../features/owner/orders/order_list_screen.dart';

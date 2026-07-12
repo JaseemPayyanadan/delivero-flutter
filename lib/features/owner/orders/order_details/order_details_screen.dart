@@ -20,8 +20,8 @@ import 'widgets/order_detail_item_row.dart';
 import 'widgets/order_detail_customer_card.dart';
 import 'widgets/order_detail_payment_section.dart';
 import 'widgets/order_detail_summary_card.dart';
-import 'widgets/order_detail_surfaces.dart';
 import 'widgets/order_detail_update_payment_sheet.dart';
+import '../../../../core/widgets/detail_surfaces.dart';
 
 enum _OrderMenuAction { edit, delete }
 
@@ -123,12 +123,12 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                       ),
                       const SizedBox(height: 22),
                     ],
-                    OrderDetailCard(
+                    DetailCard(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          OrderDetailSectionHeader(
+                          DetailSectionHeader(
                             title: 'Items',
                             trailing:
                                 '${order.items.length} ${order.items.length == 1 ? 'Item' : 'Items'}',
@@ -171,12 +171,12 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                     ),
                     if ((order.notes ?? '').trim().isNotEmpty) ...[
                       const SizedBox(height: 24),
-                      const OrderDetailSectionHeader(
+                      const DetailSectionHeader(
                         title: 'Notes',
                         icon: Icons.sticky_note_2_rounded,
                       ),
                       const SizedBox(height: 10),
-                      OrderDetailCard(
+                      DetailCard(
                         padding: const EdgeInsets.all(16),
                         child: Text(
                           order.notes!.trim(),

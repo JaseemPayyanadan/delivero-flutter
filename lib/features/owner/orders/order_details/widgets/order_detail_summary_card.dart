@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../data/models/order.dart';
 import '../order_detail_formatting.dart';
 import 'order_detail_surfaces.dart';
+import '../../../../../core/widgets/detail_surfaces.dart';
 
 /// Hero card straddling the purple header: status + copy ID on top, then a
 /// two-column split — order total / balance due on the left, date and order
@@ -58,7 +59,7 @@ class OrderDetailSummaryCard extends StatelessWidget {
     );
     final isDelivered = order.status == OrderStatus.delivered;
 
-    return OrderDetailCard(
+    return DetailCard(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
