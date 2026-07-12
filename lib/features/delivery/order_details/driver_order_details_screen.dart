@@ -1,6 +1,5 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -95,8 +94,6 @@ class _DriverOrderDetailsScreenState
 
     final resolved = ResolvedOrderDetail.compute(order, routes, customers);
     final paymentColor = orderDetailPaymentColor(resolved.paymentStatus);
-    final statusBg = orderDetailStatusBg(order.status);
-    final statusFg = orderDetailStatusFg(order.status);
     final hasAddress = order.customerAddress.trim().isNotEmpty;
 
     final serverStatus = order.paymentStatus ?? PaymentStatus.unpaid;
@@ -167,21 +164,8 @@ class _DriverOrderDetailsScreenState
                 order: order,
                 orderIdDisplay: orderDetailDisplayId(order.id),
                 money0: money0,
-                routeLabel: resolved.summaryRouteLabel,
                 paymentStatus: resolved.paymentStatus,
-                paymentColor: paymentColor,
-                statusBg: statusBg,
-                statusFg: statusFg,
-                statusLabel: orderDetailHumanize(order.status.name),
                 balanceDue: resolved.balanceDue,
-                onPhoneTap: order.customerPhone.trim().isEmpty
-                    ? null
-                    : () {
-                        try {
-                          HapticFeedback.selectionClick();
-                        } catch (_) {}
-                        _handleCallCustomer(context, order.customerPhone);
-                      },
               ),
               const SizedBox(height: 24),
               if (hasAddress) ...[
@@ -310,6 +294,7 @@ class _DriverOrderDetailsScreenState
     }
   }
 
+  // ignore: unused_element
   Future<void> _handleCallCustomer(BuildContext context, String phone) async {
     final digits = phone.trim().replaceAll(RegExp(r'[^0-9+]'), '');
     if (digits.isEmpty) {
