@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +15,7 @@ import '../../owner/orders/order_details/order_detail_formatting.dart';
 import '../../owner/orders/order_details/resolved_order_detail.dart';
 import '../../owner/orders/order_details/widgets/confirm_mark_delivered.dart';
 import '../../owner/orders/order_details/widgets/order_detail_bottom_actions.dart';
+import '../../owner/orders/order_details/widgets/order_detail_customer_card.dart';
 import '../../owner/orders/order_details/widgets/order_detail_item_row.dart';
 import '../../owner/orders/order_details/widgets/order_detail_payment_section.dart';
 import '../../owner/orders/order_details/widgets/order_detail_summary_card.dart';
@@ -168,12 +170,25 @@ class _DriverOrderDetailsScreenState
                 balanceDue: resolved.balanceDue,
               ),
               const SizedBox(height: 24),
-              if (hasAddress) ...[
-                const OrderDetailSectionHeader(title: 'Delivery address'),
-                const SizedBox(height: 10),
-                _AddressCard(
-                  address: order.customerAddress.trim(),
-                  onOpenMaps: () => _openMaps(context, order.customerAddress),
+              if (order.customerName.trim().isNotEmpty ||
+                  order.customerPhone.trim().isNotEmpty ||
+                  hasAddress) ...[
+                OrderDetailCustomerCard(
+                  name: order.customerName,
+                  phone: order.customerPhone,
+                  address: order.customerAddress,
+                  routeLabel: resolved.summaryRouteLabel,
+                  onCall: order.customerPhone.trim().isEmpty
+                      ? null
+                      : () {
+                          try {
+                            HapticFeedback.selectionClick();
+                          } catch (_) {}
+                          _handleCallCustomer(context, order.customerPhone);
+                        },
+                  onOpenAddress: hasAddress
+                      ? () => _openMaps(context, order.customerAddress)
+                      : null,
                 ),
                 const SizedBox(height: 24),
               ],
@@ -294,7 +309,6 @@ class _DriverOrderDetailsScreenState
     }
   }
 
-  // ignore: unused_element
   Future<void> _handleCallCustomer(BuildContext context, String phone) async {
     final digits = phone.trim().replaceAll(RegExp(r'[^0-9+]'), '');
     if (digits.isEmpty) {
@@ -330,62 +344,5 @@ class _DriverOrderDetailsScreenState
         ),
       );
     }
-  }
-}
-
-class _AddressCard extends StatelessWidget {
-  final String address;
-  final VoidCallback onOpenMaps;
-
-  const _AddressCard({required this.address, required this.onOpenMaps});
-
-  @override
-  Widget build(BuildContext context) {
-    return OrderDetailCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLighter,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: const Icon(
-              Icons.location_on_rounded,
-              color: AppColors.primary,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                address,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  height: 1.35,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            tooltip: 'Open in maps',
-            onPressed: onOpenMaps,
-            icon: const Icon(
-              Icons.navigation_rounded,
-              color: AppColors.primary,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

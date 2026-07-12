@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 
 import 'package:delivero/data/models/order.dart';
+import 'package:delivero/features/owner/orders/order_details/widgets/order_detail_customer_card.dart';
 import 'package:delivero/features/owner/orders/order_details/widgets/order_detail_summary_card.dart';
 
 final money0 = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
@@ -91,6 +92,41 @@ void main() {
         ),
       );
       expect(find.textContaining('due'), findsNothing);
+    });
+  });
+
+  group('OrderDetailCustomerCard', () {
+    testWidgets('shows initial avatar, name, phone, address and link', (tester) async {
+      var viewed = false;
+      await pumpCard(
+        tester,
+        OrderDetailCustomerCard(
+          name: 'wbc',
+          phone: '9876543210',
+          address: 'Ottappalam, Palakkad, Kerala',
+          routeLabel: '',
+          onViewCustomer: () => viewed = true,
+        ),
+      );
+      expect(find.text('W'), findsOneWidget);
+      expect(find.text('wbc'), findsOneWidget);
+      expect(find.text('9876543210'), findsOneWidget);
+      expect(find.text('Ottappalam, Palakkad, Kerala'), findsOneWidget);
+      await tester.tap(find.text('View customer'));
+      expect(viewed, isTrue);
+    });
+
+    testWidgets('hides view-customer link when callback is null', (tester) async {
+      await pumpCard(
+        tester,
+        const OrderDetailCustomerCard(
+          name: 'wbc',
+          phone: '',
+          address: '',
+          routeLabel: '',
+        ),
+      );
+      expect(find.text('View customer'), findsNothing);
     });
   });
 }

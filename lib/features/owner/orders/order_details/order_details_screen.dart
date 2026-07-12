@@ -17,6 +17,7 @@ import 'resolved_order_detail.dart';
 import 'widgets/confirm_mark_delivered.dart';
 import 'widgets/order_detail_bottom_actions.dart';
 import 'widgets/order_detail_item_row.dart';
+import 'widgets/order_detail_customer_card.dart';
 import 'widgets/order_detail_payment_section.dart';
 import 'widgets/order_detail_summary_card.dart';
 import 'widgets/order_detail_surfaces.dart';
@@ -153,6 +154,36 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (order.customerName.trim().isNotEmpty ||
+                        order.customerPhone.trim().isNotEmpty ||
+                        order.customerAddress.trim().isNotEmpty) ...[
+                      OrderDetailCustomerCard(
+                        name: order.customerName,
+                        phone: order.customerPhone,
+                        address: order.customerAddress,
+                        routeLabel: resolved.summaryRouteLabel,
+                        onCall: order.customerPhone.trim().isEmpty
+                            ? null
+                            : () {
+                                try {
+                                  HapticFeedback.selectionClick();
+                                } catch (_) {}
+                                _handleCallCustomer(
+                                  context,
+                                  order.customerPhone,
+                                );
+                              },
+                        onOpenAddress: order.customerAddress.trim().isEmpty
+                            ? null
+                            : () => _openMaps(context, order.customerAddress),
+                        onViewCustomer: order.customerId.trim().isEmpty
+                            ? null
+                            : () => context.push(
+                                '/owner/customers/${order.customerId}',
+                              ),
+                      ),
+                      const SizedBox(height: 22),
+                    ],
                     OrderDetailSectionHeader(
                       title: 'Items',
                       trailing: '${order.items.length} Items',
@@ -319,7 +350,6 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     }
   }
 
-  // ignore: unused_element
   Future<void> _handleCallCustomer(BuildContext context, String phone) async {
     final raw = phone.trim();
     final digits = raw.replaceAll(RegExp(r'[^0-9+]'), '');
