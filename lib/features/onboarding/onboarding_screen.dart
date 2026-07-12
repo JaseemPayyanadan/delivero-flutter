@@ -18,6 +18,7 @@ import '../../core/services/firebase_service.dart';
 import '../../data/models/delivery_route.dart';
 import '../../data/models/customer.dart';
 import '../../data/models/food_item.dart';
+import '../../data/models/product_unit.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -42,6 +43,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _customerAddressController = TextEditingController();
   final _productNameController = TextEditingController();
   final _productPriceController = TextEditingController();
+  ProductUnit _productUnit = ProductUnit.quantity;
   bool _profileLoaded = false;
   bool _didInitialJump = false;
   String _ownerName = '';
@@ -51,6 +53,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool _savingRoute = false;
   bool _savingCustomer = false;
   bool _savingProduct = false;
+
+  /// Customers is optional, so an empty customer list is not a reason to keep
+  /// the later steps locked. Once the user has moved past the step — by
+  /// skipping it or by tapping Next on an empty form — Routes stays reachable
+  /// from the stepper even if no customer was ever added.
+  bool _customersPassed = false;
+
+  /// Set when a save fails (offline, missing factory). Shown above the action
+  /// bar so the failed tap explains itself instead of doing nothing.
+  String? _saveError;
 
   // Inline validation errors, shown under the relevant field when the user
   // taps the forward button with invalid input; cleared as soon as the field
@@ -114,6 +126,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     });
   }
 
+  /// Resolves the factory to write into. Returns null — and posts a retryable
+  /// error — when it can't be resolved, rather than failing silently.
+  Future<String?> _resolveFactoryId(String subject) async {
+    final factoryId = await ref.read(factoryIdProvider.future);
+    if (factoryId == null || factoryId.trim().isEmpty) {
+      _setSaveError(subject);
+      return null;
+    }
+    return factoryId;
+  }
+
+  void _setSaveError(String subject) {
+    if (!mounted) return;
+    setState(() {
+      _saveError =
+          "Couldn't save your $subject. Check your connection and tap Next to try again.";
+    });
+  }
+
   Future<bool> _saveInlineRoute() async {
     FocusScope.of(context).unfocus();
     final name = _routeNameController.text.trim();
@@ -136,27 +167,33 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       HapticFeedback.mediumImpact();
     } catch (_) {}
 
-    final factoryId = await ref.read(factoryIdProvider.future);
-    if (factoryId == null || factoryId.isEmpty) return false;
-    final now = DateTime.now();
-    final route = DeliveryRoute(
-      id: const Uuid().v4(),
-      factoryId: factoryId,
-      name: name,
-      area: area,
-      description: '',
-      isActive: true,
-      estimatedDeliveryTime: 30,
-      maxOrders: 10,
-      currentOrders: 0,
-      createdAt: now,
-      updatedAt: now,
-    );
-    ref.read(routesProvider.notifier).addRoute(route);
-
-    if (!mounted) return true;
-    setState(() => _savingRoute = false);
-    return true;
+    try {
+      final factoryId = await _resolveFactoryId('route');
+      if (factoryId == null) return false;
+      final now = DateTime.now();
+      final route = DeliveryRoute(
+        id: const Uuid().v4(),
+        factoryId: factoryId,
+        name: name,
+        area: area,
+        description: '',
+        isActive: true,
+        estimatedDeliveryTime: 30,
+        maxOrders: 10,
+        currentOrders: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      ref.read(routesProvider.notifier).addRoute(route);
+      return true;
+    } catch (_) {
+      _setSaveError('route');
+      return false;
+    } finally {
+      // Always release the button: an early return here used to strand the
+      // action bar on "Saving…" with no way out.
+      if (mounted) setState(() => _savingRoute = false);
+    }
   }
 
   Future<bool> _saveInlineCustomer() async {
@@ -180,26 +217,30 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       HapticFeedback.mediumImpact();
     } catch (_) {}
 
-    final factoryId = await ref.read(factoryIdProvider.future);
-    if (factoryId == null || factoryId.isEmpty) return false;
-    final now = DateTime.now();
-    final customer = Customer(
-      id: const Uuid().v4(),
-      factoryId: factoryId,
-      name: name,
-      email: '',
-      phone: phone,
-      address: address,
-      area: '',
-      isActive: true,
-      createdAt: now,
-      updatedAt: now,
-    );
-    ref.read(customersProvider.notifier).addCustomer(customer);
-
-    if (!mounted) return true;
-    setState(() => _savingCustomer = false);
-    return true;
+    try {
+      final factoryId = await _resolveFactoryId('customer');
+      if (factoryId == null) return false;
+      final now = DateTime.now();
+      final customer = Customer(
+        id: const Uuid().v4(),
+        factoryId: factoryId,
+        name: name,
+        email: '',
+        phone: phone,
+        address: address,
+        area: '',
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      );
+      ref.read(customersProvider.notifier).addCustomer(customer);
+      return true;
+    } catch (_) {
+      _setSaveError('customer');
+      return false;
+    } finally {
+      if (mounted) setState(() => _savingCustomer = false);
+    }
   }
 
   Future<bool> _saveInlineProduct() async {
@@ -214,11 +255,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       return false;
     }
 
-    // Skip if name + price match an existing product.
+    // Skip if name + price + unit match an existing product.
     final existing = ref.read(foodItemsProvider);
     final isDuplicate = existing.any(
       (f) =>
-          f.name.trim().toLowerCase() == name.toLowerCase() && f.price == price,
+          f.name.trim().toLowerCase() == name.toLowerCase() &&
+          f.price == price &&
+          f.unit == _productUnit,
     );
     if (isDuplicate) return true;
 
@@ -227,22 +270,27 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       HapticFeedback.mediumImpact();
     } catch (_) {}
 
-    final factoryId = await ref.read(factoryIdProvider.future);
-    if (factoryId == null || factoryId.isEmpty) return false;
-    final now = DateTime.now();
-    final item = FoodItem(
-      id: const Uuid().v4(),
-      factoryId: factoryId,
-      name: name,
-      price: price,
-      createdAt: now,
-      updatedAt: now,
-    );
-    ref.read(foodItemsProvider.notifier).addFoodItem(item);
-
-    if (!mounted) return true;
-    setState(() => _savingProduct = false);
-    return true;
+    try {
+      final factoryId = await _resolveFactoryId('product');
+      if (factoryId == null) return false;
+      final now = DateTime.now();
+      final item = FoodItem(
+        id: const Uuid().v4(),
+        factoryId: factoryId,
+        name: name,
+        price: price,
+        unit: _productUnit,
+        createdAt: now,
+        updatedAt: now,
+      );
+      ref.read(foodItemsProvider.notifier).addFoodItem(item);
+      return true;
+    } catch (_) {
+      _setSaveError('product');
+      return false;
+    } finally {
+      if (mounted) setState(() => _savingProduct = false);
+    }
   }
 
   Future<void> _ensureProfileLoaded() async {
@@ -270,8 +318,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }) {
     if (!profileDone) return 0;
     if (!productsDone) return 1;
-    if (!routesDone) return 2;
-    if (!customersDone) return 3;
+    // Customers is optional: it only holds the user here until they've been
+    // through it once. Skipping it must not lock Routes behind a dead dot.
+    if (!customersDone && !_customersPassed) return 2;
+    if (!routesDone) return 3;
     return _kStepCount - 1;
   }
 
@@ -346,6 +396,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await _showSetupCompleteDialog(
       ownerName: ownerName,
       businessName: businessName,
+      routeCount: ref.read(routesProvider).length,
+      customerCount: ref.read(customersProvider).length,
+      productCount: ref.read(foodItemsProvider).length,
     );
     if (!mounted) return;
     if (context.mounted) context.go('/owner');
@@ -354,6 +407,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _showSetupCompleteDialog({
     required String ownerName,
     required String businessName,
+    required int routeCount,
+    required int customerCount,
+    required int productCount,
   }) async {
     try {
       HapticFeedback.heavyImpact();
@@ -366,6 +422,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       builder: (dialogContext) => _SetupCompleteDialog(
         ownerName: ownerName,
         businessName: businessName,
+        routeCount: routeCount,
+        customerCount: customerCount,
+        productCount: productCount,
         onDismiss: () => Navigator.of(dialogContext).pop(),
       ),
     );
@@ -381,6 +440,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     setState(() => _currentStep = safe);
   }
 
+  /// Leaves the customer step without saving whatever is half-typed in it.
+  void _skipCustomers() {
+    try {
+      HapticFeedback.selectionClick();
+    } catch (_) {}
+    setState(() => _customersPassed = true);
+    _jumpTo(3);
+  }
+
   void _goBack() {
     if (_currentStep == 0) return;
     try {
@@ -393,6 +461,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     try {
       HapticFeedback.lightImpact();
     } catch (_) {}
+
+    if (_saveError != null) setState(() => _saveError = null);
 
     switch (_currentStep) {
       case 0:
@@ -427,6 +497,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         _jumpTo(2);
         return;
       case 2:
+        // Customers step is optional. If the user entered a name, save it.
+        if (_customerNameController.text.trim().isNotEmpty) {
+          final saved = await _saveInlineCustomer();
+          if (!saved || !mounted) return;
+        }
+        setState(() => _customersPassed = true);
+        _jumpTo(3);
+        return;
+      case 3:
         final name = _routeNameController.text.trim();
         final area = _routeAreaController.text.trim();
         final hasFormData = name.isNotEmpty && area.isNotEmpty;
@@ -435,7 +514,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         if (hasFormData) {
           final saved = await _saveInlineRoute();
           if (!saved || !mounted) return;
-          _jumpTo(3);
+          await _finishOnboarding();
           return;
         }
 
@@ -449,15 +528,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           return;
         }
 
-        // Fields left blank but a route already exists — allowed to continue.
-        _jumpTo(3);
-        return;
-      case 3:
-        // Customers step is optional and last. If user entered a name, save it.
-        if (_customerNameController.text.trim().isNotEmpty) {
-          await _saveInlineCustomer();
-          if (!mounted) return;
-        }
+        // Fields left blank but a route already exists — allowed to finish.
         await _finishOnboarding();
         return;
     }
@@ -511,8 +582,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final stepStatuses = <bool>[
       profileDone,
       productsDone,
-      routesDone,
       customersDone,
+      routesDone,
     ];
 
     return Scaffold(
@@ -543,7 +614,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               overlapChild: DeliveroCard(
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                 child: _StepperHeader(
-                  labels: const ['Profile', 'Products', 'Routes', 'Customers'],
+                  labels: const ['Profile', 'Products', 'Customers', 'Routes'],
                   statuses: stepStatuses,
                   currentIndex: _currentStep,
                   firstIncomplete: firstIncomplete,
@@ -569,9 +640,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   _ProductsStepPage(
                     nameController: _productNameController,
                     priceController: _productPriceController,
+                    unit: _productUnit,
+                    onUnitChanged: (u) => setState(() => _productUnit = u),
                     saving: _savingProduct,
                     nameError: _productNameError,
                     priceError: _productPriceError,
+                  ),
+                  _CustomersStepPage(
+                    nameController: _customerNameController,
+                    phoneController: _customerPhoneController,
+                    addressController: _customerAddressController,
+                    saving: _savingCustomer,
                   ),
                   _RoutesStepPage(
                     nameController: _routeNameController,
@@ -580,21 +659,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     nameError: _routeNameError,
                     areaError: _routeAreaError,
                   ),
-                  _CustomersStepPage(
-                    nameController: _customerNameController,
-                    phoneController: _customerPhoneController,
-                    addressController: _customerAddressController,
-                    saving: _savingCustomer,
-                    onSkip: () {
-                      try {
-                        HapticFeedback.selectionClick();
-                      } catch (_) {}
-                      _finishOnboarding();
-                    },
-                  ),
                 ],
               ),
             ),
+            if (_saveError != null) _SaveErrorBanner(message: _saveError!),
             _BottomNav(
               currentStep: _currentStep,
               isLastStep: _currentStep == _kStepCount - 1,
@@ -605,6 +673,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   _savingProduct,
               onBack: _goBack,
               onContinue: _goNext,
+              // Customers is the only optional step.
+              onSkip: _currentStep == 2 ? _skipCustomers : null,
             ),
           ],
         ),
@@ -630,55 +700,63 @@ class _StepperHeader extends StatelessWidget {
     required this.onTap,
   });
 
+  /// One segment of the connecting rail. [reached] tints it lime; a segment
+  /// hanging off the first or last dot is invisible, so the rail starts and
+  /// ends at a dot rather than at the card edge.
+  Widget _rail({required bool reached, required bool visible}) {
+    return Expanded(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        height: 2,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(2),
+          color: !visible
+              ? Colors.transparent
+              : (reached ? AppColors.secondary : AppColors.border),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final count = labels.length;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 36,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: List.generate(count * 2 - 1, (i) {
-                if (i.isOdd) {
-                  final leftIndex = i ~/ 2;
-                  final reached = statuses[leftIndex];
-                  return Expanded(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 320),
-                      curve: Curves.easeOutCubic,
-                      height: 2,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        color: reached ? AppColors.secondary : AppColors.border,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        // Each step owns one equal-width cell containing its dot and its
+        // label, so the two are always centred on the same axis.
+        children: List.generate(count, (i) {
+          final isCompleted = statuses[i];
+          final isActive = i == currentIndex;
+          final isLocked = i > firstIncomplete;
+          return Expanded(
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 36,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _rail(
+                        reached: i > 0 && statuses[i - 1],
+                        visible: i > 0,
                       ),
-                    ),
-                  );
-                }
-                final stepIndex = i ~/ 2;
-                final isCompleted = statuses[stepIndex];
-                final isActive = stepIndex == currentIndex;
-                final isLocked = stepIndex > firstIncomplete;
-                return _StepDot(
-                  index: stepIndex,
-                  isCompleted: isCompleted,
-                  isActive: isActive,
-                  isLocked: isLocked,
-                  onTap: () => onTap(stepIndex),
-                );
-              }),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: List.generate(count, (i) {
-              final isActive = i == currentIndex;
-              final isCompleted = statuses[i];
-              return Expanded(
-                child: Text(
+                      _StepDot(
+                        index: i,
+                        isCompleted: isCompleted,
+                        isActive: isActive,
+                        isLocked: isLocked,
+                        onTap: () => onTap(i),
+                      ),
+                      _rail(reached: isCompleted, visible: i < count - 1),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
                   labels[i],
                   textAlign: TextAlign.center,
                   maxLines: 1,
@@ -694,10 +772,10 @@ class _StepperHeader extends StatelessWidget {
                     letterSpacing: 0.2,
                   ),
                 ),
-              );
-            }),
-          ),
-        ],
+              ],
+            ),
+          );
+        }),
       ),
     );
   }
@@ -1112,14 +1190,12 @@ class _CustomersStepPage extends ConsumerWidget {
   final TextEditingController phoneController;
   final TextEditingController addressController;
   final bool saving;
-  final VoidCallback onSkip;
 
   const _CustomersStepPage({
     required this.nameController,
     required this.phoneController,
     required this.addressController,
     required this.saving,
-    required this.onSkip,
   });
 
   @override
@@ -1186,24 +1262,6 @@ class _CustomersStepPage extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton.icon(
-              onPressed: saving ? null : onSkip,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.textSecondary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-              ),
-              icon: const Icon(Icons.skip_next_rounded, size: 18),
-              label: const Text(
-                'Skip for now',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -1213,6 +1271,8 @@ class _CustomersStepPage extends ConsumerWidget {
 class _ProductsStepPage extends ConsumerWidget {
   final TextEditingController nameController;
   final TextEditingController priceController;
+  final ProductUnit unit;
+  final ValueChanged<ProductUnit> onUnitChanged;
   final bool saving;
   final String? nameError;
   final String? priceError;
@@ -1220,6 +1280,8 @@ class _ProductsStepPage extends ConsumerWidget {
   const _ProductsStepPage({
     required this.nameController,
     required this.priceController,
+    required this.unit,
+    required this.onUnitChanged,
     required this.saving,
     this.nameError,
     this.priceError,
@@ -1261,7 +1323,26 @@ class _ProductsStepPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                const _FormFieldLabel(label: 'Price'),
+                const _FormFieldLabel(label: 'How is it sold?'),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    for (final u in ProductUnit.values) ...[
+                      if (u != ProductUnit.values.first)
+                        const SizedBox(width: 8),
+                      Expanded(
+                        child: _UnitChip(
+                          unit: u,
+                          selected: u == unit,
+                          enabled: !saving,
+                          onTap: () => onUnitChanged(u),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const _FormFieldLabel(label: 'Unit price (₹)'),
                 const SizedBox(height: 8),
                 TextField(
                   controller: priceController,
@@ -1272,14 +1353,77 @@ class _ProductsStepPage extends ConsumerWidget {
                   textInputAction: TextInputAction.done,
                   decoration: _formDecoration(
                     hint: 'e.g. 25.00',
-                    icon: Icons.attach_money_rounded,
+                    icon: Icons.currency_rupee_rounded,
                     errorText: priceError,
+                  ).copyWith(
+                    suffixText: unit == ProductUnit.quantity
+                        ? null
+                        : unit.priceSuffix,
+                    suffixStyle: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Unit selector chip — mirrors the product form's "How is it sold?" chips so
+/// onboarding and the products module read the same.
+class _UnitChip extends StatelessWidget {
+  final ProductUnit unit;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _UnitChip({
+    required this.unit,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  static Color _color(ProductUnit unit) => switch (unit) {
+    ProductUnit.quantity => AppColors.primary,
+    ProductUnit.kilogram => AppColors.success,
+    ProductUnit.gram => AppColors.success,
+    ProductUnit.litre => AppColors.info,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _color(unit);
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.12) : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? color : AppColors.border,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          unit.chipLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 13,
+            height: 1.1,
+            fontWeight: FontWeight.w800,
+            color: selected ? color : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }
@@ -1322,6 +1466,52 @@ class _HintCard extends StatelessWidget {
   }
 }
 
+/// Retryable save failure, pinned directly above the action bar so it sits in
+/// the user's eyeline when the button they just tapped didn't advance.
+class _SaveErrorBanner extends StatelessWidget {
+  final String message;
+  const _SaveErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: AppColors.backgroundPrimary,
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.32)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: AppColors.error,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: AppColors.error,
+                  fontSize: 12.5,
+                  height: 1.4,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // =====================  Bottom navigation  =====================
 
 class _BottomNav extends StatelessWidget {
@@ -1331,12 +1521,18 @@ class _BottomNav extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onContinue;
 
+  /// Non-null only on optional steps. Rendered as a tertiary action in the
+  /// action bar so "skip" always lives where the other decisions live,
+  /// instead of hiding below the form.
+  final VoidCallback? onSkip;
+
   const _BottomNav({
     required this.currentStep,
     required this.isLastStep,
     required this.saving,
     required this.onBack,
     required this.onContinue,
+    this.onSkip,
   });
 
   @override
@@ -1374,6 +1570,22 @@ class _BottomNav extends StatelessWidget {
                   onTap: onBack,
                 ),
                 const SizedBox(width: 12),
+              ],
+              if (onSkip != null) ...[
+                TextButton(
+                  onPressed: saving ? null : onSkip,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    minimumSize: const Size(0, 52),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: const StadiumBorder(),
+                  ),
+                  child: const Text(
+                    'Skip',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(width: 4),
               ],
               Expanded(
                 child: DeliveroButton(
@@ -1427,11 +1639,17 @@ class _CircleIconButton extends StatelessWidget {
 class _SetupCompleteDialog extends StatefulWidget {
   final String ownerName;
   final String businessName;
+  final int routeCount;
+  final int customerCount;
+  final int productCount;
   final VoidCallback onDismiss;
 
   const _SetupCompleteDialog({
     required this.ownerName,
     required this.businessName,
+    required this.routeCount,
+    required this.customerCount,
+    required this.productCount,
     required this.onDismiss,
   });
 
@@ -1566,7 +1784,11 @@ class _SetupCompleteDialogState extends State<_SetupCompleteDialog>
                 ),
               ),
               const SizedBox(height: 20),
-              _ReadyHighlights(),
+              _ReadyHighlights(
+                routeCount: widget.routeCount,
+                customerCount: widget.customerCount,
+                productCount: widget.productCount,
+              ),
               const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
@@ -1663,7 +1885,22 @@ class _CheckmarkPainter extends CustomPainter {
       oldDelegate.progress != progress;
 }
 
+/// Recap of what the setup actually produced. Each row reflects real counts —
+/// a step the user skipped reads as an open to-do, not a green tick.
 class _ReadyHighlights extends StatelessWidget {
+  final int routeCount;
+  final int customerCount;
+  final int productCount;
+
+  const _ReadyHighlights({
+    required this.routeCount,
+    required this.customerCount,
+    required this.productCount,
+  });
+
+  static String _count(int n, String singular, String plural) =>
+      '$n ${n == 1 ? singular : plural}';
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1674,20 +1911,29 @@ class _ReadyHighlights extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
-        children: const [
-          _ReadyHighlightRow(
-            icon: Icons.alt_route_rounded,
-            label: 'Routes mapped',
-          ),
-          SizedBox(height: 8),
-          _ReadyHighlightRow(
-            icon: Icons.people_alt_rounded,
-            label: 'Customers added',
-          ),
-          SizedBox(height: 8),
+        children: [
           _ReadyHighlightRow(
             icon: Icons.restaurant_menu_rounded,
-            label: 'Menu loaded',
+            label: productCount > 0
+                ? '${_count(productCount, 'product', 'products')} added'
+                : 'No products yet',
+            done: productCount > 0,
+          ),
+          const SizedBox(height: 8),
+          _ReadyHighlightRow(
+            icon: Icons.alt_route_rounded,
+            label: routeCount > 0
+                ? '${_count(routeCount, 'route', 'routes')} mapped'
+                : 'No routes yet',
+            done: routeCount > 0,
+          ),
+          const SizedBox(height: 8),
+          _ReadyHighlightRow(
+            icon: Icons.people_alt_rounded,
+            label: customerCount > 0
+                ? '${_count(customerCount, 'customer', 'customers')} added'
+                : 'Add customers from your dashboard',
+            done: customerCount > 0,
           ),
         ],
       ),
@@ -1698,7 +1944,12 @@ class _ReadyHighlights extends StatelessWidget {
 class _ReadyHighlightRow extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _ReadyHighlightRow({required this.icon, required this.label});
+  final bool done;
+  const _ReadyHighlightRow({
+    required this.icon,
+    required this.label,
+    required this.done,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1708,25 +1959,30 @@ class _ReadyHighlightRow extends StatelessWidget {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: AppColors.successLighter,
+            color: done ? AppColors.successLighter : AppColors.backgroundPrimary,
             borderRadius: BorderRadius.circular(8),
+            border: done ? null : Border.all(color: AppColors.border),
           ),
-          child: const Icon(
-            Icons.check_rounded,
+          child: Icon(
+            done ? Icons.check_rounded : Icons.remove_rounded,
             size: 16,
-            color: AppColors.success,
+            color: done ? AppColors.success : AppColors.textLight,
           ),
         ),
         const SizedBox(width: 10),
-        Icon(icon, size: 18, color: AppColors.textSecondary),
+        Icon(
+          icon,
+          size: 18,
+          color: done ? AppColors.textSecondary : AppColors.textLight,
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: done ? AppColors.textPrimary : AppColors.textSecondary,
             ),
           ),
         ),

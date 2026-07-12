@@ -53,7 +53,9 @@ enum ProductUnit {
     ProductUnit.litre => 'L',
   };
 
-  /// Short label shown on the product form's selector chips.
+  /// Label shown on the product form's selector chips. The measurement itself
+  /// is the glyph — no pictogram, since kg and gram are indistinguishable as
+  /// scale icons.
   String get chipLabel => switch (this) {
     ProductUnit.quantity => 'Qty',
     ProductUnit.kilogram => 'Kg',
