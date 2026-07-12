@@ -85,8 +85,6 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
 
     final resolved = ResolvedOrderDetail.compute(order, routes, customers);
     final paymentColor = orderDetailPaymentColor(resolved.paymentStatus);
-    final statusBg = orderDetailStatusBg(order.status);
-    final statusFg = orderDetailStatusFg(order.status);
 
     final serverStatus = order.paymentStatus ?? PaymentStatus.unpaid;
     final serverMethod = order.paymentMethod ?? PaymentMethod.cash;
@@ -146,26 +144,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                   order: order,
                   orderIdDisplay: orderDetailDisplayId(order.id),
                   money0: money0,
-                  routeLabel: resolved.summaryRouteLabel,
                   paymentStatus: resolved.paymentStatus,
-                  paymentColor: paymentColor,
-                  statusBg: statusBg,
-                  statusFg: statusFg,
-                  statusLabel: orderDetailHumanize(order.status.name),
                   balanceDue: resolved.balanceDue,
-                  onPhoneTap: order.customerPhone.trim().isEmpty
-                      ? null
-                      : () {
-                          try {
-                            HapticFeedback.selectionClick();
-                          } catch (_) {}
-                          _handleCallCustomer(context, order.customerPhone);
-                        },
-                  onViewCustomer: order.customerId.trim().isEmpty
-                      ? null
-                      : () => context.push(
-                          '/owner/customers/${order.customerId}',
-                        ),
                 ),
               ),
               Padding(
@@ -339,6 +319,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _handleCallCustomer(BuildContext context, String phone) async {
     final raw = phone.trim();
     final digits = raw.replaceAll(RegExp(r'[^0-9+]'), '');
