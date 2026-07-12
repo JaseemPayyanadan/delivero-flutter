@@ -595,7 +595,6 @@ class _HeroRevenue extends StatelessWidget {
           )
         else
           Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
                 child: _HeroRevenueSplitPill(
