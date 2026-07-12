@@ -10,12 +10,15 @@ import '../../core/services/order_day_reset_notification_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/delivero_button.dart';
-import '../../core/widgets/delivero_card.dart';
 import '../../core/widgets/delivero_gradient_header.dart';
 import '../../core/widgets/delivero_sliver_header.dart';
 import '../../core/widgets/delivero_status_chip.dart';
 import '../../data/models/user.dart';
 import '../../data/models/driver.dart';
+import 'widgets/edit_profile_sheet.dart';
+import '../../core/widgets/detail_surfaces.dart';
+import '../../core/widgets/destructive_confirm_dialog.dart';
+import 'widgets/profile_identity_card.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -109,18 +112,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         slivers: [
           SliverToBoxAdapter(
-            child: _ProfileHeader(
-              user: user,
-              driver: driver,
-              isDelivery: isDelivery,
+            child: DeliveroGradientHeader(
+              title: 'Profile',
+              subtitle: isDelivery ? 'Driver account' : 'Owner account',
               onBack: Navigator.of(context).canPop()
                   ? () => context.pop()
                   : null,
+              horizontalPadding: 20,
+              bannerHeight: 104,
+              overlap: 36,
+              overlapChild: ProfileIdentityCard(
+                name: user?.name ?? '',
+                phone: user?.phone ?? '',
+                initials: _profileInitials(user?.name ?? ''),
+                isDelivery: isDelivery,
+                loading: user == null,
+                onEdit: user == null
+                    ? null
+                    : () => showEditProfileSheet(
+                        context: context,
+                        ref: ref,
+                        name: user.name,
+                        phone: user.phone,
+                        isDelivery: isDelivery,
+                        companyName: companyName,
+                        companyAddress: companyAddress,
+                      ),
+              ),
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 110),
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 110),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -275,41 +298,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showLogoutDialog() {
-    showDialog(
+  Future<void> _showLogoutDialog() async {
+    final confirmed = await showDestructiveConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: const Text(
-          'You will need to sign in again to keep using the app.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Stay signed in',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.textLight,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(authProvider.notifier).logout();
-            },
-            child: const Text(
-              'Sign out',
-              style: TextStyle(
-                color: AppColors.error,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
+      title: 'Sign out?',
+      message: 'You will need to sign in again with your phone number to keep '
+          'using the app.',
+      confirmLabel: 'Sign out',
+      icon: Icons.logout_rounded,
     );
+    if (!confirmed || !mounted) return;
+    ref.read(authProvider.notifier).logout();
   }
 }
 
@@ -487,28 +486,13 @@ class _SettingsGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DeliveroCard(
-      clipBehavior: Clip.antiAlias,
+    return DetailCard(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: context.appTextStyles.sectionHeader.copyWith(
-                      fontSize: 15,
-                      letterSpacing: -0.35,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, thickness: 1, color: AppColors.divider),
+          DetailSectionHeader(title: title),
+          const SizedBox(height: 6),
           child,
         ],
       ),
@@ -522,115 +506,6 @@ String _profileInitials(String raw) {
   final first = parts.first[0];
   final second = parts.length > 1 && parts[1].isNotEmpty ? parts[1][0] : '';
   return (first + second).toUpperCase();
-}
-
-/// Bold purple gradient header for the Profile screen. The avatar straddles the
-/// banner's bottom edge; name, phone, and role chip sit on white below it.
-class _ProfileHeader extends StatelessWidget {
-  final User? user;
-  final Driver? driver;
-  final bool isDelivery;
-  final VoidCallback? onBack;
-
-  const _ProfileHeader({
-    required this.user,
-    required this.driver,
-    required this.isDelivery,
-    required this.onBack,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final loading = user == null;
-
-    final avatar = Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: loading
-            ? AppColors.backgroundSecondary
-            : AppColors.primaryLighter,
-        border: Border.all(color: AppColors.surface, width: 3),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadowDeep,
-            blurRadius: 16,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      alignment: Alignment.center,
-      child: loading
-          ? null
-          : Text(
-              _profileInitials(user!.name),
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.4,
-              ),
-            ),
-    );
-
-    final Widget identity = loading
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 22,
-                width: 170,
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                height: 13,
-                width: 120,
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-            ],
-          )
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user!.name.trim().isEmpty ? '—' : user!.name.trim(),
-                style: context.appTextStyles.sliverTitle.copyWith(
-                  fontSize: 22,
-                  height: 1.12,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                user!.phone.trim().isEmpty ? '—' : user!.phone.trim(),
-                style: context.appTextStyles.body.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              if (isDelivery) ...[
-                const SizedBox(height: 10),
-                const DeliveroStatusChip(
-                  label: 'DRIVER',
-                  tone: StatusChipTone.info,
-                ),
-              ],
-            ],
-          );
-
-    return DeliveroGradientHeader(
-      title: 'Profile',
-      onBack: onBack,
-      avatar: avatar,
-      belowAvatar: identity,
-    );
-  }
 }
 
 /// Company (owner), vehicle (delivery), and plan (owner) detail cards shown
@@ -679,12 +554,12 @@ class _ProfileDetailsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (user == null) return const SizedBox.shrink();
 
-    final cards = <Widget>[];
+    final rows = <Widget>[];
 
     if (!isDelivery && companyName != null && companyName!.trim().isNotEmpty) {
-      cards.add(
-        DeliveroCard(
-          padding: const EdgeInsets.all(16),
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
           child: _ProfileInfoTile(
             icon: Icons.storefront_rounded,
             label: 'Company',
@@ -700,9 +575,9 @@ class _ProfileDetailsSection extends StatelessWidget {
     }
 
     if (isDelivery && driver != null) {
-      cards.add(
-        DeliveroCard(
-          padding: const EdgeInsets.all(16),
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
           child: Row(
             children: [
               Container(
@@ -756,9 +631,9 @@ class _ProfileDetailsSection extends StatelessWidget {
     }
 
     if (!isDelivery) {
-      cards.add(
-        DeliveroCard(
-          padding: const EdgeInsets.all(16),
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
           child: _ProfileInfoTile(
             icon: Icons.workspace_premium_rounded,
             label: 'Plan',
@@ -772,12 +647,25 @@ class _ProfileDetailsSection extends StatelessWidget {
       );
     }
 
-    if (cards.isEmpty) return const SizedBox.shrink();
+    if (rows.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final card in cards) ...[card, const SizedBox(height: 16)],
+        _SettingsGroupCard(
+          title: isDelivery ? 'Vehicle' : 'Business',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (int i = 0; i < rows.length; i++) ...[
+                rows[i],
+                if (i != rows.length - 1)
+                  const Divider(height: 1, color: AppColors.divider),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }
