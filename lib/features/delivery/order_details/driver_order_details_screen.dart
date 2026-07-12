@@ -20,6 +20,7 @@ import '../../owner/orders/order_details/widgets/order_detail_item_row.dart';
 import '../../owner/orders/order_details/widgets/order_detail_payment_section.dart';
 import '../../owner/orders/order_details/widgets/order_detail_summary_card.dart';
 import '../../owner/orders/order_details/widgets/order_detail_surfaces.dart';
+import '../../owner/orders/order_details/widgets/order_detail_update_payment_sheet.dart';
 
 class DriverOrderDetailsScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -33,37 +34,6 @@ class DriverOrderDetailsScreen extends ConsumerStatefulWidget {
 
 class _DriverOrderDetailsScreenState
     extends ConsumerState<DriverOrderDetailsScreen> {
-  PaymentStatus? _draftPaymentStatus;
-  PaymentMethod? _draftPaymentMethod;
-  double? _draftAmountPaid;
-  PaymentStatus? _lastServerPaymentStatus;
-  PaymentMethod? _lastServerPaymentMethod;
-  double? _lastServerAmountPaid;
-  final TextEditingController _partialAmountController =
-      TextEditingController();
-
-  void _resetPaymentDrafts(Order order) {
-    _draftPaymentStatus = order.paymentStatus ?? PaymentStatus.unpaid;
-    _draftPaymentMethod = order.paymentMethod ?? PaymentMethod.cash;
-    _draftAmountPaid = order.amountPaid;
-    _lastServerPaymentStatus = _draftPaymentStatus;
-    _lastServerPaymentMethod = _draftPaymentMethod;
-    _lastServerAmountPaid = _draftAmountPaid;
-
-    if (_draftPaymentStatus == PaymentStatus.partial) {
-      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
-      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
-    } else {
-      _partialAmountController.clear();
-    }
-  }
-
-  @override
-  void dispose() {
-    _partialAmountController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final money0 = NumberFormat.currency(
@@ -97,37 +67,6 @@ class _DriverOrderDetailsScreenState
     final resolved = ResolvedOrderDetail.compute(order, routes, customers);
     final paymentColor = orderDetailPaymentColor(resolved.paymentStatus);
     final hasAddress = order.customerAddress.trim().isNotEmpty;
-
-    final serverStatus = order.paymentStatus ?? PaymentStatus.unpaid;
-    final serverMethod = order.paymentMethod ?? PaymentMethod.cash;
-    final serverAmount = order.amountPaid;
-    if (_draftPaymentStatus == null) {
-      _draftPaymentStatus = serverStatus;
-      _draftPaymentMethod = serverMethod;
-      _draftAmountPaid = serverAmount;
-      _lastServerPaymentStatus = serverStatus;
-      _lastServerPaymentMethod = serverMethod;
-      _lastServerAmountPaid = serverAmount;
-    } else if (serverStatus != _lastServerPaymentStatus ||
-        serverMethod != _lastServerPaymentMethod ||
-        serverAmount != _lastServerAmountPaid) {
-      _draftPaymentStatus = serverStatus;
-      _draftPaymentMethod = serverMethod;
-      _draftAmountPaid = serverAmount;
-      _lastServerPaymentStatus = serverStatus;
-      _lastServerPaymentMethod = serverMethod;
-      _lastServerAmountPaid = serverAmount;
-      _partialAmountController.text =
-          serverStatus == PaymentStatus.partial && (serverAmount ?? 0) > 0
-          ? serverAmount!.toStringAsFixed(0)
-          : '';
-    }
-    if ((_draftPaymentStatus ?? PaymentStatus.unpaid) ==
-            PaymentStatus.partial &&
-        _partialAmountController.text.trim().isEmpty) {
-      final seed = (_draftAmountPaid ?? 0).clamp(0, order.totalAmount);
-      _partialAmountController.text = seed == 0 ? '' : seed.toStringAsFixed(0);
-    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -216,7 +155,7 @@ class _DriverOrderDetailsScreenState
                 ),
               ),
               const SizedBox(height: 22),
-              OrderDetailPaymentSection(
+              OrderDetailPaymentCard(
                 order: order,
                 money0: money0,
                 paymentStatus: resolved.paymentStatus,
@@ -224,30 +163,15 @@ class _DriverOrderDetailsScreenState
                 deliveryFee: resolved.deliveryFee,
                 effectivePaid: resolved.effectivePaid,
                 balanceDue: resolved.balanceDue,
-                draftPaymentStatus: _draftPaymentStatus ?? PaymentStatus.unpaid,
-                draftPaymentMethod: _draftPaymentMethod ?? PaymentMethod.cash,
-                partialAmountController: _partialAmountController,
-                draftAmountPaid: _draftAmountPaid,
-                onDraftPaymentStatusChanged: (v) => setState(() {
-                  _draftPaymentStatus = v;
-                  if (v != PaymentStatus.partial) {
-                    _draftAmountPaid = null;
-                    _partialAmountController.clear();
-                  } else {
-                    _draftAmountPaid = order.amountPaid;
-                  }
-                }),
-                onDraftPaymentMethodChanged: (v) =>
-                    setState(() => _draftPaymentMethod = v),
-                onPartialAmountChanged: (val) {
-                  final raw = val.trim().replaceAll(',', '');
-                  final parsed = double.tryParse(raw);
-                  setState(() => _draftAmountPaid = parsed);
-                },
-                onResetPaymentDrafts: () => setState(() {
-                  _resetPaymentDrafts(order);
-                }),
-                ref: ref,
+                onUpdatePayment:
+                    order.status == OrderStatus.delivered &&
+                        resolved.paymentStatus != PaymentStatus.paid
+                    ? () => showOrderDetailUpdatePaymentSheet(
+                        context: context,
+                        ref: ref,
+                        order: order,
+                      )
+                    : null,
               ),
               if ((order.notes ?? '').trim().isNotEmpty) ...[
                 const SizedBox(height: 24),
@@ -273,12 +197,6 @@ class _DriverOrderDetailsScreenState
                   context: context,
                   ref: ref,
                   order: order,
-                  paymentDraft: ConfirmMarkDeliveredPaymentDraft(
-                    status: _draftPaymentStatus ?? PaymentStatus.unpaid,
-                    method: _draftPaymentMethod ?? PaymentMethod.cash,
-                    amountPaid: _draftAmountPaid,
-                    partialAmountText: _partialAmountController.text,
-                  ),
                 ),
                 onOpenMaps: hasAddress
                     ? () => _openMaps(context, order.customerAddress)

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import 'package:delivero/data/models/order.dart';
 import 'package:delivero/features/owner/orders/order_details/widgets/order_detail_customer_card.dart';
+import 'package:delivero/features/owner/orders/order_details/widgets/order_detail_payment_section.dart';
 import 'package:delivero/features/owner/orders/order_details/widgets/order_detail_summary_card.dart';
 
 final money0 = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
@@ -127,6 +128,49 @@ void main() {
         ),
       );
       expect(find.text('View customer'), findsNothing);
+    });
+  });
+
+  group('OrderDetailPaymentCard', () {
+    testWidgets('read-only card shows totals and no editor controls', (tester) async {
+      final order = makeOrder();
+      await pumpCard(
+        tester,
+        OrderDetailPaymentCard(
+          order: order,
+          money0: money0,
+          paymentStatus: PaymentStatus.unpaid,
+          paymentColor: const Color(0xFFDC2626),
+          deliveryFee: 0,
+          effectivePaid: 0,
+          balanceDue: 1824,
+        ),
+      );
+      expect(find.text('Payment'), findsOneWidget);
+      expect(find.text('UNPAID'), findsOneWidget);
+      expect(find.text('Total Amount'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Update payment'), findsNothing);
+    });
+
+    testWidgets('shows update link when callback provided', (tester) async {
+      var tapped = false;
+      final order = makeOrder(status: OrderStatus.delivered);
+      await pumpCard(
+        tester,
+        OrderDetailPaymentCard(
+          order: order,
+          money0: money0,
+          paymentStatus: PaymentStatus.unpaid,
+          paymentColor: const Color(0xFFDC2626),
+          deliveryFee: 0,
+          effectivePaid: 0,
+          balanceDue: 1824,
+          onUpdatePayment: () => tapped = true,
+        ),
+      );
+      await tester.tap(find.text('Update payment'));
+      expect(tapped, isTrue);
     });
   });
 }
