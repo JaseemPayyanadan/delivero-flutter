@@ -18,6 +18,7 @@ import '../theme/app_text_styles.dart';
 /// on its own.
 class DeliveroGradientHeader extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final VoidCallback? onBack;
   final List<Widget>? actions;
 
@@ -41,6 +42,7 @@ class DeliveroGradientHeader extends StatelessWidget {
   const DeliveroGradientHeader({
     super.key,
     required this.title,
+    this.subtitle,
     this.onBack,
     this.actions,
     this.avatar,
@@ -85,15 +87,43 @@ class DeliveroGradientHeader extends StatelessWidget {
               else
                 const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.appTextStyles.appBarTitle.copyWith(
-                    color: Colors.white,
-                    letterSpacing: -0.5,
-                  ),
-                ),
+                child: subtitle == null
+                    ? Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.appTextStyles.appBarTitle.copyWith(
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.appTextStyles.appBarTitle.copyWith(
+                              color: Colors.white,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            subtitle!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
               if (actions != null) ...actions!,
             ],

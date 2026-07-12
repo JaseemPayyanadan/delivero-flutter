@@ -133,7 +133,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DeliveroGradientHeader(
-                title: orderDetailDisplayId(order.id),
+                title: 'Order Details',
+                subtitle: orderDetailDisplayId(order.id),
                 onBack: Navigator.of(context).canPop()
                     ? () => context.pop()
                     : null,
