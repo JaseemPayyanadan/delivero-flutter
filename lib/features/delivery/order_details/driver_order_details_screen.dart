@@ -192,21 +192,24 @@ class _DriverOrderDetailsScreenState
                 ),
                 const SizedBox(height: 24),
               ],
-              OrderDetailSectionHeader(
-                title: 'Items',
-                trailing: '${order.items.length} Items',
-              ),
-              const SizedBox(height: 10),
               OrderDetailCard(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    OrderDetailSectionHeader(
+                      title: 'Items',
+                      trailing:
+                          '${order.items.length} ${order.items.length == 1 ? 'Item' : 'Items'}',
+                    ),
+                    const SizedBox(height: 4),
                     for (int idx = 0; idx < order.items.length; idx++) ...[
                       OrderDetailItemRow(item: order.items[idx]),
                       if (idx != order.items.length - 1)
                         const Divider(
                           height: 1,
                           thickness: 1,
-                          color: AppColors.border,
+                          color: AppColors.divider,
                         ),
                     ],
                   ],

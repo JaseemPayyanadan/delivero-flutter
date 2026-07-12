@@ -18,16 +18,17 @@ class OrderDetailItemRow extends StatelessWidget {
       decimalDigits: 0,
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
           Container(
-            width: 34,
+            constraints: const BoxConstraints(minWidth: 42),
             height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: AppColors.primaryLighter,
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               item.unit == ProductUnit.quantity

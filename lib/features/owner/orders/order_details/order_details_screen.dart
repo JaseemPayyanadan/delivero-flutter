@@ -184,14 +184,17 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                       ),
                       const SizedBox(height: 22),
                     ],
-                    OrderDetailSectionHeader(
-                      title: 'Items',
-                      trailing: '${order.items.length} Items',
-                    ),
-                    const SizedBox(height: 10),
                     OrderDetailCard(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          OrderDetailSectionHeader(
+                            title: 'Items',
+                            trailing:
+                                '${order.items.length} ${order.items.length == 1 ? 'Item' : 'Items'}',
+                          ),
+                          const SizedBox(height: 4),
                           for (
                             int idx = 0;
                             idx < order.items.length;
@@ -202,7 +205,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                               const Divider(
                                 height: 1,
                                 thickness: 1,
-                                color: AppColors.border,
+                                color: AppColors.divider,
                               ),
                           ],
                         ],
