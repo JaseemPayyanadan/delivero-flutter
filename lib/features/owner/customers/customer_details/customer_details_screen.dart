@@ -23,6 +23,7 @@ import 'widgets/customer_identity_card.dart';
 import 'widgets/customer_order_history_card.dart';
 import 'widgets/customer_recurring_card.dart';
 import '../../../../core/widgets/detail_overflow_menu.dart';
+import '../../../../core/widgets/destructive_confirm_dialog.dart';
 
 class CustomerDetailsScreen extends ConsumerWidget {
   final String customerId;
@@ -218,15 +219,19 @@ class CustomerDetailsScreen extends ConsumerWidget {
               context.push('/owner/customers/edit/${customer.id}'),
         ),
         DetailMenuAction(
+          label: customer.isActive
+              ? 'Deactivate customer'
+              : 'Reactivate customer',
+          icon: customer.isActive
+              ? Icons.pause_circle_outline_rounded
+              : Icons.play_circle_outline_rounded,
+          onSelected: () => _toggleActive(context, ref, customer),
+        ),
+        DetailMenuAction(
           label: 'Delete customer',
           icon: Icons.delete_outline_rounded,
           destructive: true,
-          onSelected: () => _confirmAndDeleteCustomer(
-            context,
-            ref,
-            customer.id,
-            customer.name,
-          ),
+          onSelected: () => _confirmAndDeleteCustomer(context, ref, customer),
         ),
       ],
     );
@@ -312,44 +317,123 @@ Future<void> _launchMaps(String address) async {
   await openMapsForAddress(address);
 }
 
+/// Pauses (or resumes) deliveries for a customer without erasing them — the
+/// middle path between leaving them active and deleting them outright.
+Future<void> _toggleActive(
+  BuildContext context,
+  WidgetRef ref,
+  Customer customer,
+) async {
+  final deactivating = customer.isActive;
+
+  if (deactivating) {
+    final confirmed = await showDestructiveConfirmDialog(
+      context: context,
+      title: 'Deactivate this customer?',
+      message:
+          '${customer.name} stays in your records with their full history, but stops appearing in daily deliveries. You can reactivate them any time.',
+      highlight: customer.name,
+      confirmLabel: 'Deactivate',
+      icon: Icons.pause_circle_outline_rounded,
+    );
+    if (!confirmed || !context.mounted) return;
+  }
+
+  try {
+    await ref
+        .read(customersProvider.notifier)
+        .updateCustomer(
+          customer.copyWith(isActive: !deactivating, updatedAt: DateTime.now()),
+        );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          deactivating
+              ? '${customer.name} deactivated'
+              : '${customer.name} reactivated',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: deactivating ? AppColors.textLight : AppColors.success,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  } catch (_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Could not update customer. Try again.',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.error,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+}
+
 Future<void> _confirmAndDeleteCustomer(
   BuildContext context,
   WidgetRef ref,
-  String customerId,
-  String customerName,
+  Customer customer,
 ) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Delete this customer?'),
-      content: Text(
-        'Remove "$customerName" from your list. Past orders are not deleted, but you cannot undo this.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text(
-            'Keep customer',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: AppColors.textLight,
-            ),
-          ),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, true),
-          child: const Text(
-            'Delete',
-            style: TextStyle(
-              color: AppColors.error,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ],
-    ),
+  final customerId = customer.id;
+  final customerName = customer.name;
+
+  final money = NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: '₹',
+    decimalDigits: 0,
   );
-  if (confirmed != true || !context.mounted) return;
+  final customerOrders = ref
+      .read(ordersProvider)
+      .where((o) => o.customerId == customerId)
+      .toList();
+  final outstanding = customerOrders
+      .where((o) => o.paymentStatus != PaymentStatus.paid)
+      .fold(0.0, (sum, o) => sum + (o.totalAmount - (o.amountPaid ?? 0)));
+  final recurringCount = (customer.products ?? const <CustomerProduct>[])
+      .where((p) => p.quantity > 0)
+      .length;
+
+  final confirmed = await showDestructiveConfirmDialog(
+    context: context,
+    title: 'Delete this customer?',
+    message:
+        '$customerName will be removed from your customer list. Past orders stay in your records. This cannot be undone.',
+    highlight: customerName,
+    confirmLabel: 'Delete',
+    icon: Icons.person_remove_rounded,
+    facts: [
+      if (outstanding > 0.004)
+        DestructiveFact(
+          icon: Icons.account_balance_wallet_rounded,
+          label: '${money.format(outstanding)} still unpaid',
+          warning: true,
+        ),
+      DestructiveFact(
+        icon: Icons.receipt_long_rounded,
+        label: customerOrders.isEmpty
+            ? 'No orders yet'
+            : '${customerOrders.length} ${customerOrders.length == 1 ? 'order' : 'orders'} in your records',
+      ),
+      if (recurringCount > 0)
+        DestructiveFact(
+          icon: Icons.autorenew_rounded,
+          label:
+              '$recurringCount recurring ${recurringCount == 1 ? 'item' : 'items'} will stop',
+        ),
+    ],
+  );
+  if (!confirmed || !context.mounted) return;
   showDialog(
     context: context,
     barrierDismissible: false,

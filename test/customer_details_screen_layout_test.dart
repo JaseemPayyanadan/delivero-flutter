@@ -158,6 +158,53 @@ void main() {
     expect(find.text('All settled up'), findsOneWidget);
   });
 
+  testWidgets('the menu offers deactivate for an active customer', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, 'c1');
+
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Deactivate customer'), findsOneWidget);
+    expect(find.text('Reactivate customer'), findsNothing);
+
+    await tester.tap(find.text('Deactivate customer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Deactivate this customer?'), findsOneWidget);
+  });
+
+  testWidgets('the menu offers reactivate for an inactive customer', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, 'c2');
+
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Reactivate customer'), findsOneWidget);
+    expect(find.text('Deactivate customer'), findsNothing);
+  });
+
+  testWidgets('delete confirmation spells out what is attached', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, 'c1');
+
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete customer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete this customer?'), findsOneWidget);
+    // The unpaid balance is the fact that should stop the user.
+    expect(find.text('₹1,200 still unpaid'), findsOneWidget);
+    expect(find.text('1 order in your records'), findsOneWidget);
+    expect(find.text('1 recurring item will stop'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+  });
+
   testWidgets('Collect lists the orders that still owe money', (tester) async {
     await _pumpScreen(tester, 'c1');
 

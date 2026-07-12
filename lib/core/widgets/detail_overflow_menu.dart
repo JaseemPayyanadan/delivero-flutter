@@ -102,12 +102,16 @@ class _MenuRow extends StatelessWidget {
           color: action.destructive ? AppColors.error : AppColors.primary,
         ),
         const SizedBox(width: 12),
-        Text(
-          action.label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: color,
+        Flexible(
+          child: Text(
+            action.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
           ),
         ),
       ],
