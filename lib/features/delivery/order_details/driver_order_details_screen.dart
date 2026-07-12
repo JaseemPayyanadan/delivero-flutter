@@ -190,22 +190,68 @@ class _DriverOrderDetailsScreenState
                   ),
                 ),
               ],
-              const SizedBox(height: 20),
-              OrderDetailBottomActions(
-                isDelivered: order.status == OrderStatus.delivered,
-                onMarkDelivered: () => showConfirmMarkDeliveredDialog(
-                  context: context,
-                  ref: ref,
-                  order: order,
-                ),
-                onOpenMaps: hasAddress
-                    ? () => _openMaps(context, order.customerAddress)
-                    : null,
-              ),
-              const SizedBox(height: 10),
+              if (order.status != OrderStatus.delivered &&
+                  order.status != OrderStatus.cancelled) ...[
+                const SizedBox(height: 18),
+                const _PaymentInfoBanner(),
+              ],
               SizedBox(height: MediaQuery.paddingOf(context).bottom),
             ],
           ),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: OrderDetailBottomBar(
+              isDelivered: order.status == OrderStatus.delivered,
+              onMarkDelivered: () => showConfirmMarkDeliveredDialog(
+                context: context,
+                ref: ref,
+                order: order,
+              ),
+              onMore: () => _showMoreSheet(context, order),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMoreSheet(BuildContext context, Order order) {
+    final hasAddress = order.customerAddress.trim().isNotEmpty;
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppColors.surface,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasAddress)
+              ListTile(
+                leading: const Icon(
+                  Icons.navigation_rounded,
+                  color: AppColors.primary,
+                ),
+                title: const Text(
+                  'Navigate to address',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _openMaps(context, order.customerAddress);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );
@@ -265,5 +311,37 @@ class _DriverOrderDetailsScreenState
         ),
       );
     }
+  }
+}
+
+class _PaymentInfoBanner extends StatelessWidget {
+  const _PaymentInfoBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary50,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.verified_user_rounded, size: 20, color: AppColors.primary),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'You can update payment details after marking the order as delivered.',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

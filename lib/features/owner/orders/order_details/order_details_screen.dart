@@ -189,30 +189,125 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 20),
-                    OrderDetailBottomActions(
-                      isDelivered: order.status == OrderStatus.delivered,
-                      onMarkDelivered: () => showConfirmMarkDeliveredDialog(
-                        context: context,
-                        ref: ref,
-                        order: order,
-                      ),
-                      onOpenMaps: order.customerAddress.trim().isEmpty
-                          ? null
-                          : () => _openMaps(context, order.customerAddress),
-                      onCancelOrder:
-                          (order.status == OrderStatus.cancelled ||
-                              order.status == OrderStatus.delivered)
-                          ? null
-                          : () => _confirmCancelOrder(context, ref, order),
-                    ),
-                    const SizedBox(height: 10),
+                    if (order.status != OrderStatus.delivered &&
+                        order.status != OrderStatus.cancelled) ...[
+                      const SizedBox(height: 18),
+                      const _PaymentInfoBanner(),
+                    ],
                     SizedBox(height: MediaQuery.paddingOf(context).bottom),
                   ],
                 ),
               ),
             ],
           ),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: OrderDetailBottomBar(
+              isDelivered: order.status == OrderStatus.delivered,
+              onMarkDelivered: () => showConfirmMarkDeliveredDialog(
+                context: context,
+                ref: ref,
+                order: order,
+              ),
+              onMore: () => _showMoreSheet(context, ref, order),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMoreSheet(BuildContext context, WidgetRef ref, Order order) {
+    final canEdit =
+        order.status != OrderStatus.delivered &&
+        order.status != OrderStatus.cancelled;
+    final canCancel = canEdit;
+    final hasAddress = order.customerAddress.trim().isNotEmpty;
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppColors.surface,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasAddress)
+              ListTile(
+                leading: const Icon(
+                  Icons.navigation_rounded,
+                  color: AppColors.primary,
+                ),
+                title: const Text(
+                  'Navigate to address',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _openMaps(context, order.customerAddress);
+                },
+              ),
+            if (canEdit)
+              ListTile(
+                leading: const Icon(
+                  Icons.edit_rounded,
+                  color: AppColors.textSecondary,
+                ),
+                title: const Text(
+                  'Edit order',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push('/owner/orders/edit/${order.id}');
+                },
+              ),
+            if (canCancel)
+              ListTile(
+                leading: const Icon(
+                  Icons.close_rounded,
+                  color: AppColors.error,
+                ),
+                title: const Text(
+                  'Cancel order',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.error,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _confirmCancelOrder(context, ref, order);
+                },
+              ),
+            ListTile(
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.error,
+              ),
+              title: const Text(
+                'Delete order',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.error,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _handleDelete(context, ref, order);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );
@@ -440,6 +535,38 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
               style: TextStyle(
                 color: AppColors.error,
                 fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentInfoBanner extends StatelessWidget {
+  const _PaymentInfoBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary50,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.verified_user_rounded, size: 20, color: AppColors.primary),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'You can update payment details after marking the order as delivered.',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+                height: 1.4,
               ),
             ),
           ),

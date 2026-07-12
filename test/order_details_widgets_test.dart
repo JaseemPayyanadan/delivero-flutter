@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 
 import 'package:delivero/data/models/order.dart';
+import 'package:delivero/features/owner/orders/order_details/widgets/order_detail_bottom_actions.dart';
 import 'package:delivero/features/owner/orders/order_details/widgets/order_detail_customer_card.dart';
 import 'package:delivero/features/owner/orders/order_details/widgets/order_detail_payment_section.dart';
 import 'package:delivero/features/owner/orders/order_details/widgets/order_detail_summary_card.dart';
@@ -171,6 +172,39 @@ void main() {
       );
       await tester.tap(find.text('Update payment'));
       expect(tapped, isTrue);
+    });
+  });
+
+  group('OrderDetailBottomBar', () {
+    testWidgets('fires callbacks and disables when delivered', (tester) async {
+      var delivered = false;
+      var more = false;
+      await pumpCard(
+        tester,
+        OrderDetailBottomBar(
+          isDelivered: false,
+          onMarkDelivered: () => delivered = true,
+          onMore: () => more = true,
+        ),
+      );
+      await tester.tap(find.text('Mark as Delivered'));
+      await tester.tap(find.text('More'));
+      expect(delivered, isTrue);
+      expect(more, isTrue);
+
+      await pumpCard(
+        tester,
+        OrderDetailBottomBar(
+          isDelivered: true,
+          onMarkDelivered: () {},
+          onMore: () {},
+        ),
+      );
+      expect(find.text('Delivered'), findsOneWidget);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton).first).onPressed,
+        isNull,
+      );
     });
   });
 }
