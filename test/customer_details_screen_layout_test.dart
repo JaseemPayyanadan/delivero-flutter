@@ -131,14 +131,19 @@ void main() {
     expect(find.text('Recurring order'), findsOneWidget);
     expect(find.text('Order history'), findsOneWidget);
     expect(find.text('Contact & info'), findsOneWidget);
-    // Contact columns in the identity card. "Email" also appears as the
-    // Contact & info row label, so it is not unique.
-    expect(find.text('Call'), findsOneWidget);
-    expect(find.text('Email'), findsNWidgets(2));
-    expect(find.text('Navigate'), findsOneWidget);
-    // Bottom bar.
+    // Identity card: owner name and address sit up top, status rides the
+    // avatar ring and the meta line.
+    expect(find.text('Rahul'), findsOneWidget);
+    expect(find.text('Ottappalam, Palakkad, Kerala'), findsOneWidget);
+    expect(find.text('Active'), findsOneWidget);
+    expect(find.bySemanticsLabel('Call 9876543210'), findsOneWidget);
+    // Owner and address are no longer duplicated in Contact & info.
+    expect(find.text('Owner / Manager'), findsNothing);
+    expect(find.text('Address'), findsNothing);
+    // Financial headline.
+    expect(find.text('OUTSTANDING'), findsOneWidget);
+    expect(find.text('Balance to collect'), findsOneWidget);
     expect(find.text('New order'), findsOneWidget);
-    expect(find.text('More'), findsOneWidget);
   });
 
   testWidgets('customer details lays out with no contacts, items, or orders', (
@@ -149,18 +154,17 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('No recurring items set yet.'), findsOneWidget);
     expect(find.text('No orders yet'), findsOneWidget);
-    expect(find.text('Call'), findsNothing);
     expect(find.text('New order'), findsOneWidget);
+    expect(find.text('All settled up'), findsOneWidget);
   });
 
-  testWidgets('the More pill opens the secondary actions sheet', (tester) async {
+  testWidgets('Collect lists the orders that still owe money', (tester) async {
     await _pumpScreen(tester, 'c1');
 
-    await tester.tap(find.text('More'));
+    await tester.tap(find.text('Collect'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Edit customer'), findsOneWidget);
-    expect(find.text('Call customer'), findsOneWidget);
-    expect(find.text('Delete customer'), findsOneWidget);
+    expect(find.text('Collect payment'), findsOneWidget);
+    expect(find.text('#ORD-4583'), findsOneWidget);
   });
 }

@@ -22,8 +22,7 @@ import 'widgets/order_detail_payment_section.dart';
 import 'widgets/order_detail_summary_card.dart';
 import 'widgets/order_detail_update_payment_sheet.dart';
 import '../../../../core/widgets/detail_surfaces.dart';
-
-enum _OrderMenuAction { edit, delete }
+import '../../../../core/widgets/detail_overflow_menu.dart';
 
 class OrderDetailsScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -314,34 +313,25 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   }
 
   Widget _buildOverflowMenu(BuildContext context, WidgetRef ref, Order order) {
-    return PopupMenuButton<_OrderMenuAction>(
-      tooltip: 'More',
-      icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-      onSelected: (action) {
-        switch (action) {
-          case _OrderMenuAction.edit:
-            context.push('/owner/orders/edit/${order.id}');
-            break;
-          case _OrderMenuAction.delete:
-            _handleDelete(context, ref, order);
-        }
-      },
-      itemBuilder: (context) {
-        final canEdit =
-            order.status != OrderStatus.delivered &&
-            order.status != OrderStatus.cancelled;
-        return [
-          if (canEdit)
-            const PopupMenuItem(
-              value: _OrderMenuAction.edit,
-              child: Text('Edit order'),
-            ),
-          const PopupMenuItem(
-            value: _OrderMenuAction.delete,
-            child: Text('Delete order'),
+    final canEdit =
+        order.status != OrderStatus.delivered &&
+        order.status != OrderStatus.cancelled;
+
+    return DetailOverflowMenu(
+      actions: [
+        if (canEdit)
+          DetailMenuAction(
+            label: 'Edit order',
+            icon: Icons.edit_rounded,
+            onSelected: () => context.push('/owner/orders/edit/${order.id}'),
           ),
-        ];
-      },
+        DetailMenuAction(
+          label: 'Delete order',
+          icon: Icons.delete_outline_rounded,
+          destructive: true,
+          onSelected: () => _handleDelete(context, ref, order),
+        ),
+      ],
     );
   }
 

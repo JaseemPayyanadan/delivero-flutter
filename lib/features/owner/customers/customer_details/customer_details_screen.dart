@@ -16,12 +16,13 @@ import '../../../../data/models/customer.dart';
 import '../../../../data/models/food_item.dart';
 import '../../../../data/models/order.dart';
 import '../../../../data/models/product_unit.dart';
+import 'widgets/customer_collect_payment_sheet.dart';
 import 'widgets/customer_contact_card.dart';
-import 'widgets/customer_detail_bottom_actions.dart';
 import 'widgets/customer_financial_card.dart';
 import 'widgets/customer_identity_card.dart';
 import 'widgets/customer_order_history_card.dart';
 import 'widgets/customer_recurring_card.dart';
+import '../../../../core/widgets/detail_overflow_menu.dart';
 
 class CustomerDetailsScreen extends ConsumerWidget {
   final String customerId;
@@ -103,6 +104,17 @@ class CustomerDetailsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () =>
+            context.push('/owner/orders/create', extra: customerId),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        icon: const Icon(Icons.add_shopping_cart_rounded),
+        label: const Text(
+          'New order',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+      ),
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () => ref.read(ordersProvider.notifier).refresh(),
@@ -130,11 +142,10 @@ class CustomerDetailsScreen extends ConsumerWidget {
                   routeLabel: routeLabel,
                   isActive: customer.isActive,
                   phone: phone,
-                  email: email,
+                  ownerName: ownerName,
                   address: address,
                   onCall: phone.isEmpty ? null : () => _launchPhone(phone),
-                  onEmail: email.isEmpty ? null : () => _launchEmail(email),
-                  onNavigate: address.isEmpty
+                  onOpenAddress: address.isEmpty
                       ? null
                       : () => _launchMaps(address),
                 ),
@@ -150,6 +161,13 @@ class CustomerDetailsScreen extends ConsumerWidget {
                       outstanding: pendingRevenue,
                       lastOrderDate: lastOrderDate,
                       money: money,
+                      onCollect: unsettledOrders(customerOrders).isEmpty
+                          ? null
+                          : () => showCustomerCollectPaymentSheet(
+                              context: context,
+                              ref: ref,
+                              customerOrders: customerOrders,
+                            ),
                     ),
                     const SizedBox(height: 22),
                     CustomerRecurringCard(
@@ -167,8 +185,6 @@ class CustomerDetailsScreen extends ConsumerWidget {
                     CustomerContactCard(
                       phone: phone,
                       email: email,
-                      address: address,
-                      ownerName: ownerName,
                       routeLabel: routeLabel,
                       discountPercentage: customer.discountPercentage ?? 0,
                       customerSince: DateFormat(
@@ -176,32 +192,12 @@ class CustomerDetailsScreen extends ConsumerWidget {
                       ).format(customer.createdAt),
                       onCall: phone.isEmpty ? null : () => _launchPhone(phone),
                       onEmail: email.isEmpty ? null : () => _launchEmail(email),
-                      onOpenAddress: address.isEmpty
-                          ? null
-                          : () => _launchMaps(address),
                     ),
-                    SizedBox(height: MediaQuery.paddingOf(context).bottom),
+                    SizedBox(height: 90 + MediaQuery.paddingOf(context).bottom),
                   ],
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.border)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-            child: CustomerDetailBottomBar(
-              onNewOrder: () =>
-                  context.push('/owner/orders/create', extra: customerId),
-              onMore: () => _showMoreSheet(context, ref, customer),
-            ),
           ),
         ),
       ),
@@ -213,105 +209,29 @@ class CustomerDetailsScreen extends ConsumerWidget {
     WidgetRef ref,
     Customer customer,
   ) {
-    return PopupMenuButton<String>(
-      tooltip: 'More',
-      icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-      onSelected: (value) {
-        switch (value) {
-          case 'edit':
-            context.push('/owner/customers/edit/${customer.id}');
-          case 'delete':
-            _confirmAndDeleteCustomer(context, ref, customer.id, customer.name);
-        }
-      },
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: 'edit', child: Text('Edit customer')),
-        PopupMenuItem(value: 'delete', child: Text('Delete customer')),
+    return DetailOverflowMenu(
+      actions: [
+        DetailMenuAction(
+          label: 'Edit customer',
+          icon: Icons.edit_rounded,
+          onSelected: () =>
+              context.push('/owner/customers/edit/${customer.id}'),
+        ),
+        DetailMenuAction(
+          label: 'Delete customer',
+          icon: Icons.delete_outline_rounded,
+          destructive: true,
+          onSelected: () => _confirmAndDeleteCustomer(
+            context,
+            ref,
+            customer.id,
+            customer.name,
+          ),
+        ),
       ],
     );
   }
 
-  void _showMoreSheet(BuildContext context, WidgetRef ref, Customer customer) {
-    final phone = customer.phone.trim();
-    final address = customer.address.trim();
-
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      backgroundColor: AppColors.surface,
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit_rounded, color: AppColors.primary),
-              title: const Text(
-                'Edit customer',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                context.push('/owner/customers/edit/${customer.id}');
-              },
-            ),
-            if (phone.isNotEmpty)
-              ListTile(
-                leading: const Icon(
-                  Icons.call_rounded,
-                  color: AppColors.success,
-                ),
-                title: const Text(
-                  'Call customer',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _launchPhone(phone);
-                },
-              ),
-            if (address.isNotEmpty)
-              ListTile(
-                leading: const Icon(
-                  Icons.near_me_rounded,
-                  color: AppColors.primary,
-                ),
-                title: const Text(
-                  'Navigate to address',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _launchMaps(address);
-                },
-              ),
-            ListTile(
-              leading: const Icon(
-                Icons.delete_outline_rounded,
-                color: AppColors.error,
-              ),
-              title: const Text(
-                'Delete customer',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.error,
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _confirmAndDeleteCustomer(
-                  context,
-                  ref,
-                  customer.id,
-                  customer.name,
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 double? _estimatePerDelivery(

@@ -8,27 +8,21 @@ import '../../../../../core/widgets/detail_surfaces.dart';
 class CustomerContactCard extends StatelessWidget {
   final String phone;
   final String email;
-  final String address;
-  final String ownerName;
   final String routeLabel;
   final double discountPercentage;
   final String customerSince;
   final VoidCallback? onCall;
   final VoidCallback? onEmail;
-  final VoidCallback? onOpenAddress;
 
   const CustomerContactCard({
     super.key,
     required this.phone,
     required this.email,
-    required this.address,
-    required this.ownerName,
     required this.routeLabel,
     required this.discountPercentage,
     required this.customerSince,
     this.onCall,
     this.onEmail,
-    this.onOpenAddress,
   });
 
   @override
@@ -53,19 +47,6 @@ class CustomerContactCard extends StatelessWidget {
               label: 'Email',
               value: email,
               onTap: onEmail,
-            ),
-          if (address.isNotEmpty)
-            _InfoRow(
-              icon: Icons.location_on_rounded,
-              label: 'Address',
-              value: address,
-              onTap: onOpenAddress,
-            ),
-          if (ownerName.isNotEmpty)
-            _InfoRow(
-              icon: Icons.person_rounded,
-              label: 'Owner / Manager',
-              value: ownerName,
             ),
           if (routeLabel.isNotEmpty)
             _InfoRow(
