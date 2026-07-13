@@ -35,6 +35,37 @@ class Customer {
     required this.updatedAt,
   });
 
+  Customer copyWith({
+    String? name,
+    String? ownerName,
+    String? email,
+    String? phone,
+    String? address,
+    String? area,
+    bool? isActive,
+    double? discountPercentage,
+    String? assignedRoute,
+    List<CustomerProduct>? products,
+    DateTime? updatedAt,
+  }) {
+    return Customer(
+      id: id,
+      factoryId: factoryId,
+      name: name ?? this.name,
+      ownerName: ownerName ?? this.ownerName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      area: area ?? this.area,
+      isActive: isActive ?? this.isActive,
+      discountPercentage: discountPercentage ?? this.discountPercentage,
+      assignedRoute: assignedRoute ?? this.assignedRoute,
+      products: products ?? this.products,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

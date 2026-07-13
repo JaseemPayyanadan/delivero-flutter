@@ -7,6 +7,7 @@ import '../../../../../app/providers.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../data/models/order.dart';
 import '../order_detail_formatting.dart';
+import 'order_detail_surfaces.dart';
 
 /// Payment fields from the order details form when marking delivered.
 class ConfirmMarkDeliveredPaymentDraft {
@@ -149,11 +150,35 @@ class _ConfirmMarkDeliveredDialog extends StatefulWidget {
 class _ConfirmMarkDeliveredDialogState
     extends State<_ConfirmMarkDeliveredDialog> {
   bool _isSaving = false;
+  late PaymentStatus _status;
+  late PaymentMethod _method;
+  late final TextEditingController _amountController;
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.paymentDraft;
+    _status = draft.status;
+    _method = draft.method;
+    final seeded =
+        draft.partialAmountText?.trim() ??
+        (draft.amountPaid != null && draft.amountPaid! > 0
+            ? draft.amountPaid!.toStringAsFixed(0)
+            : '');
+    _amountController = TextEditingController(
+      text: _status == PaymentStatus.partial ? seeded : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
-    final draft = widget.paymentDraft;
     final money0 = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹',
@@ -162,24 +187,21 @@ class _ConfirmMarkDeliveredDialogState
 
     final resolvedAmount = _resolveAmountPaid(
       order: order,
-      status: draft.status,
-      amountPaid: draft.amountPaid,
-      partialAmountText: draft.partialAmountText,
+      status: _status,
+      amountPaid: widget.paymentDraft.amountPaid,
+      partialAmountText: _amountController.text,
     );
     final validationError = _partialValidationMessage(
       order,
-      draft.status,
+      _status,
       resolvedAmount,
       money0,
     );
-    final effectivePaid = _effectivePaid(order, draft.status, resolvedAmount);
+    final effectivePaid = _effectivePaid(order, _status, resolvedAmount);
     final balanceDue = (order.totalAmount - effectivePaid).clamp(
       0.0,
       double.infinity,
     );
-    final paymentColor = orderDetailPaymentColor(draft.status);
-    final statusLabel = orderDetailHumanize(draft.status.name);
-    final methodLabel = orderDetailHumanize(draft.method.name);
     final customerLabel = order.customerName.trim().isEmpty
         ? 'Customer'
         : order.customerName.trim();
@@ -188,7 +210,7 @@ class _ConfirmMarkDeliveredDialogState
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       title: const Text(
-        'Check payment',
+        'Update payment',
         style: TextStyle(fontWeight: FontWeight.w800),
       ),
       content: SingleChildScrollView(
@@ -197,7 +219,7 @@ class _ConfirmMarkDeliveredDialogState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Verify payment for $customerLabel before marking this order as delivered.',
+              'Record what $customerLabel paid, then mark this order as delivered.',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
@@ -205,6 +227,73 @@ class _ConfirmMarkDeliveredDialogState
                 height: 1.4,
               ),
             ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OrderDetailLabeledDropdown<PaymentStatus>(
+                    label: 'STATUS',
+                    value: _status,
+                    items: const [
+                      PaymentStatus.unpaid,
+                      PaymentStatus.paid,
+                      PaymentStatus.partial,
+                    ],
+                    itemLabel: (v) => orderDetailHumanize(v.name),
+                    onChanged: (v) => setState(() => _status = v),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OrderDetailLabeledDropdown<PaymentMethod>(
+                    label: 'METHOD',
+                    value: _method,
+                    items: const [
+                      PaymentMethod.cash,
+                      PaymentMethod.upi,
+                      PaymentMethod.card,
+                      PaymentMethod.online,
+                    ],
+                    itemLabel: (v) => orderDetailHumanize(v.name),
+                    onChanged: (v) => setState(() => _method = v),
+                  ),
+                ),
+              ],
+            ),
+            if (_status == PaymentStatus.partial) ...[
+              const SizedBox(height: 14),
+              const Text(
+                'AMOUNT PAID',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textLight,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: money0.format(order.totalAmount),
+                  prefixIcon: const Icon(
+                    Icons.currency_rupee_rounded,
+                    size: 18,
+                    color: AppColors.textLight,
+                  ),
+                  filled: true,
+                  fillColor: AppColors.backgroundSecondary,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(14),
@@ -224,32 +313,7 @@ class _ConfirmMarkDeliveredDialogState
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  _PaymentCheckRow(
-                    label: 'Payment status',
-                    valueWidget: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: paymentColor.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: paymentColor.withValues(alpha: 0.28),
-                        ),
-                      ),
-                      child: Text(
-                        statusLabel,
-                        style: TextStyle(
-                          color: paymentColor,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (draft.status != PaymentStatus.unpaid) ...[
+                  if (_status != PaymentStatus.unpaid) ...[
                     const SizedBox(height: 10),
                     _PaymentCheckRow(
                       label: 'Collected',
@@ -265,8 +329,6 @@ class _ConfirmMarkDeliveredDialogState
                       valueColor: AppColors.error,
                     ),
                   ],
-                  const SizedBox(height: 10),
-                  _PaymentCheckRow(label: 'Payment via', value: methodLabel),
                 ],
               ),
             ),
@@ -366,10 +428,10 @@ class _ConfirmMarkDeliveredDialogState
                     status: OrderStatus.delivered,
                     deliveryTime: order.deliveryTime ?? now,
                     deliveryDate: order.deliveryDate ?? now,
-                    paymentStatus: draft.status,
-                    paymentMethod: draft.method,
+                    paymentStatus: _status,
+                    paymentMethod: _method,
                     amountPaid: amountPaid,
-                    paymentTime: draft.status == PaymentStatus.unpaid
+                    paymentTime: _status == PaymentStatus.unpaid
                         ? order.paymentTime
                         : (order.paymentTime ?? now),
                     updatedAt: now,
@@ -406,14 +468,12 @@ class _ConfirmMarkDeliveredDialogState
 class _PaymentCheckRow extends StatelessWidget {
   final String label;
   final String? value;
-  final Widget? valueWidget;
   final Color? valueColor;
   final TextStyle? valueStyle;
 
   const _PaymentCheckRow({
     required this.label,
     this.value,
-    this.valueWidget,
     this.valueColor,
     this.valueStyle,
   });
@@ -433,19 +493,16 @@ class _PaymentCheckRow extends StatelessWidget {
             ),
           ),
         ),
-        if (valueWidget != null)
-          valueWidget!
-        else
-          Text(
-            value ?? '—',
-            style:
-                valueStyle ??
-                TextStyle(
-                  color: valueColor ?? AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                ),
-          ),
+        Text(
+          value ?? '—',
+          style:
+              valueStyle ??
+              TextStyle(
+                color: valueColor ?? AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+        ),
       ],
     );
   }

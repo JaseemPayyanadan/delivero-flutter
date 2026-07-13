@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
-import 'order_detail_surfaces.dart';
+import '../../../../../core/widgets/detail_surfaces.dart';
 
 /// Standalone customer card: avatar + name, phone | address columns, and a
 /// "View customer" link. All contact rows are tappable when a handler is set.
@@ -38,7 +38,7 @@ class OrderDetailCustomerCard extends StatelessWidget {
       letterSpacing: 0.35,
     );
 
-    return OrderDetailCard(
+    return DetailCard(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

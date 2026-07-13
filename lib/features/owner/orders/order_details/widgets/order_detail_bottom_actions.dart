@@ -53,6 +53,11 @@ class OrderDetailBottomBar extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.textPrimary,
             side: const BorderSide(color: AppColors.border),
+            // The app theme makes outlined buttons full-width
+            // (minimumSize.width == infinity). This one sits unflexed in a Row,
+            // which offers unbounded width, so that minimum would resolve to a
+            // tight infinite width and fail layout. Size it to its content.
+            minimumSize: const Size(0, 48),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
