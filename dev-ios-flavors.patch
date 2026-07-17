@@ -1,0 +1,2619 @@
+diff --git a/ios/Podfile b/ios/Podfile
+index 620e46e..79d3b85 100644
+--- a/ios/Podfile
++++ b/ios/Podfile
+@@ -1,13 +1,19 @@
+ # Uncomment this line to define a global platform for your project
+-# platform :ios, '13.0'
++platform :ios, '15.0'
+ 
+ # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+ 
+ project 'Runner', {
+   'Debug' => :debug,
++  'Debug-dev' => :debug,
++  'Debug-prod' => :debug,
+   'Profile' => :release,
++  'Profile-dev' => :release,
++  'Profile-prod' => :release,
+   'Release' => :release,
++  'Release-dev' => :release,
++  'Release-prod' => :release,
+ }
+ 
+ def flutter_root
+@@ -39,5 +45,8 @@ end
+ post_install do |installer|
+   installer.pods_project.targets.each do |target|
+     flutter_additional_ios_build_settings(target)
++    target.build_configurations.each do |config|
++      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
++    end
+   end
+ end
+diff --git a/ios/Podfile.lock b/ios/Podfile.lock
+new file mode 100644
+index 0000000..03b784e
+--- /dev/null
++++ b/ios/Podfile.lock
+@@ -0,0 +1,28 @@
++PODS:
++  - Flutter (1.0.0)
++  - flutter_secure_storage (6.0.0):
++    - Flutter
++  - printing (1.0.0):
++    - Flutter
++
++DEPENDENCIES:
++  - Flutter (from `Flutter`)
++  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
++  - printing (from `.symlinks/plugins/printing/ios`)
++
++EXTERNAL SOURCES:
++  Flutter:
++    :path: Flutter
++  flutter_secure_storage:
++    :path: ".symlinks/plugins/flutter_secure_storage/ios"
++  printing:
++    :path: ".symlinks/plugins/printing/ios"
++
++SPEC CHECKSUMS:
++  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
++  flutter_secure_storage: d33dac7ae2ea08509be337e775f6b59f1ff45f12
++  printing: 233e1b73bd1f4a05615548e9b5a324c98588640b
++
++PODFILE CHECKSUM: 4a4a68d10d324af591e12481cdacd37f56afc264
++
++COCOAPODS: 1.11.2
+diff --git a/ios/Runner.xcodeproj/project.pbxproj b/ios/Runner.xcodeproj/project.pbxproj
+index b4677bc..46f9d1e 100644
+--- a/ios/Runner.xcodeproj/project.pbxproj
++++ b/ios/Runner.xcodeproj/project.pbxproj
+@@ -10,11 +10,14 @@
+ 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+ 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
+ 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
++		4CAF621D68C2F38D5E14F172 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08962DAB6D96057755A2DC03 /* Pods_Runner.framework */; };
+ 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
+ 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
++		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+ 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
+ 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
+ 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
++		DF0A90CB2062B0D35AD1838C /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97C19B98D0D5742BB38668CB /* Pods_RunnerTests.framework */; };
+ /* End PBXBuildFile section */
+ 
+ /* Begin PBXContainerItemProxy section */
+@@ -41,15 +44,29 @@
+ /* End PBXCopyFilesBuildPhase section */
+ 
+ /* Begin PBXFileReference section */
++		08962DAB6D96057755A2DC03 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
++		0A5A01022773F7E8677BC06B /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
++		12D0817E1BAA0DDE9685068C /* Pods-Runner.release-prod.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-prod.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-prod.xcconfig"; sourceTree = "<group>"; };
+ 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
+ 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
++		19AA617B6A26E10A3D431327 /* Pods-RunnerTests.debug-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-dev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-dev.xcconfig"; sourceTree = "<group>"; };
++		27939AD67DFC7DF1E0AE24E9 /* Pods-RunnerTests.release-prod.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-prod.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-prod.xcconfig"; sourceTree = "<group>"; };
+ 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
+ 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+ 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
++		5148361BAB5625A33C003871 /* Pods-RunnerTests.profile-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile-dev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile-dev.xcconfig"; sourceTree = "<group>"; };
++		5A55A1E87B1CBE2ED292817F /* Pods-RunnerTests.debug-prod.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-prod.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-prod.xcconfig"; sourceTree = "<group>"; };
++		68982CF461DC4E8BF8F4F4AC /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
++		6BA0C93CACB18E7586B61B6D /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
++		71BCB0C67751C3E37ED10807 /* Pods-Runner.release-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-dev.xcconfig"; sourceTree = "<group>"; };
+ 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
+ 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+ 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
++		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
+ 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
++		8B3C204537813C07CB865126 /* Pods-RunnerTests.release-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-dev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-dev.xcconfig"; sourceTree = "<group>"; };
++		92E8A8990B88D3AD7C72E132 /* Pods-Runner.debug-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug-dev.xcconfig"; sourceTree = "<group>"; };
++		959B9194FD3958D9E8E4FA83 /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Firebase/dev/GoogleService-Info.plist"; sourceTree = "<group>"; };
+ 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
+ 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
+ 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+@@ -57,6 +74,15 @@
+ 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+ 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+ 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
++		97C19B98D0D5742BB38668CB /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
++		9B7183F698F5B3B9A0A7774B /* Pods-RunnerTests.profile-prod.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile-prod.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile-prod.xcconfig"; sourceTree = "<group>"; };
++		A8B759578DCF3A8F3AC66937 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
++		BB39A500B2711B607D709389 /* Pods-Runner.debug-prod.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug-prod.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug-prod.xcconfig"; sourceTree = "<group>"; };
++		CFCF7CE049B212EABA421098 /* Pods-Runner.profile-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-dev.xcconfig"; sourceTree = "<group>"; };
++		D1C92CE163E2C599FF14E378 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
++		EF6E8581FC2761AD463307DB /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Firebase/prod/GoogleService-Info.plist"; sourceTree = "<group>"; };
++		FD27451A09BF12A62ADF2308 /* Pods-Runner.profile-prod.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-prod.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-prod.xcconfig"; sourceTree = "<group>"; };
++		FFE5C663886A1F79D46FA6A2 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+ /* End PBXFileReference section */
+ 
+ /* Begin PBXFrameworksBuildPhase section */
+@@ -64,12 +90,31 @@
+ 			isa = PBXFrameworksBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
++				78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */,
++				4CAF621D68C2F38D5E14F172 /* Pods_Runner.framework in Frameworks */,
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++		};
++		DB165EB74B6BF3F03C64EB86 /* Frameworks */ = {
++			isa = PBXFrameworksBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++				DF0A90CB2062B0D35AD1838C /* Pods_RunnerTests.framework in Frameworks */,
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};
+ /* End PBXFrameworksBuildPhase section */
+ 
+ /* Begin PBXGroup section */
++		27D3E37ABB6CDB032D9C65DA /* Firebase */ = {
++			isa = PBXGroup;
++			children = (
++				4D95AC97517E416CA2523189 /* dev */,
++				74E14F1491E84A089E672DB4 /* prod */,
++			);
++			name = Firebase;
++			sourceTree = "<group>";
++		};
+ 		331C8082294A63A400263BE5 /* RunnerTests */ = {
+ 			isa = PBXGroup;
+ 			children = (
+@@ -78,9 +123,51 @@
+ 			path = RunnerTests;
+ 			sourceTree = "<group>";
+ 		};
++		4D95AC97517E416CA2523189 /* dev */ = {
++			isa = PBXGroup;
++			children = (
++				959B9194FD3958D9E8E4FA83 /* GoogleService-Info.plist */,
++			);
++			name = dev;
++			sourceTree = "<group>";
++		};
++		74E14F1491E84A089E672DB4 /* prod */ = {
++			isa = PBXGroup;
++			children = (
++				EF6E8581FC2761AD463307DB /* GoogleService-Info.plist */,
++			);
++			name = prod;
++			sourceTree = "<group>";
++		};
++		93E9B2D09E228D7EF1E023C4 /* Pods */ = {
++			isa = PBXGroup;
++			children = (
++				FFE5C663886A1F79D46FA6A2 /* Pods-Runner.debug.xcconfig */,
++				A8B759578DCF3A8F3AC66937 /* Pods-Runner.release.xcconfig */,
++				D1C92CE163E2C599FF14E378 /* Pods-Runner.profile.xcconfig */,
++				0A5A01022773F7E8677BC06B /* Pods-RunnerTests.debug.xcconfig */,
++				68982CF461DC4E8BF8F4F4AC /* Pods-RunnerTests.release.xcconfig */,
++				6BA0C93CACB18E7586B61B6D /* Pods-RunnerTests.profile.xcconfig */,
++				92E8A8990B88D3AD7C72E132 /* Pods-Runner.debug-dev.xcconfig */,
++				BB39A500B2711B607D709389 /* Pods-Runner.debug-prod.xcconfig */,
++				71BCB0C67751C3E37ED10807 /* Pods-Runner.release-dev.xcconfig */,
++				12D0817E1BAA0DDE9685068C /* Pods-Runner.release-prod.xcconfig */,
++				CFCF7CE049B212EABA421098 /* Pods-Runner.profile-dev.xcconfig */,
++				FD27451A09BF12A62ADF2308 /* Pods-Runner.profile-prod.xcconfig */,
++				19AA617B6A26E10A3D431327 /* Pods-RunnerTests.debug-dev.xcconfig */,
++				5A55A1E87B1CBE2ED292817F /* Pods-RunnerTests.debug-prod.xcconfig */,
++				8B3C204537813C07CB865126 /* Pods-RunnerTests.release-dev.xcconfig */,
++				27939AD67DFC7DF1E0AE24E9 /* Pods-RunnerTests.release-prod.xcconfig */,
++				5148361BAB5625A33C003871 /* Pods-RunnerTests.profile-dev.xcconfig */,
++				9B7183F698F5B3B9A0A7774B /* Pods-RunnerTests.profile-prod.xcconfig */,
++			);
++			path = Pods;
++			sourceTree = "<group>";
++		};
+ 		9740EEB11CF90186004384FC /* Flutter */ = {
+ 			isa = PBXGroup;
+ 			children = (
++				78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */,
+ 				3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */,
+ 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
+ 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
+@@ -96,6 +183,8 @@
+ 				97C146F01CF9000F007C117D /* Runner */,
+ 				97C146EF1CF9000F007C117D /* Products */,
+ 				331C8082294A63A400263BE5 /* RunnerTests */,
++				93E9B2D09E228D7EF1E023C4 /* Pods */,
++				A11503BE2ADF9EF23DD46C8F /* Frameworks */,
+ 			);
+ 			sourceTree = "<group>";
+ 		};
+@@ -120,10 +209,20 @@
+ 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
+ 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
+ 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
++				27D3E37ABB6CDB032D9C65DA /* Firebase */,
+ 			);
+ 			path = Runner;
+ 			sourceTree = "<group>";
+ 		};
++		A11503BE2ADF9EF23DD46C8F /* Frameworks */ = {
++			isa = PBXGroup;
++			children = (
++				08962DAB6D96057755A2DC03 /* Pods_Runner.framework */,
++				97C19B98D0D5742BB38668CB /* Pods_RunnerTests.framework */,
++			);
++			name = Frameworks;
++			sourceTree = "<group>";
++		};
+ /* End PBXGroup section */
+ 
+ /* Begin PBXNativeTarget section */
+@@ -131,8 +230,10 @@
+ 			isa = PBXNativeTarget;
+ 			buildConfigurationList = 331C8087294A63A400263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */;
+ 			buildPhases = (
++				05DD2D92E844981F879C7B5B /* [CP] Check Pods Manifest.lock */,
+ 				331C807D294A63A400263BE5 /* Sources */,
+ 				331C807F294A63A400263BE5 /* Resources */,
++				DB165EB74B6BF3F03C64EB86 /* Frameworks */,
+ 			);
+ 			buildRules = (
+ 			);
+@@ -148,18 +249,24 @@
+ 			isa = PBXNativeTarget;
+ 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
+ 			buildPhases = (
++				78E02D458A054B6D5870F883 /* [CP] Check Pods Manifest.lock */,
+ 				9740EEB61CF901F6004384FC /* Run Script */,
+ 				97C146EA1CF9000F007C117D /* Sources */,
+ 				97C146EB1CF9000F007C117D /* Frameworks */,
+ 				97C146EC1CF9000F007C117D /* Resources */,
+ 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+ 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
++				F0A131C08F3798680757B0F5 /* [CP] Embed Pods Frameworks */,
++				9C305A3DC84810BC7FEAD313 /* Copy Firebase Config (flavor) */,
+ 			);
+ 			buildRules = (
+ 			);
+ 			dependencies = (
+ 			);
+ 			name = Runner;
++			packageProductDependencies = (
++				78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */,
++			);
+ 			productName = Runner;
+ 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
+ 			productType = "com.apple.product-type.application";
+@@ -193,6 +300,9 @@
+ 				Base,
+ 			);
+ 			mainGroup = 97C146E51CF9000F007C117D;
++			packageReferences = (
++				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */,
++			);
+ 			productRefGroup = 97C146EF1CF9000F007C117D /* Products */;
+ 			projectDirPath = "";
+ 			projectRoot = "";
+@@ -225,6 +335,28 @@
+ /* End PBXResourcesBuildPhase section */
+ 
+ /* Begin PBXShellScriptBuildPhase section */
++		05DD2D92E844981F879C7B5B /* [CP] Check Pods Manifest.lock */ = {
++			isa = PBXShellScriptBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			inputFileListPaths = (
++			);
++			inputPaths = (
++				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
++				"${PODS_ROOT}/Manifest.lock",
++			);
++			name = "[CP] Check Pods Manifest.lock";
++			outputFileListPaths = (
++			);
++			outputPaths = (
++				"$(DERIVED_FILE_DIR)/Pods-RunnerTests-checkManifestLockResult.txt",
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++			shellPath = /bin/sh;
++			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
++			showEnvVarsInLog = 0;
++		};
+ 		3B06AD1E1E4923F5004D2608 /* Thin Binary */ = {
+ 			isa = PBXShellScriptBuildPhase;
+ 			alwaysOutOfDate = 1;
+@@ -241,6 +373,28 @@
+ 			shellPath = /bin/sh;
+ 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
+ 		};
++		78E02D458A054B6D5870F883 /* [CP] Check Pods Manifest.lock */ = {
++			isa = PBXShellScriptBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			inputFileListPaths = (
++			);
++			inputPaths = (
++				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
++				"${PODS_ROOT}/Manifest.lock",
++			);
++			name = "[CP] Check Pods Manifest.lock";
++			outputFileListPaths = (
++			);
++			outputPaths = (
++				"$(DERIVED_FILE_DIR)/Pods-Runner-checkManifestLockResult.txt",
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++			shellPath = /bin/sh;
++			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
++			showEnvVarsInLog = 0;
++		};
+ 		9740EEB61CF901F6004384FC /* Run Script */ = {
+ 			isa = PBXShellScriptBuildPhase;
+ 			alwaysOutOfDate = 1;
+@@ -256,6 +410,41 @@
+ 			shellPath = /bin/sh;
+ 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
+ 		};
++		9C305A3DC84810BC7FEAD313 /* Copy Firebase Config (flavor) */ = {
++			isa = PBXShellScriptBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			inputFileListPaths = (
++			);
++			inputPaths = (
++			);
++			name = "Copy Firebase Config (flavor)";
++			outputFileListPaths = (
++			);
++			outputPaths = (
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++			shellPath = /bin/sh;
++			shellScript = "set -e\nFLAVOR=\"dev\"\nif [[ \"${CONFIGURATION}\" == *\"-prod\" ]]; then\n  FLAVOR=\"prod\"\nfi\nSRC=\"${SRCROOT}/Runner/Firebase/${FLAVOR}/GoogleService-Info.plist\"\nDEST=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nif [ ! -f \"$SRC\" ]; then\n  echo \"error: Missing GoogleService-Info.plist for flavor '$FLAVOR' at $SRC\"\n  exit 1\nfi\nmkdir -p \"$(dirname \"$DEST\")\"\ncp \"$SRC\" \"$DEST\"\necho \"Copied $FLAVOR GoogleService-Info.plist to $DEST\"\n";
++		};
++		F0A131C08F3798680757B0F5 /* [CP] Embed Pods Frameworks */ = {
++			isa = PBXShellScriptBuildPhase;
++			buildActionMask = 2147483647;
++			files = (
++			);
++			inputFileListPaths = (
++				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-input-files.xcfilelist",
++			);
++			name = "[CP] Embed Pods Frameworks";
++			outputFileListPaths = (
++				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-output-files.xcfilelist",
++			);
++			runOnlyForDeploymentPostprocessing = 0;
++			shellPath = /bin/sh;
++			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
++			showEnvVarsInLog = 0;
++		};
+ /* End PBXShellScriptBuildPhase section */
+ 
+ /* Begin PBXSourcesBuildPhase section */
+@@ -307,6 +496,83 @@
+ /* End PBXVariantGroup section */
+ 
+ /* Begin XCBuildConfiguration section */
++		0A1D0F205C5FFFF6FB610B7C /* Debug-dev */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 19AA617B6A26E10A3D431327 /* Pods-RunnerTests.debug-dev.xcconfig */;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = YES;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveroFlutter.RunnerTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
++				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
++				SWIFT_VERSION = 5.0;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
++			};
++			name = "Debug-dev";
++		};
++		16DE4B5056DAF71C3CD8194C /* Debug-prod */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
++				CLANG_CXX_LIBRARY = "libc++";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = dwarf;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_TESTABILITY = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				GCC_C_LANGUAGE_STANDARD = gnu99;
++				GCC_DYNAMIC_NO_PIC = NO;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_OPTIMIZATION_LEVEL = 0;
++				GCC_PREPROCESSOR_DEFINITIONS = (
++					"DEBUG=1",
++					"$(inherited)",
++				);
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
++				MTL_ENABLE_DEBUG_INFO = YES;
++				ONLY_ACTIVE_ARCH = YES;
++				SDKROOT = iphoneos;
++				STRING_CATALOG_GENERATE_SYMBOLS = YES;
++				TARGETED_DEVICE_FAMILY = "1,2";
++			};
++			name = "Debug-prod";
++		};
+ 		249021D3217E4FDB00AE95B9 /* Profile */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+@@ -331,6 +597,7 @@
+ 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+ 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+ 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+ 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+ 				CLANG_WARN_STRICT_PROTOTYPES = YES;
+ 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+@@ -350,9 +617,10 @@
+ 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+ 				GCC_WARN_UNUSED_FUNCTION = YES;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+ 				MTL_ENABLE_DEBUG_INFO = NO;
+ 				SDKROOT = iphoneos;
++				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+ 				SUPPORTED_PLATFORMS = iphoneos;
+ 				TARGETED_DEVICE_FAMILY = "1,2";
+ 				VALIDATE_PRODUCT = YES;
+@@ -366,13 +634,16 @@
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				CLANG_ENABLE_MODULES = YES;
+ 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
++				DEVELOPMENT_ASSET_PATHS = Runner/Assets.xcassets;
++				DEVELOPMENT_TEAM = H55Y5692XW;
+ 				ENABLE_BITCODE = NO;
++				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.246967732090-a008h1sskgdu6nluq91leptse3o30t9n";
+ 				INFOPLIST_FILE = Runner/Info.plist;
+ 				LD_RUNPATH_SEARCH_PATHS = (
+ 					"$(inherited)",
+ 					"@executable_path/Frameworks",
+ 				);
+-				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveroFlutter;
++				PRODUCT_BUNDLE_IDENTIFIER = delivro;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
+ 				SWIFT_VERSION = 5.0;
+@@ -382,6 +653,7 @@
+ 		};
+ 		331C8088294A63A400263BE5 /* Debug */ = {
+ 			isa = XCBuildConfiguration;
++			baseConfigurationReference = 0A5A01022773F7E8677BC06B /* Pods-RunnerTests.debug.xcconfig */;
+ 			buildSettings = {
+ 				BUNDLE_LOADER = "$(TEST_HOST)";
+ 				CODE_SIGN_STYLE = Automatic;
+@@ -399,6 +671,7 @@
+ 		};
+ 		331C8089294A63A400263BE5 /* Release */ = {
+ 			isa = XCBuildConfiguration;
++			baseConfigurationReference = 68982CF461DC4E8BF8F4F4AC /* Pods-RunnerTests.release.xcconfig */;
+ 			buildSettings = {
+ 				BUNDLE_LOADER = "$(TEST_HOST)";
+ 				CODE_SIGN_STYLE = Automatic;
+@@ -414,6 +687,7 @@
+ 		};
+ 		331C808A294A63A400263BE5 /* Profile */ = {
+ 			isa = XCBuildConfiguration;
++			baseConfigurationReference = 6BA0C93CACB18E7586B61B6D /* Pods-RunnerTests.profile.xcconfig */;
+ 			buildSettings = {
+ 				BUNDLE_LOADER = "$(TEST_HOST)";
+ 				CODE_SIGN_STYLE = Automatic;
+@@ -427,68 +701,51 @@
+ 			};
+ 			name = Profile;
+ 		};
+-		97C147031CF9000F007C117D /* Debug */ = {
++		393BECA29B1ED71FAC40F6DB /* Profile-prod */ = {
+ 			isa = XCBuildConfiguration;
++			baseConfigurationReference = 9B7183F698F5B3B9A0A7774B /* Pods-RunnerTests.profile-prod.xcconfig */;
+ 			buildSettings = {
+-				ALWAYS_SEARCH_USER_PATHS = NO;
+-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
+-				CLANG_ANALYZER_NONNULL = YES;
+-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+-				CLANG_CXX_LIBRARY = "libc++";
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = YES;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveroFlutter.RunnerTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_VERSION = 5.0;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
++			};
++			name = "Profile-prod";
++		};
++		55A178B651A6E930ACE3199B /* Profile-prod */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				CLANG_ENABLE_MODULES = YES;
+-				CLANG_ENABLE_OBJC_ARC = YES;
+-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+-				CLANG_WARN_BOOL_CONVERSION = YES;
+-				CLANG_WARN_COMMA = YES;
+-				CLANG_WARN_CONSTANT_CONVERSION = YES;
+-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+-				CLANG_WARN_EMPTY_BODY = YES;
+-				CLANG_WARN_ENUM_CONVERSION = YES;
+-				CLANG_WARN_INFINITE_RECURSION = YES;
+-				CLANG_WARN_INT_CONVERSION = YES;
+-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+-				CLANG_WARN_STRICT_PROTOTYPES = YES;
+-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+-				CLANG_WARN_UNREACHABLE_CODE = YES;
+-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+-				COPY_PHASE_STRIP = NO;
+-				DEBUG_INFORMATION_FORMAT = dwarf;
+-				ENABLE_STRICT_OBJC_MSGSEND = YES;
+-				ENABLE_TESTABILITY = YES;
+-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+-				GCC_C_LANGUAGE_STANDARD = gnu99;
+-				GCC_DYNAMIC_NO_PIC = NO;
+-				GCC_NO_COMMON_BLOCKS = YES;
+-				GCC_OPTIMIZATION_LEVEL = 0;
+-				GCC_PREPROCESSOR_DEFINITIONS = (
+-					"DEBUG=1",
++				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
++				DEVELOPMENT_ASSET_PATHS = Runner/Assets.xcassets;
++				DEVELOPMENT_TEAM = H55Y5692XW;
++				ENABLE_BITCODE = NO;
++				GOOGLE_REVERSED_CLIENT_ID = "";
++				INFOPLIST_FILE = Runner/Info.plist;
++				LD_RUNPATH_SEARCH_PATHS = (
+ 					"$(inherited)",
++					"@executable_path/Frameworks",
+ 				);
+-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+-				GCC_WARN_UNDECLARED_SELECTOR = YES;
+-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+-				GCC_WARN_UNUSED_FUNCTION = YES;
+-				GCC_WARN_UNUSED_VARIABLE = YES;
+-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+-				MTL_ENABLE_DEBUG_INFO = YES;
+-				ONLY_ACTIVE_ARCH = YES;
+-				SDKROOT = iphoneos;
+-				TARGETED_DEVICE_FAMILY = "1,2";
++				PRODUCT_BUNDLE_IDENTIFIER = delivro;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
++				SWIFT_VERSION = 5.0;
++				VERSIONING_SYSTEM = "apple-generic";
+ 			};
+-			name = Debug;
++			name = "Profile-prod";
+ 		};
+-		97C147041CF9000F007C117D /* Release */ = {
++		5F6BDFE7A8B8C806DE7AB252 /* Profile-dev */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+ 				ALWAYS_SEARCH_USER_PATHS = NO;
+-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+ 				CLANG_ANALYZER_NONNULL = YES;
+ 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+ 				CLANG_CXX_LIBRARY = "libc++";
+@@ -508,6 +765,7 @@
+ 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+ 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+ 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+ 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+ 				CLANG_WARN_STRICT_PROTOTYPES = YES;
+ 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+@@ -527,59 +785,592 @@
+ 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+ 				GCC_WARN_UNUSED_FUNCTION = YES;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+ 				MTL_ENABLE_DEBUG_INFO = NO;
+ 				SDKROOT = iphoneos;
++				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+ 				SUPPORTED_PLATFORMS = iphoneos;
+-				SWIFT_COMPILATION_MODE = wholemodule;
+-				SWIFT_OPTIMIZATION_LEVEL = "-O";
+ 				TARGETED_DEVICE_FAMILY = "1,2";
+ 				VALIDATE_PRODUCT = YES;
+ 			};
+-			name = Release;
++			name = "Profile-dev";
+ 		};
+-		97C147061CF9000F007C117D /* Debug */ = {
++		74133B57124F81AAD5D0FDC9 /* Profile-dev */ = {
+ 			isa = XCBuildConfiguration;
+-			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
++			baseConfigurationReference = 5148361BAB5625A33C003871 /* Pods-RunnerTests.profile-dev.xcconfig */;
+ 			buildSettings = {
+-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+-				CLANG_ENABLE_MODULES = YES;
+-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+-				ENABLE_BITCODE = NO;
+-				INFOPLIST_FILE = Runner/Info.plist;
+-				LD_RUNPATH_SEARCH_PATHS = (
+-					"$(inherited)",
+-					"@executable_path/Frameworks",
+-				);
+-				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveroFlutter;
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = YES;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveroFlutter.RunnerTests;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+-				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
+-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+ 				SWIFT_VERSION = 5.0;
+-				VERSIONING_SYSTEM = "apple-generic";
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
+ 			};
+-			name = Debug;
++			name = "Profile-dev";
+ 		};
+-		97C147071CF9000F007C117D /* Release */ = {
++		75BC1BD59C9F0C6AE9811FF0 /* Debug-prod */ = {
+ 			isa = XCBuildConfiguration;
+-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
++			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
+ 			buildSettings = {
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				CLANG_ENABLE_MODULES = YES;
+ 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
++				DEVELOPMENT_ASSET_PATHS = Runner/Assets.xcassets;
++				DEVELOPMENT_TEAM = H55Y5692XW;
+ 				ENABLE_BITCODE = NO;
++				GOOGLE_REVERSED_CLIENT_ID = "";
+ 				INFOPLIST_FILE = Runner/Info.plist;
+ 				LD_RUNPATH_SEARCH_PATHS = (
+ 					"$(inherited)",
+ 					"@executable_path/Frameworks",
+ 				);
+-				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveroFlutter;
++				PRODUCT_BUNDLE_IDENTIFIER = delivro;
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
++				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+ 				SWIFT_VERSION = 5.0;
+ 				VERSIONING_SYSTEM = "apple-generic";
+ 			};
+-			name = Release;
++			name = "Debug-prod";
++		};
++		7BB4541B1ED6FC9A7EDFE6AB /* Debug-prod */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 5A55A1E87B1CBE2ED292817F /* Pods-RunnerTests.debug-prod.xcconfig */;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = YES;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveroFlutter.RunnerTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
++				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
++				SWIFT_VERSION = 5.0;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
++			};
++			name = "Debug-prod";
++		};
++		7ED35DD457CA9440B663CD24 /* Release-prod */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 27939AD67DFC7DF1E0AE24E9 /* Pods-RunnerTests.release-prod.xcconfig */;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = YES;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveroFlutter.RunnerTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_VERSION = 5.0;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
++			};
++			name = "Release-prod";
++		};
++		832843B16B00C28FF5B9A6FD /* Release-dev */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
++				CLANG_ENABLE_MODULES = YES;
++				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
++				DEVELOPMENT_ASSET_PATHS = Runner/Assets.xcassets;
++				DEVELOPMENT_TEAM = H55Y5692XW;
++				ENABLE_BITCODE = NO;
++				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.246967732090-a008h1sskgdu6nluq91leptse3o30t9n";
++				INFOPLIST_FILE = Runner/Info.plist;
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				PRODUCT_BUNDLE_IDENTIFIER = delivro;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
++				SWIFT_VERSION = 5.0;
++				VERSIONING_SYSTEM = "apple-generic";
++			};
++			name = "Release-dev";
++		};
++		97C147031CF9000F007C117D /* Debug */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
++				CLANG_CXX_LIBRARY = "libc++";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = dwarf;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_TESTABILITY = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				GCC_C_LANGUAGE_STANDARD = gnu99;
++				GCC_DYNAMIC_NO_PIC = NO;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_OPTIMIZATION_LEVEL = 0;
++				GCC_PREPROCESSOR_DEFINITIONS = (
++					"DEBUG=1",
++					"$(inherited)",
++				);
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
++				MTL_ENABLE_DEBUG_INFO = YES;
++				ONLY_ACTIVE_ARCH = YES;
++				SDKROOT = iphoneos;
++				STRING_CATALOG_GENERATE_SYMBOLS = YES;
++				TARGETED_DEVICE_FAMILY = "1,2";
++			};
++			name = Debug;
++		};
++		97C147041CF9000F007C117D /* Release */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
++				CLANG_CXX_LIBRARY = "libc++";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
++				ENABLE_NS_ASSERTIONS = NO;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				GCC_C_LANGUAGE_STANDARD = gnu99;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
++				MTL_ENABLE_DEBUG_INFO = NO;
++				SDKROOT = iphoneos;
++				STRING_CATALOG_GENERATE_SYMBOLS = YES;
++				SUPPORTED_PLATFORMS = iphoneos;
++				SWIFT_COMPILATION_MODE = wholemodule;
++				SWIFT_OPTIMIZATION_LEVEL = "-O";
++				TARGETED_DEVICE_FAMILY = "1,2";
++				VALIDATE_PRODUCT = YES;
++			};
++			name = Release;
++		};
++		97C147061CF9000F007C117D /* Debug */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
++				CLANG_ENABLE_MODULES = YES;
++				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
++				DEVELOPMENT_ASSET_PATHS = Runner/Assets.xcassets;
++				DEVELOPMENT_TEAM = H55Y5692XW;
++				ENABLE_BITCODE = NO;
++				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.246967732090-a008h1sskgdu6nluq91leptse3o30t9n";
++				INFOPLIST_FILE = Runner/Info.plist;
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				PRODUCT_BUNDLE_IDENTIFIER = delivro;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
++				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
++				SWIFT_VERSION = 5.0;
++				VERSIONING_SYSTEM = "apple-generic";
++			};
++			name = Debug;
++		};
++		97C147071CF9000F007C117D /* Release */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
++				CLANG_ENABLE_MODULES = YES;
++				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
++				DEVELOPMENT_ASSET_PATHS = Runner/Assets.xcassets;
++				DEVELOPMENT_TEAM = H55Y5692XW;
++				ENABLE_BITCODE = NO;
++				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.246967732090-a008h1sskgdu6nluq91leptse3o30t9n";
++				INFOPLIST_FILE = Runner/Info.plist;
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				PRODUCT_BUNDLE_IDENTIFIER = delivro;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
++				SWIFT_VERSION = 5.0;
++				VERSIONING_SYSTEM = "apple-generic";
++			};
++			name = Release;
++		};
++		ABD09EEDDC918E78779074B1 /* Debug-dev */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
++				CLANG_ENABLE_MODULES = YES;
++				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
++				DEVELOPMENT_ASSET_PATHS = Runner/Assets.xcassets;
++				DEVELOPMENT_TEAM = H55Y5692XW;
++				ENABLE_BITCODE = NO;
++				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.246967732090-a008h1sskgdu6nluq91leptse3o30t9n";
++				INFOPLIST_FILE = Runner/Info.plist;
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				PRODUCT_BUNDLE_IDENTIFIER = delivro;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
++				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
++				SWIFT_VERSION = 5.0;
++				VERSIONING_SYSTEM = "apple-generic";
++			};
++			name = "Debug-dev";
++		};
++		BA174E00C845CA0187F2BD80 /* Profile-prod */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
++				CLANG_CXX_LIBRARY = "libc++";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
++				ENABLE_NS_ASSERTIONS = NO;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				GCC_C_LANGUAGE_STANDARD = gnu99;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
++				MTL_ENABLE_DEBUG_INFO = NO;
++				SDKROOT = iphoneos;
++				STRING_CATALOG_GENERATE_SYMBOLS = YES;
++				SUPPORTED_PLATFORMS = iphoneos;
++				TARGETED_DEVICE_FAMILY = "1,2";
++				VALIDATE_PRODUCT = YES;
++			};
++			name = "Profile-prod";
++		};
++		C7CA621C97C1F8B4BE0B5C1D /* Release-prod */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
++				CLANG_ENABLE_MODULES = YES;
++				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
++				DEVELOPMENT_ASSET_PATHS = Runner/Assets.xcassets;
++				DEVELOPMENT_TEAM = H55Y5692XW;
++				ENABLE_BITCODE = NO;
++				GOOGLE_REVERSED_CLIENT_ID = "";
++				INFOPLIST_FILE = Runner/Info.plist;
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				PRODUCT_BUNDLE_IDENTIFIER = delivro;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
++				SWIFT_VERSION = 5.0;
++				VERSIONING_SYSTEM = "apple-generic";
++			};
++			name = "Release-prod";
++		};
++		CEEEA77C401F5D483065B781 /* Release-prod */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
++				CLANG_CXX_LIBRARY = "libc++";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
++				ENABLE_NS_ASSERTIONS = NO;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				GCC_C_LANGUAGE_STANDARD = gnu99;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
++				MTL_ENABLE_DEBUG_INFO = NO;
++				SDKROOT = iphoneos;
++				STRING_CATALOG_GENERATE_SYMBOLS = YES;
++				SUPPORTED_PLATFORMS = iphoneos;
++				SWIFT_COMPILATION_MODE = wholemodule;
++				SWIFT_OPTIMIZATION_LEVEL = "-O";
++				TARGETED_DEVICE_FAMILY = "1,2";
++				VALIDATE_PRODUCT = YES;
++			};
++			name = "Release-prod";
++		};
++		E51C0AFE0695F850B1EA498C /* Release-dev */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
++				CLANG_CXX_LIBRARY = "libc++";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
++				ENABLE_NS_ASSERTIONS = NO;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				GCC_C_LANGUAGE_STANDARD = gnu99;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
++				MTL_ENABLE_DEBUG_INFO = NO;
++				SDKROOT = iphoneos;
++				STRING_CATALOG_GENERATE_SYMBOLS = YES;
++				SUPPORTED_PLATFORMS = iphoneos;
++				SWIFT_COMPILATION_MODE = wholemodule;
++				SWIFT_OPTIMIZATION_LEVEL = "-O";
++				TARGETED_DEVICE_FAMILY = "1,2";
++				VALIDATE_PRODUCT = YES;
++			};
++			name = "Release-dev";
++		};
++		E75BAA14888A8AB97249CD6C /* Profile-dev */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
++			buildSettings = {
++				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
++				CLANG_ENABLE_MODULES = YES;
++				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
++				DEVELOPMENT_ASSET_PATHS = Runner/Assets.xcassets;
++				DEVELOPMENT_TEAM = H55Y5692XW;
++				ENABLE_BITCODE = NO;
++				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.246967732090-a008h1sskgdu6nluq91leptse3o30t9n";
++				INFOPLIST_FILE = Runner/Info.plist;
++				LD_RUNPATH_SEARCH_PATHS = (
++					"$(inherited)",
++					"@executable_path/Frameworks",
++				);
++				PRODUCT_BUNDLE_IDENTIFIER = delivro;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
++				SWIFT_VERSION = 5.0;
++				VERSIONING_SYSTEM = "apple-generic";
++			};
++			name = "Profile-dev";
++		};
++		EF40639945E66E096A0DD916 /* Debug-dev */ = {
++			isa = XCBuildConfiguration;
++			buildSettings = {
++				ALWAYS_SEARCH_USER_PATHS = NO;
++				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
++				CLANG_ANALYZER_NONNULL = YES;
++				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
++				CLANG_CXX_LIBRARY = "libc++";
++				CLANG_ENABLE_MODULES = YES;
++				CLANG_ENABLE_OBJC_ARC = YES;
++				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
++				CLANG_WARN_BOOL_CONVERSION = YES;
++				CLANG_WARN_COMMA = YES;
++				CLANG_WARN_CONSTANT_CONVERSION = YES;
++				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
++				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
++				CLANG_WARN_EMPTY_BODY = YES;
++				CLANG_WARN_ENUM_CONVERSION = YES;
++				CLANG_WARN_INFINITE_RECURSION = YES;
++				CLANG_WARN_INT_CONVERSION = YES;
++				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
++				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
++				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
++				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
++				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
++				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
++				CLANG_WARN_STRICT_PROTOTYPES = YES;
++				CLANG_WARN_SUSPICIOUS_MOVE = YES;
++				CLANG_WARN_UNREACHABLE_CODE = YES;
++				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
++				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
++				COPY_PHASE_STRIP = NO;
++				DEBUG_INFORMATION_FORMAT = dwarf;
++				ENABLE_STRICT_OBJC_MSGSEND = YES;
++				ENABLE_TESTABILITY = YES;
++				ENABLE_USER_SCRIPT_SANDBOXING = NO;
++				GCC_C_LANGUAGE_STANDARD = gnu99;
++				GCC_DYNAMIC_NO_PIC = NO;
++				GCC_NO_COMMON_BLOCKS = YES;
++				GCC_OPTIMIZATION_LEVEL = 0;
++				GCC_PREPROCESSOR_DEFINITIONS = (
++					"DEBUG=1",
++					"$(inherited)",
++				);
++				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
++				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
++				GCC_WARN_UNDECLARED_SELECTOR = YES;
++				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
++				GCC_WARN_UNUSED_FUNCTION = YES;
++				GCC_WARN_UNUSED_VARIABLE = YES;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
++				MTL_ENABLE_DEBUG_INFO = YES;
++				ONLY_ACTIVE_ARCH = YES;
++				SDKROOT = iphoneos;
++				STRING_CATALOG_GENERATE_SYMBOLS = YES;
++				TARGETED_DEVICE_FAMILY = "1,2";
++			};
++			name = "Debug-dev";
++		};
++		F24D2AC69A22F76412E0EF3A /* Release-dev */ = {
++			isa = XCBuildConfiguration;
++			baseConfigurationReference = 8B3C204537813C07CB865126 /* Pods-RunnerTests.release-dev.xcconfig */;
++			buildSettings = {
++				BUNDLE_LOADER = "$(TEST_HOST)";
++				CODE_SIGN_STYLE = Automatic;
++				CURRENT_PROJECT_VERSION = 1;
++				GENERATE_INFOPLIST_FILE = YES;
++				MARKETING_VERSION = 1.0;
++				PRODUCT_BUNDLE_IDENTIFIER = com.example.deliveroFlutter.RunnerTests;
++				PRODUCT_NAME = "$(TARGET_NAME)";
++				SWIFT_VERSION = 5.0;
++				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
++			};
++			name = "Release-dev";
+ 		};
+ /* End XCBuildConfiguration section */
+ 
+@@ -590,6 +1381,12 @@
+ 				331C8088294A63A400263BE5 /* Debug */,
+ 				331C8089294A63A400263BE5 /* Release */,
+ 				331C808A294A63A400263BE5 /* Profile */,
++				0A1D0F205C5FFFF6FB610B7C /* Debug-dev */,
++				7BB4541B1ED6FC9A7EDFE6AB /* Debug-prod */,
++				F24D2AC69A22F76412E0EF3A /* Release-dev */,
++				7ED35DD457CA9440B663CD24 /* Release-prod */,
++				74133B57124F81AAD5D0FDC9 /* Profile-dev */,
++				393BECA29B1ED71FAC40F6DB /* Profile-prod */,
+ 			);
+ 			defaultConfigurationIsVisible = 0;
+ 			defaultConfigurationName = Release;
+@@ -600,6 +1397,12 @@
+ 				97C147031CF9000F007C117D /* Debug */,
+ 				97C147041CF9000F007C117D /* Release */,
+ 				249021D3217E4FDB00AE95B9 /* Profile */,
++				EF40639945E66E096A0DD916 /* Debug-dev */,
++				16DE4B5056DAF71C3CD8194C /* Debug-prod */,
++				E51C0AFE0695F850B1EA498C /* Release-dev */,
++				CEEEA77C401F5D483065B781 /* Release-prod */,
++				5F6BDFE7A8B8C806DE7AB252 /* Profile-dev */,
++				BA174E00C845CA0187F2BD80 /* Profile-prod */,
+ 			);
+ 			defaultConfigurationIsVisible = 0;
+ 			defaultConfigurationName = Release;
+@@ -610,11 +1413,31 @@
+ 				97C147061CF9000F007C117D /* Debug */,
+ 				97C147071CF9000F007C117D /* Release */,
+ 				249021D4217E4FDB00AE95B9 /* Profile */,
++				ABD09EEDDC918E78779074B1 /* Debug-dev */,
++				75BC1BD59C9F0C6AE9811FF0 /* Debug-prod */,
++				832843B16B00C28FF5B9A6FD /* Release-dev */,
++				C7CA621C97C1F8B4BE0B5C1D /* Release-prod */,
++				E75BAA14888A8AB97249CD6C /* Profile-dev */,
++				55A178B651A6E930ACE3199B /* Profile-prod */,
+ 			);
+ 			defaultConfigurationIsVisible = 0;
+ 			defaultConfigurationName = Release;
+ 		};
+ /* End XCConfigurationList section */
++
++/* Begin XCLocalSwiftPackageReference section */
++		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */ = {
++			isa = XCLocalSwiftPackageReference;
++			relativePath = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage;
++		};
++/* End XCLocalSwiftPackageReference section */
++
++/* Begin XCSwiftPackageProductDependency section */
++		78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */ = {
++			isa = XCSwiftPackageProductDependency;
++			productName = FlutterGeneratedPluginSwiftPackage;
++		};
++/* End XCSwiftPackageProductDependency section */
+ 	};
+ 	rootObject = 97C146E61CF9000F007C117D /* Project object */;
+ }
+diff --git a/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved b/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+new file mode 100644
+index 0000000..c4a5293
+--- /dev/null
++++ b/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+@@ -0,0 +1,122 @@
++{
++  "pins" : [
++    {
++      "identity" : "abseil-cpp-binary",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/abseil-cpp-binary.git",
++      "state" : {
++        "revision" : "bbe8b69694d7873315fd3a4ad41efe043e1c07c5",
++        "version" : "1.2024072200.0"
++      }
++    },
++    {
++      "identity" : "app-check",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/app-check.git",
++      "state" : {
++        "revision" : "3e33dd27dd4c69bd81c7c81fe61d8ccf58846902",
++        "version" : "11.3.1"
++      }
++    },
++    {
++      "identity" : "firebase-ios-sdk",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/firebase/firebase-ios-sdk",
++      "state" : {
++        "revision" : "42e81d245e30e49ea6a5830cf2842d44a1591270",
++        "version" : "12.15.0"
++      }
++    },
++    {
++      "identity" : "google-ads-on-device-conversion-ios-sdk",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/googleads/google-ads-on-device-conversion-ios-sdk",
++      "state" : {
++        "revision" : "dc39082d8881109d35b94b1c122164c0e8d08a55",
++        "version" : "3.6.1"
++      }
++    },
++    {
++      "identity" : "googleappmeasurement",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/GoogleAppMeasurement.git",
++      "state" : {
++        "revision" : "144855f40d8668927f256a3045f7fdc4c3f4338b",
++        "version" : "12.15.0"
++      }
++    },
++    {
++      "identity" : "googledatatransport",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/GoogleDataTransport.git",
++      "state" : {
++        "revision" : "617af071af9aa1d6a091d59a202910ac482128f9",
++        "version" : "10.1.0"
++      }
++    },
++    {
++      "identity" : "googleutilities",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/GoogleUtilities.git",
++      "state" : {
++        "revision" : "9f183ae842be978784f2963a343682e0c46d8fb3",
++        "version" : "8.1.2"
++      }
++    },
++    {
++      "identity" : "grpc-binary",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/grpc-binary.git",
++      "state" : {
++        "revision" : "75b31c842f664a0f46a2e590a570e370249fd8f6",
++        "version" : "1.69.1"
++      }
++    },
++    {
++      "identity" : "gtm-session-fetcher",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/gtm-session-fetcher.git",
++      "state" : {
++        "revision" : "c0ac7575d70050c2973ba2318bd5af47f8e8153a",
++        "version" : "5.3.0"
++      }
++    },
++    {
++      "identity" : "interop-ios-for-google-sdks",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/interop-ios-for-google-sdks.git",
++      "state" : {
++        "revision" : "040d087ac2267d2ddd4cca36c757d1c6a05fdbfe",
++        "version" : "101.0.0"
++      }
++    },
++    {
++      "identity" : "leveldb",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/firebase/leveldb.git",
++      "state" : {
++        "revision" : "a0bc79961d7be727d258d33d5a6b2f1023270ba1",
++        "version" : "1.22.5"
++      }
++    },
++    {
++      "identity" : "nanopb",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/firebase/nanopb.git",
++      "state" : {
++        "revision" : "3851d94a41890dea16dc3db34caf60e585cb4163",
++        "version" : "2.30910.1"
++      }
++    },
++    {
++      "identity" : "promises",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/promises.git",
++      "state" : {
++        "revision" : "f4a19a3c313dc2616c70bb49d29a799fb16be837",
++        "version" : "2.4.1"
++      }
++    }
++  ],
++  "version" : 2
++}
+diff --git a/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme b/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+index e3773d4..c3fedb2 100644
+--- a/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
++++ b/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+@@ -5,6 +5,24 @@
+    <BuildAction
+       parallelizeBuildables = "YES"
+       buildImplicitDependencies = "YES">
++      <PreActions>
++         <ExecutionAction
++            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
++            <ActionContent
++               title = "Run Prepare Flutter Framework Script"
++               scriptText = "/bin/sh &quot;$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh&quot; prepare&#10;">
++               <EnvironmentBuildable>
++                  <BuildableReference
++                     BuildableIdentifier = "primary"
++                     BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++                     BuildableName = "Runner.app"
++                     BlueprintName = "Runner"
++                     ReferencedContainer = "container:Runner.xcodeproj">
++                  </BuildableReference>
++               </EnvironmentBuildable>
++            </ActionContent>
++         </ExecutionAction>
++      </PreActions>
+       <BuildActionEntries>
+          <BuildActionEntry
+             buildForTesting = "YES"
+diff --git a/ios/Runner.xcodeproj/xcshareddata/xcschemes/dev.xcscheme b/ios/Runner.xcodeproj/xcshareddata/xcschemes/dev.xcscheme
+new file mode 100644
+index 0000000..b194351
+--- /dev/null
++++ b/ios/Runner.xcodeproj/xcshareddata/xcschemes/dev.xcscheme
+@@ -0,0 +1,119 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<Scheme
++   LastUpgradeVersion = "1510"
++   version = "1.3">
++   <BuildAction
++      parallelizeBuildables = "YES"
++      buildImplicitDependencies = "YES">
++      <PreActions>
++         <ExecutionAction
++            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
++            <ActionContent
++               title = "Run Prepare Flutter Framework Script"
++               scriptText = "/bin/sh &quot;$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh&quot; prepare&#10;">
++               <EnvironmentBuildable>
++                  <BuildableReference
++                     BuildableIdentifier = "primary"
++                     BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++                     BuildableName = "Runner.app"
++                     BlueprintName = "Runner"
++                     ReferencedContainer = "container:Runner.xcodeproj">
++                  </BuildableReference>
++               </EnvironmentBuildable>
++            </ActionContent>
++         </ExecutionAction>
++      </PreActions>
++      <BuildActionEntries>
++         <BuildActionEntry
++            buildForTesting = "YES"
++            buildForRunning = "YES"
++            buildForProfiling = "YES"
++            buildForArchiving = "YES"
++            buildForAnalyzing = "YES">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++               BuildableName = "Runner.app"
++               BlueprintName = "Runner"
++               ReferencedContainer = "container:Runner.xcodeproj">
++            </BuildableReference>
++         </BuildActionEntry>
++      </BuildActionEntries>
++   </BuildAction>
++   <TestAction
++      buildConfiguration = "Debug-dev"
++      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
++      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
++      customLLDBInitFile = "$(SRCROOT)/Flutter/ephemeral/flutter_lldbinit"
++      shouldUseLaunchSchemeArgsEnv = "YES">
++      <MacroExpansion>
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++            BuildableName = "Runner.app"
++            BlueprintName = "Runner"
++            ReferencedContainer = "container:Runner.xcodeproj">
++         </BuildableReference>
++      </MacroExpansion>
++      <Testables>
++         <TestableReference
++            skipped = "NO"
++            parallelizable = "YES">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "331C8080294A63A400263BE5"
++               BuildableName = "RunnerTests.xctest"
++               BlueprintName = "RunnerTests"
++               ReferencedContainer = "container:Runner.xcodeproj">
++            </BuildableReference>
++         </TestableReference>
++      </Testables>
++   </TestAction>
++   <LaunchAction
++      buildConfiguration = "Debug-dev"
++      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
++      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
++      customLLDBInitFile = "$(SRCROOT)/Flutter/ephemeral/flutter_lldbinit"
++      launchStyle = "0"
++      useCustomWorkingDirectory = "NO"
++      ignoresPersistentStateOnLaunch = "NO"
++      debugDocumentVersioning = "YES"
++      debugServiceExtension = "internal"
++      enableGPUValidationMode = "1"
++      allowLocationSimulation = "YES">
++      <BuildableProductRunnable
++         runnableDebuggingMode = "0">
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++            BuildableName = "Runner.app"
++            BlueprintName = "Runner"
++            ReferencedContainer = "container:Runner.xcodeproj">
++         </BuildableReference>
++      </BuildableProductRunnable>
++   </LaunchAction>
++   <ProfileAction
++      buildConfiguration = "Profile-dev"
++      shouldUseLaunchSchemeArgsEnv = "YES"
++      savedToolIdentifier = ""
++      useCustomWorkingDirectory = "NO"
++      debugDocumentVersioning = "YES">
++      <BuildableProductRunnable
++         runnableDebuggingMode = "0">
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++            BuildableName = "Runner.app"
++            BlueprintName = "Runner"
++            ReferencedContainer = "container:Runner.xcodeproj">
++         </BuildableReference>
++      </BuildableProductRunnable>
++   </ProfileAction>
++   <AnalyzeAction
++      buildConfiguration = "Debug-dev">
++   </AnalyzeAction>
++   <ArchiveAction
++      buildConfiguration = "Release-dev"
++      revealArchiveInOrganizer = "YES">
++   </ArchiveAction>
++</Scheme>
+diff --git a/ios/Runner.xcodeproj/xcshareddata/xcschemes/prod.xcscheme b/ios/Runner.xcodeproj/xcshareddata/xcschemes/prod.xcscheme
+new file mode 100644
+index 0000000..ca6858e
+--- /dev/null
++++ b/ios/Runner.xcodeproj/xcshareddata/xcschemes/prod.xcscheme
+@@ -0,0 +1,119 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<Scheme
++   LastUpgradeVersion = "1510"
++   version = "1.3">
++   <BuildAction
++      parallelizeBuildables = "YES"
++      buildImplicitDependencies = "YES">
++      <PreActions>
++         <ExecutionAction
++            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
++            <ActionContent
++               title = "Run Prepare Flutter Framework Script"
++               scriptText = "/bin/sh &quot;$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh&quot; prepare&#10;">
++               <EnvironmentBuildable>
++                  <BuildableReference
++                     BuildableIdentifier = "primary"
++                     BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++                     BuildableName = "Runner.app"
++                     BlueprintName = "Runner"
++                     ReferencedContainer = "container:Runner.xcodeproj">
++                  </BuildableReference>
++               </EnvironmentBuildable>
++            </ActionContent>
++         </ExecutionAction>
++      </PreActions>
++      <BuildActionEntries>
++         <BuildActionEntry
++            buildForTesting = "YES"
++            buildForRunning = "YES"
++            buildForProfiling = "YES"
++            buildForArchiving = "YES"
++            buildForAnalyzing = "YES">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++               BuildableName = "Runner.app"
++               BlueprintName = "Runner"
++               ReferencedContainer = "container:Runner.xcodeproj">
++            </BuildableReference>
++         </BuildActionEntry>
++      </BuildActionEntries>
++   </BuildAction>
++   <TestAction
++      buildConfiguration = "Debug-prod"
++      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
++      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
++      customLLDBInitFile = "$(SRCROOT)/Flutter/ephemeral/flutter_lldbinit"
++      shouldUseLaunchSchemeArgsEnv = "YES">
++      <MacroExpansion>
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++            BuildableName = "Runner.app"
++            BlueprintName = "Runner"
++            ReferencedContainer = "container:Runner.xcodeproj">
++         </BuildableReference>
++      </MacroExpansion>
++      <Testables>
++         <TestableReference
++            skipped = "NO"
++            parallelizable = "YES">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "331C8080294A63A400263BE5"
++               BuildableName = "RunnerTests.xctest"
++               BlueprintName = "RunnerTests"
++               ReferencedContainer = "container:Runner.xcodeproj">
++            </BuildableReference>
++         </TestableReference>
++      </Testables>
++   </TestAction>
++   <LaunchAction
++      buildConfiguration = "Debug-prod"
++      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
++      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
++      customLLDBInitFile = "$(SRCROOT)/Flutter/ephemeral/flutter_lldbinit"
++      launchStyle = "0"
++      useCustomWorkingDirectory = "NO"
++      ignoresPersistentStateOnLaunch = "NO"
++      debugDocumentVersioning = "YES"
++      debugServiceExtension = "internal"
++      enableGPUValidationMode = "1"
++      allowLocationSimulation = "YES">
++      <BuildableProductRunnable
++         runnableDebuggingMode = "0">
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++            BuildableName = "Runner.app"
++            BlueprintName = "Runner"
++            ReferencedContainer = "container:Runner.xcodeproj">
++         </BuildableReference>
++      </BuildableProductRunnable>
++   </LaunchAction>
++   <ProfileAction
++      buildConfiguration = "Profile-prod"
++      shouldUseLaunchSchemeArgsEnv = "YES"
++      savedToolIdentifier = ""
++      useCustomWorkingDirectory = "NO"
++      debugDocumentVersioning = "YES">
++      <BuildableProductRunnable
++         runnableDebuggingMode = "0">
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "97C146ED1CF9000F007C117D"
++            BuildableName = "Runner.app"
++            BlueprintName = "Runner"
++            ReferencedContainer = "container:Runner.xcodeproj">
++         </BuildableReference>
++      </BuildableProductRunnable>
++   </ProfileAction>
++   <AnalyzeAction
++      buildConfiguration = "Debug-prod">
++   </AnalyzeAction>
++   <ArchiveAction
++      buildConfiguration = "Release-prod"
++      revealArchiveInOrganizer = "YES">
++   </ArchiveAction>
++</Scheme>
+diff --git a/ios/Runner.xcworkspace/contents.xcworkspacedata b/ios/Runner.xcworkspace/contents.xcworkspacedata
+index 1d526a1..21a3cc1 100644
+--- a/ios/Runner.xcworkspace/contents.xcworkspacedata
++++ b/ios/Runner.xcworkspace/contents.xcworkspacedata
+@@ -4,4 +4,7 @@
+    <FileRef
+       location = "group:Runner.xcodeproj">
+    </FileRef>
++   <FileRef
++      location = "group:Pods/Pods.xcodeproj">
++   </FileRef>
+ </Workspace>
+diff --git a/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved b/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved
+new file mode 100644
+index 0000000..c4a5293
+--- /dev/null
++++ b/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved
+@@ -0,0 +1,122 @@
++{
++  "pins" : [
++    {
++      "identity" : "abseil-cpp-binary",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/abseil-cpp-binary.git",
++      "state" : {
++        "revision" : "bbe8b69694d7873315fd3a4ad41efe043e1c07c5",
++        "version" : "1.2024072200.0"
++      }
++    },
++    {
++      "identity" : "app-check",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/app-check.git",
++      "state" : {
++        "revision" : "3e33dd27dd4c69bd81c7c81fe61d8ccf58846902",
++        "version" : "11.3.1"
++      }
++    },
++    {
++      "identity" : "firebase-ios-sdk",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/firebase/firebase-ios-sdk",
++      "state" : {
++        "revision" : "42e81d245e30e49ea6a5830cf2842d44a1591270",
++        "version" : "12.15.0"
++      }
++    },
++    {
++      "identity" : "google-ads-on-device-conversion-ios-sdk",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/googleads/google-ads-on-device-conversion-ios-sdk",
++      "state" : {
++        "revision" : "dc39082d8881109d35b94b1c122164c0e8d08a55",
++        "version" : "3.6.1"
++      }
++    },
++    {
++      "identity" : "googleappmeasurement",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/GoogleAppMeasurement.git",
++      "state" : {
++        "revision" : "144855f40d8668927f256a3045f7fdc4c3f4338b",
++        "version" : "12.15.0"
++      }
++    },
++    {
++      "identity" : "googledatatransport",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/GoogleDataTransport.git",
++      "state" : {
++        "revision" : "617af071af9aa1d6a091d59a202910ac482128f9",
++        "version" : "10.1.0"
++      }
++    },
++    {
++      "identity" : "googleutilities",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/GoogleUtilities.git",
++      "state" : {
++        "revision" : "9f183ae842be978784f2963a343682e0c46d8fb3",
++        "version" : "8.1.2"
++      }
++    },
++    {
++      "identity" : "grpc-binary",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/grpc-binary.git",
++      "state" : {
++        "revision" : "75b31c842f664a0f46a2e590a570e370249fd8f6",
++        "version" : "1.69.1"
++      }
++    },
++    {
++      "identity" : "gtm-session-fetcher",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/gtm-session-fetcher.git",
++      "state" : {
++        "revision" : "c0ac7575d70050c2973ba2318bd5af47f8e8153a",
++        "version" : "5.3.0"
++      }
++    },
++    {
++      "identity" : "interop-ios-for-google-sdks",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/interop-ios-for-google-sdks.git",
++      "state" : {
++        "revision" : "040d087ac2267d2ddd4cca36c757d1c6a05fdbfe",
++        "version" : "101.0.0"
++      }
++    },
++    {
++      "identity" : "leveldb",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/firebase/leveldb.git",
++      "state" : {
++        "revision" : "a0bc79961d7be727d258d33d5a6b2f1023270ba1",
++        "version" : "1.22.5"
++      }
++    },
++    {
++      "identity" : "nanopb",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/firebase/nanopb.git",
++      "state" : {
++        "revision" : "3851d94a41890dea16dc3db34caf60e585cb4163",
++        "version" : "2.30910.1"
++      }
++    },
++    {
++      "identity" : "promises",
++      "kind" : "remoteSourceControl",
++      "location" : "https://github.com/google/promises.git",
++      "state" : {
++        "revision" : "f4a19a3c313dc2616c70bb49d29a799fb16be837",
++        "version" : "2.4.1"
++      }
++    }
++  ],
++  "version" : 2
++}
+diff --git a/ios/Runner/Info.plist b/ios/Runner/Info.plist
+index 05be6ce..3596421 100644
+--- a/ios/Runner/Info.plist
++++ b/ios/Runner/Info.plist
+@@ -26,6 +26,17 @@
+ 		<string>????</string>
+ 		<key>CFBundleVersion</key>
+ 		<string>$(FLUTTER_BUILD_NUMBER)</string>
++		<key>CFBundleURLTypes</key>
++		<array>
++			<dict>
++				<key>CFBundleTypeRole</key>
++				<string>Editor</string>
++				<key>CFBundleURLSchemes</key>
++				<array>
++					<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
++				</array>
++			</dict>
++		</array>
+ 		<key>LSRequiresIPhoneOS</key>
+ 		<true/>
+ 		<key>UIApplicationSceneManifest</key>
+diff --git a/lib/core/services/push_notification_service.dart b/lib/core/services/push_notification_service.dart
+index 559fca4..e5c3eb9 100644
+--- a/lib/core/services/push_notification_service.dart
++++ b/lib/core/services/push_notification_service.dart
+@@ -1,5 +1,5 @@
+ import 'package:cloud_firestore/cloud_firestore.dart';
+-import 'package:firebase_core/firebase_core.dart';
++import 'package:firebase_core/firebase_core.dart' hide FirebaseService;
+ import 'package:firebase_messaging/firebase_messaging.dart';
+ import 'package:flutter/foundation.dart';
+ import 'package:flutter/material.dart';
+diff --git a/lib/main.dart b/lib/main.dart
+index 29e3df6..cf930a2 100644
+--- a/lib/main.dart
++++ b/lib/main.dart
+@@ -1,4 +1,4 @@
+-import 'package:firebase_core/firebase_core.dart';
++import 'package:firebase_core/firebase_core.dart' hide FirebaseService;
+ import 'package:firebase_messaging/firebase_messaging.dart';
+ import 'package:flutter/foundation.dart';
+ import 'package:flutter/material.dart';
+diff --git a/linux/flutter/generated_plugins.cmake b/linux/flutter/generated_plugins.cmake
+index b5f30e0..b99784b 100644
+--- a/linux/flutter/generated_plugins.cmake
++++ b/linux/flutter/generated_plugins.cmake
+@@ -10,6 +10,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
+ )
+ 
+ list(APPEND FLUTTER_FFI_PLUGIN_LIST
++  jni
+ )
+ 
+ set(PLUGIN_BUNDLED_LIBRARIES)
+diff --git a/pubspec.lock b/pubspec.lock
+index cdbf0ce..0400051 100644
+--- a/pubspec.lock
++++ b/pubspec.lock
+@@ -5,26 +5,26 @@ packages:
+     dependency: transitive
+     description:
+       name: _fe_analyzer_shared
+-      sha256: "8d7ff3948166b8ec5da0fbb5962000926b8e02f2ed9b3e51d1738905fbd4c98d"
++      sha256: a49d6cf99e8d8e7a8e93668d09ced0bbdb954d0b4fccc2f5f9241c6b87fad95c
+       url: "https://pub.dev"
+     source: hosted
+-    version: "93.0.0"
++    version: "99.0.0"
+   _flutterfire_internals:
+     dependency: transitive
+     description:
+       name: _flutterfire_internals
+-      sha256: bda3b7b55958bfd867addc40d067b4b11f7b8846d57671f5b5a6e7f9a56fe3ad
++      sha256: "460e9e684edb461d85498fc166ff8416f303f22216838d302d80676b348c6a4c"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "1.3.69"
++    version: "1.3.75"
+   analyzer:
+     dependency: transitive
+     description:
+       name: analyzer
+-      sha256: de7148ed2fcec579b19f122c1800933dfa028f6d9fd38a152b04b1516cec120b
++      sha256: "663efa951fb8a45e06f491223a604c93820598f20e6a99c25617a1576065e8b7"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "10.0.1"
++    version: "12.1.0"
+   ansicolor:
+     dependency: transitive
+     description:
+@@ -125,34 +125,34 @@ packages:
+     dependency: "direct main"
+     description:
+       name: cloud_firestore
+-      sha256: "2e0a07b9905375fa17fba82ee1cd70df592907691e2f25a629823a021e49c1a2"
++      sha256: e494387f1cd15e4f1c935e14a9cb884c97b8847a41364fabfaa912958a2ea842
+       url: "https://pub.dev"
+     source: hosted
+-    version: "6.2.0"
++    version: "6.7.1"
+   cloud_firestore_platform_interface:
+     dependency: transitive
+     description:
+       name: cloud_firestore_platform_interface
+-      sha256: b82a35eb6a1bde9569df372f933fc5a01bcddef58c993d78f78c31d111fcd080
++      sha256: bc8c479a829c1abdfa4741aa2f3a3242918e0bebd3eb50e53d9dde9b303d4330
+       url: "https://pub.dev"
+     source: hosted
+-    version: "7.1.0"
++    version: "8.0.5"
+   cloud_firestore_web:
+     dependency: transitive
+     description:
+       name: cloud_firestore_web
+-      sha256: "96bb9aec40d026b88737c1c426972ec435cac6b8d0f21af8eebb84fc09f100da"
++      sha256: cb237b3bf3cff4778ec962a8a9449ae79e831d7b4369e0ad9f5a2b6dfbd84569
+       url: "https://pub.dev"
+     source: hosted
+-    version: "5.2.0"
++    version: "5.7.1"
+   code_assets:
+     dependency: transitive
+     description:
+       name: code_assets
+-      sha256: "83ccdaa064c980b5596c35dd64a8d3ecc68620174ab9b90b6343b753aa721687"
++      sha256: bf394f466ba9205f1812a0433b392d6af280f155f56651eda7c18cc32ed493b8
+       url: "https://pub.dev"
+     source: hosted
+-    version: "1.0.0"
++    version: "1.2.1"
+   collection:
+     dependency: "direct main"
+     description:
+@@ -165,10 +165,10 @@ packages:
+     dependency: "direct main"
+     description:
+       name: connectivity_plus
+-      sha256: "62ffa266d9a23b79fb3fcbc206afc00bb979417ba57b1324c546b5aab95ba057"
++      sha256: "25cebb79dfe304022550e0c3c893ae051ded07183d2607f7b88473cb3ade33cb"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "7.1.1"
++    version: "7.3.0"
+   connectivity_plus_platform_interface:
+     dependency: transitive
+     description:
+@@ -189,18 +189,18 @@ packages:
+     dependency: transitive
+     description:
+       name: coverage
+-      sha256: "5da775aa218eaf2151c721b16c01c7676fbfdd99cebba2bf64e8b807a28ff94d"
++      sha256: "956a3de0725ca232ad353565a8290d3357592bf4250f6f298a185e2d949c5d3d"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "1.15.0"
++    version: "1.15.1"
+   cross_file:
+     dependency: transitive
+     description:
+       name: cross_file
+-      sha256: "28bb3ae56f117b5aec029d702a90f57d285cd975c3c5c281eaca38dbc47c5937"
++      sha256: "92c9c43c383bfa1c32079d3bc492d55d6d4318044b7b47edaff8971cbb555c51"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "0.3.5+2"
++    version: "0.3.5+4"
+   crypto:
+     dependency: transitive
+     description:
+@@ -229,18 +229,18 @@ packages:
+     dependency: transitive
+     description:
+       name: dbus
+-      sha256: d0c98dcd4f5169878b6cf8f6e0a52403a9dff371a3e2f019697accbf6f44a270
++      sha256: "0ce9b0a839e6dee59a37a623d2fc26a35bbbe6404213e419b0d6411023d62645"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "0.7.12"
++    version: "0.7.14"
+   equatable:
+     dependency: transitive
+     description:
+       name: equatable
+-      sha256: "3e0141505477fd8ad55d6eb4e7776d3fe8430be8e497ccb1521370c3f21a3e2b"
++      sha256: "3bce007a596ff8b3119c45d68aaef631272537c03d30e5d4534dd24bf4c5eaa2"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.0.8"
++    version: "2.1.0"
+   fake_async:
+     dependency: transitive
+     description:
+@@ -269,74 +269,74 @@ packages:
+     dependency: "direct main"
+     description:
+       name: firebase_auth
+-      sha256: "7421650001840aa63d3e7a59062bfa1a53febc52c7520e1effad0d325d6469cb"
++      sha256: "0ced04a58f0d08bb01435771069fdee06e54d85321f2a8c9dc428857098731c8"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "6.3.0"
++    version: "6.5.6"
+   firebase_auth_platform_interface:
+     dependency: "direct main"
+     description:
+       name: firebase_auth_platform_interface
+-      sha256: "4f9103fe33f5a8cbe7b9bdae7a76e01cb67026b3fcaac5cf603a23685213f7cf"
++      sha256: a02aa6edb07fb5676eeea47590ff19d916c0239706ec2a35b1544cc7af44b63a
+       url: "https://pub.dev"
+     source: hosted
+-    version: "8.1.8"
++    version: "9.0.5"
+   firebase_auth_web:
+     dependency: transitive
+     description:
+       name: firebase_auth_web
+-      sha256: "4173bfa41a8b6f0a791af99c61bead53fca819e32237c9336b84ebfbce44d7ae"
++      sha256: "8daa9f7665f76c6e23a2e68cabaa7f6693e1949eef3ee678712544b3835ce437"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "6.1.4"
++    version: "6.2.5"
+   firebase_core:
+     dependency: "direct main"
+     description:
+       name: firebase_core
+-      sha256: d5a94b884dcb1e6d3430298e94bfe002238094cdfd5e29202d536ee2120f9158
++      sha256: "6f22d1c62e0c20976f02cd842c7b7cd3c0f561cc2052586411871045c08860c9"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "4.7.0"
++    version: "4.12.1"
+   firebase_core_platform_interface:
+     dependency: transitive
+     description:
+       name: firebase_core_platform_interface
+-      sha256: "0ecda14c1bfc9ed8cac303dd0f8d04a320811b479362a9a4efb14fd331a473ce"
++      sha256: f74d1d6fabccf7743b0144c2ed363d81049e258e22428ebb6fb0faec2fa7d938
+       url: "https://pub.dev"
+     source: hosted
+-    version: "6.0.3"
++    version: "8.0.0"
+   firebase_core_web:
+     dependency: transitive
+     description:
+       name: firebase_core_web
+-      sha256: dc5096257cd67292d34d78ceeb90836f02a4be921b5f3934311a02bb2376118c
++      sha256: ddab99d709b8c27dd47576eb05a1e719e07a2aa45c009a49ae92ac4d2a8ca555
+       url: "https://pub.dev"
+     source: hosted
+-    version: "3.6.0"
++    version: "3.9.1"
+   firebase_messaging:
+     dependency: "direct main"
+     description:
+       name: firebase_messaging
+-      sha256: e5c93e8e7a9b0513f94bb684d2cf100e32e7dcdf2949574386b1955fc9a9b96a
++      sha256: "30ad2d59bcd86117dc49d278c8998a0fb390c5a3202f6e43e4bd215d3f1d0556"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "16.2.0"
++    version: "16.4.3"
+   firebase_messaging_platform_interface:
+     dependency: transitive
+     description:
+       name: firebase_messaging_platform_interface
+-      sha256: "8cbb7d842e5071bba836452aff262f7db4b14bb3a0d00c1896cf176df886d65a"
++      sha256: "4d144cb42b9a5a42855596be2d7682d32c50169f42e7df2cb3278ecf935e7d63"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "4.7.9"
++    version: "4.9.2"
+   firebase_messaging_web:
+     dependency: transitive
+     description:
+       name: firebase_messaging_web
+-      sha256: "8750bacf50573c0383535fc3f9c58c6a2f9dff5320a16a82c30631b9dad894f1"
++      sha256: fcd25d0b9da55766ef4d28ae05a7460f5189635d6b42607adcd9f08818fd35f0
+       url: "https://pub.dev"
+     source: hosted
+-    version: "4.1.5"
++    version: "4.2.3"
+   fixnum:
+     dependency: transitive
+     description:
+@@ -410,18 +410,18 @@ packages:
+     dependency: "direct main"
+     description:
+       name: flutter_native_splash
+-      sha256: "4fb9f4113350d3a80841ce05ebf1976a36de622af7d19aca0ca9a9911c7ff002"
++      sha256: "9db4b80b044e9af17cc4b1272137fc7ace0054d879ef8210a76adc34aaf4cdff"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.4.7"
++    version: "2.4.8"
+   flutter_riverpod:
+     dependency: "direct main"
+     description:
+       name: flutter_riverpod
+-      sha256: "4e166be88e1dbbaa34a280bdb744aeae73b7ef25fdf8db7a3bb776760a3648e2"
++      sha256: "9255e1e3ad6e38906a1b4f8287678f95f378744c5b46b1985588543f3f19046e"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "3.3.1"
++    version: "3.3.2"
+   flutter_secure_storage:
+     dependency: "direct main"
+     description:
+@@ -474,10 +474,10 @@ packages:
+     dependency: "direct main"
+     description:
+       name: flutter_svg
+-      sha256: "1ded017b39c8e15c8948ea855070a5ff8ff8b3d5e83f3446e02d6bb12add7ad9"
++      sha256: "35882981abcbfb8c15b286f0cd690ff25bac12d95eff3e25ee207f37d4c42e7f"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.2.4"
++    version: "2.3.0"
+   flutter_test:
+     dependency: "direct dev"
+     description: flutter
+@@ -487,10 +487,10 @@ packages:
+     dependency: "direct main"
+     description:
+       name: flutter_timezone
+-      sha256: e8d63f50f2806a3a71a08697286a0369e1d8f0902961327810459871c0bb01c2
++      sha256: "869677426fde92dbe170fb7d2d4929f2a8343c2f5f62f08b0bb64f908630b073"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "5.0.2"
++    version: "5.1.0"
+   flutter_web_plugins:
+     dependency: transitive
+     description: flutter
+@@ -596,26 +596,26 @@ packages:
+     dependency: "direct main"
+     description:
+       name: go_router
+-      sha256: "7974313e217a7771557add6ff2238acb63f635317c35fa590d348fb238f00896"
++      sha256: "5922b2861e2235a3504896f0d6fa07d84141b480cf52eecd2f42cd25585a9e8a"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "17.1.0"
++    version: "17.3.0"
+   google_fonts:
+     dependency: "direct main"
+     description:
+       name: google_fonts
+-      sha256: db9df7a5898d894eeda4c78143f35c30a243558be439518972366880b80bf88e
++      sha256: d3f251381df389f7418d4dff416bd27c0a23138df22969aafd28c4a4b1bb3cd6
+       url: "https://pub.dev"
+     source: hosted
+-    version: "8.0.2"
++    version: "8.2.0"
+   hooks:
+     dependency: transitive
+     description:
+       name: hooks
+-      sha256: e79ed1e8e1929bc6ecb6ec85f0cb519c887aa5b423705ded0d0f2d9226def388
++      sha256: "9a62a50b50b769a737bc0a8ff381f333529df3ab746b2f6b02e83760231455ba"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "1.0.2"
++    version: "2.0.2"
+   html:
+     dependency: transitive
+     description:
+@@ -660,10 +660,10 @@ packages:
+     dependency: "direct main"
+     description:
+       name: intl
+-      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
++      sha256: "1ca20c894b1717686a2319b8548763d812bc0aabdac580420a44c5178c57a867"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "0.20.2"
++    version: "0.20.3"
+   intl_phone_field:
+     dependency: "direct main"
+     description:
+@@ -680,6 +680,22 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "1.0.5"
++  jni:
++    dependency: transitive
++    description:
++      name: jni
++      sha256: c2230682d5bc2362c1c9e8d3c7f406d9cbba23ab3f2e203a025dd47e0fb2e68f
++      url: "https://pub.dev"
++    source: hosted
++    version: "1.0.0"
++  jni_flutter:
++    dependency: transitive
++    description:
++      name: jni_flutter
++      sha256: "8b59e590786050b1cd866677dddaf76b1ade5e7bc751abe04b86e84d379d3ba6"
++      url: "https://pub.dev"
++    source: hosted
++    version: "1.0.1"
+   js:
+     dependency: transitive
+     description:
+@@ -692,10 +708,10 @@ packages:
+     dependency: transitive
+     description:
+       name: json_annotation
+-      sha256: cb09e7dac6210041fad964ed7fbee004f14258b4eca4040f72d1234062ace4c8
++      sha256: "2a743920d81b7910627f68ee2c9ac1fc0bfee32b9fc3403587d7c6791ca12f80"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "4.11.0"
++    version: "4.12.0"
+   leak_tracker:
+     dependency: transitive
+     description:
+@@ -756,10 +772,10 @@ packages:
+     dependency: transitive
+     description:
+       name: meta
+-      sha256: "23f08335362185a5ea2ad3a4e597f1375e78bce8a040df5c600c8d3552ef2394"
++      sha256: "1741988757a65eb6b36abe716829688cf01910bbf91c34354ff7ec1c3de2b349"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "1.17.0"
++    version: "1.18.0"
+   mime:
+     dependency: transitive
+     description:
+@@ -768,14 +784,6 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "2.0.0"
+-  native_toolchain_c:
+-    dependency: transitive
+-    description:
+-      name: native_toolchain_c
+-      sha256: "6ba77bb18063eebe9de401f5e6437e95e1438af0a87a3a39084fbd37c90df572"
+-      url: "https://pub.dev"
+-    source: hosted
+-    version: "0.17.6"
+   nm:
+     dependency: transitive
+     description:
+@@ -796,10 +804,10 @@ packages:
+     dependency: transitive
+     description:
+       name: objective_c
+-      sha256: "100a1c87616ab6ed41ec263b083c0ef3261ee6cd1dc3b0f35f8ddfa4f996fe52"
++      sha256: "6cb691c686fa2838c6deb34980d426145c2a5d537491cb83d463c33cdbc726ed"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "9.3.0"
++    version: "9.4.1"
+   package_config:
+     dependency: transitive
+     description:
+@@ -828,18 +836,18 @@ packages:
+     dependency: transitive
+     description:
+       name: path_provider
+-      sha256: "50c5dd5b6e1aaf6fb3a78b33f6aa3afca52bf903a8a5298f53101fdaee55bbcd"
++      sha256: a7f4874f987173da295a61c181b8ee71dab59b332a486b391babf26a1b884825
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.1.5"
++    version: "2.1.6"
+   path_provider_android:
+     dependency: transitive
+     description:
+       name: path_provider_android
+-      sha256: "149441ca6e4f38193b2e004c0ca6376a3d11f51fa5a77552d8bd4d2b0c0912ba"
++      sha256: "69cbd515a62b94d32a7944f086b2f82b4ac40a1d45bebfc00813a430ab2dabcd"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.2.23"
++    version: "2.3.1"
+   path_provider_foundation:
+     dependency: transitive
+     description:
+@@ -852,18 +860,18 @@ packages:
+     dependency: transitive
+     description:
+       name: path_provider_linux
+-      sha256: f7a1fe3a634fe7734c8d3f2766ad746ae2a2884abe22e241a8b301bf5cac3279
++      sha256: "58c2005f147315b11e9b4a7bc889cd5203e250cba8e3f012dae259b4972b5c16"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.2.1"
++    version: "2.2.2"
+   path_provider_platform_interface:
+     dependency: transitive
+     description:
+       name: path_provider_platform_interface
+-      sha256: "88f5779f72ba699763fa3a3b06aa4bf6de76c8e5de842cf6f29e2e06476c2334"
++      sha256: "484838772624c3a4b94f1e44a3e19897fee738f2d5c4ce448443b0417f7c9dda"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.1.2"
++    version: "2.1.3"
+   path_provider_windows:
+     dependency: transitive
+     description:
+@@ -960,14 +968,22 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "3.0.2"
++  record_use:
++    dependency: transitive
++    description:
++      name: record_use
++      sha256: "2551bd8eecfe95d14ae75f6021ad0248be5c27f138c2ec12fcb52b500b3ba1ed"
++      url: "https://pub.dev"
++    source: hosted
++    version: "0.6.0"
+   riverpod:
+     dependency: transitive
+     description:
+       name: riverpod
+-      sha256: "8c22216be8ad3ef2b44af3a329693558c98eca7b8bd4ef495c92db0bba279f83"
++      sha256: "17100416c51db7810c71a7bb2c34d1f881faa0074fd452afb0c4db6f8f126c76"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "3.2.1"
++    version: "3.3.2"
+   share_plus:
+     dependency: "direct main"
+     description:
+@@ -996,10 +1012,10 @@ packages:
+     dependency: transitive
+     description:
+       name: shared_preferences_android
+-      sha256: e8d4762b1e2e8578fc4d0fd548cebf24afd24f49719c08974df92834565e2c53
++      sha256: "0634e64bd719f89c012f392938e173521f535d3ecaf66558fa94a056d22b5cc7"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.4.23"
++    version: "2.4.27"
+   shared_preferences_foundation:
+     dependency: transitive
+     description:
+@@ -1145,34 +1161,34 @@ packages:
+     dependency: transitive
+     description:
+       name: test
+-      sha256: "280d6d890011ca966ad08df7e8a4ddfab0fb3aa49f96ed6de56e3521347a9ae7"
++      sha256: "8d9ceddbab833f180fbefed08afa76d7c03513dfdba87ffcec2718b02bbcbf20"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "1.30.0"
++    version: "1.31.0"
+   test_api:
+     dependency: transitive
+     description:
+       name: test_api
+-      sha256: "8161c84903fd860b26bfdefb7963b3f0b68fee7adea0f59ef805ecca346f0c7a"
++      sha256: "949a932224383300f01be9221c39180316445ecb8e7547f70a41a35bf421fb9e"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "0.7.10"
++    version: "0.7.11"
+   test_core:
+     dependency: transitive
+     description:
+       name: test_core
+-      sha256: "0381bd1585d1a924763c308100f2138205252fb90c9d4eeaf28489ee65ccde51"
++      sha256: "1991d4cfe85d5043241acac92962c3977c8d2f2add1ee73130c7b286417d1d34"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "0.6.16"
++    version: "0.6.17"
+   timezone:
+     dependency: "direct main"
+     description:
+       name: timezone
+-      sha256: "784a5e34d2eb62e1326f24d6f600aaaee452eb8ca8ef2f384a59244e292d158b"
++      sha256: "981d1020d6ef8fe1e7b3de5054e5b25579ae7c403d7734adc508ffc47668e9cb"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "0.11.0"
++    version: "0.11.1"
+   typed_data:
+     dependency: transitive
+     description:
+@@ -1201,10 +1217,10 @@ packages:
+     dependency: transitive
+     description:
+       name: url_launcher_android
+-      sha256: "3bb000251e55d4a209aa0e2e563309dc9bb2befea2295fd0cec1f51760aac572"
++      sha256: b413d49b73867ac08dd2f9890efd3cc11f2a0e577618d50843440a1fb3776c32
+       url: "https://pub.dev"
+     source: hosted
+-    version: "6.3.29"
++    version: "6.3.32"
+   url_launcher_ios:
+     dependency: transitive
+     description:
+@@ -1241,10 +1257,10 @@ packages:
+     dependency: transitive
+     description:
+       name: url_launcher_web
+-      sha256: d0412fcf4c6b31ecfdb7762359b7206ffba3bbffd396c6d9f9c4616ece476c1f
++      sha256: "85c81589622fbc87c1c683aaea164d3604a7777495a79d91e39ffcdec39ddb34"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.4.2"
++    version: "2.4.3"
+   url_launcher_windows:
+     dependency: transitive
+     description:
+@@ -1257,18 +1273,18 @@ packages:
+     dependency: "direct main"
+     description:
+       name: uuid
+-      sha256: "1fef9e8e11e2991bb773070d4656b7bd5d850967a2456cfc83cf47925ba79489"
++      sha256: "9b129329f58692f6e6578329498a8fe9fbe98f090beb764ffbb8ee2eadd01dcd"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "4.5.3"
++    version: "4.6.0"
+   vector_graphics:
+     dependency: transitive
+     description:
+       name: vector_graphics
+-      sha256: "81da85e9ca8885ade47f9685b953cb098970d11be4821ac765580a6607ea4373"
++      sha256: "2306c03da2ba81724afeb589c351ebbc0aa7d86005925be8f8735856dbe5e42d"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "1.1.21"
++    version: "1.2.2"
+   vector_graphics_codec:
+     dependency: transitive
+     description:
+@@ -1281,10 +1297,10 @@ packages:
+     dependency: transitive
+     description:
+       name: vector_graphics_compiler
+-      sha256: "5a88dd14c0954a5398af544651c7fb51b457a2a556949bfb25369b210ef73a74"
++      sha256: "142a9146f447d15b10bdc00e21d5f4d83e5b32bb5f8f8f5a04c75311344923a3"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "1.2.0"
++    version: "1.2.6"
+   vector_math:
+     dependency: transitive
+     description:
+@@ -1297,34 +1313,34 @@ packages:
+     dependency: "direct main"
+     description:
+       name: video_player
+-      sha256: "48a7bdaa38a3d50ec10c78627abdbfad863fdf6f0d6e08c7c3c040cfd80ae36f"
++      sha256: "20ef311160e2ced020a62f38e4cc399a1bf289e722fc5fe37c9d7b18e44c9e8d"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.11.1"
++    version: "2.13.0"
+   video_player_android:
+     dependency: transitive
+     description:
+       name: video_player_android
+-      sha256: "877a6c7ba772456077d7bfd71314629b3fe2b73733ce503fc77c3314d43a0ca0"
++      sha256: "5121de08444d00363efdda630a69ad4d27a208a9f7586482d4909a44a1cdbc63"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.9.5"
++    version: "2.11.0"
+   video_player_avfoundation:
+     dependency: transitive
+     description:
+       name: video_player_avfoundation
+-      sha256: "76097729ef0c976937945afa53f1ca3afa9b50c9a95909ba347bcf93270466fd"
++      sha256: c238f5f0a26845cd0bcc2956049b63065a4d3c40ddfc22c3414cd170bef7fff9
+       url: "https://pub.dev"
+     source: hosted
+-    version: "2.10.0"
++    version: "2.11.0"
+   video_player_platform_interface:
+     dependency: transitive
+     description:
+       name: video_player_platform_interface
+-      sha256: e4ae5bc934b528e5b95c5e47be2812860186260cd3eed3ac62f5ed380fdd1613
++      sha256: "92c0fbabe20c788e71fd10d26cea998d0d253282e65d145aed0818731cf593ce"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "6.8.0"
++    version: "6.9.0"
+   video_player_web:
+     dependency: transitive
+     description:
+@@ -1337,10 +1353,10 @@ packages:
+     dependency: transitive
+     description:
+       name: vm_service
+-      sha256: "45caa6c5917fa127b5dbcfbd1fa60b14e583afdc08bfc96dda38886ca252eb60"
++      sha256: "0016aef94fc66495ac78af5859181e3f3bf2026bd8eecc72b9565601e19ab360"
+       url: "https://pub.dev"
+     source: hosted
+-    version: "15.0.2"
++    version: "15.2.0"
+   watcher:
+     dependency: transitive
+     description:
+@@ -1414,5 +1430,5 @@ packages:
+     source: hosted
+     version: "3.1.3"
+ sdks:
+-  dart: ">=3.11.3 <4.0.0"
+-  flutter: ">=3.38.4"
++  dart: ">=3.12.0 <4.0.0"
++  flutter: ">=3.44.0"
+diff --git a/pubspec.yaml b/pubspec.yaml
+index 16b5d50..198b2f2 100644
+--- a/pubspec.yaml
++++ b/pubspec.yaml
+@@ -45,12 +45,12 @@ dependencies:
+   url_launcher: ^6.3.1
+   pdf: ^3.11.3
+   printing: ^5.14.2
+-  firebase_core: ^4.6.0
+-  cloud_firestore: ^6.2.0
+-  firebase_auth: ^6.3.0
+-  firebase_auth_platform_interface: ^8.1.8
++  firebase_core: ^4.12.1
++  cloud_firestore: ^6.7.1
++  firebase_auth: ^6.5.6
++  firebase_auth_platform_interface: ^9.0.5
+   collection: ^1.19.0
+-  firebase_messaging: ^16.2.0
++  firebase_messaging: ^16.4.3
+   flutter_local_notifications: ^21.0.0
+   intl_phone_field: ^3.2.0
+   pin_code_fields: ^8.0.1
+diff --git a/windows/flutter/generated_plugins.cmake b/windows/flutter/generated_plugins.cmake
+index 7beb7e4..e8f8556 100644
+--- a/windows/flutter/generated_plugins.cmake
++++ b/windows/flutter/generated_plugins.cmake
+@@ -17,6 +17,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
+ 
+ list(APPEND FLUTTER_FFI_PLUGIN_LIST
+   flutter_local_notifications_windows
++  jni
+ )
+ 
+ set(PLUGIN_BUNDLED_LIBRARIES)
