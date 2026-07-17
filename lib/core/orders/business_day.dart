@@ -46,15 +46,6 @@ DateTime previousBusinessDayKey(
   ).subtract(const Duration(days: 1));
 }
 
-/// Next business day key relative to [reference]'s business day.
-DateTime nextBusinessDayKey(
-  DateTime reference, {
-  int rolloverHour = kDefaultBusinessDayRolloverHour,
-}) {
-  final key = businessDayKey(reference, rolloverHour: rolloverHour);
-  return DateTime(key.year, key.month, key.day).add(const Duration(days: 1));
-}
-
 /// Rollover instant for a calendar [businessDayKey] (date-only).
 DateTime orderDateForBusinessDay(
   DateTime businessDayKey, {

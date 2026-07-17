@@ -67,10 +67,6 @@ class AuthState {
     );
   }
 
-  AuthState withClearedUser() {
-    return const AuthState(isInitialized: true);
-  }
-
   static const _sentinel = Object();
 }
 

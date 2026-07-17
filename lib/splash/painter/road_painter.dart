@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 
 import '../splash_constants.dart';
@@ -80,25 +78,4 @@ class RoadPainter extends CustomPainter {
         oldDelegate.strokeWidth != strokeWidth ||
         oldDelegate.color != color;
   }
-}
-
-/// Utility to convert road tangent angle to widget rotation.
-double splashRoadAngleToRotation(double tangentAngle) {
-  return tangentAngle;
-}
-
-/// Exposed for tests — validates path length is non-zero.
-double splashRoadPathLength(Size size) {
-  final path = buildSplashRoadPath(size);
-  return path.computeMetrics().first.length;
-}
-
-/// Road edge softness paint used by the optional SVG underlay.
-Paint splashRoadShadowPaint(double strokeWidth) {
-  return Paint()
-    ..color = Colors.black.withValues(alpha: 0.05)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = strokeWidth + 6
-    ..strokeCap = StrokeCap.round
-    ..maskFilter = const ui.MaskFilter.blur(BlurStyle.normal, 4);
 }
